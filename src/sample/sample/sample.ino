@@ -35,17 +35,13 @@ void setup() {
   //initialize Serial Monitor
   Serial.begin(9600);
 
-
-  
-
   //initialize OLED
   delay(1000);
   Serial.println("Beginning OLED Init");
   Serial.flush();
   
-  //Wire.begin(OLED_SDA, OLED_SCL);
-  Wire.setPins(OLED_SDA, OLED_SCL);
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3D, false, true)) { // Address 0x3C for 128x32 //TODO figure out what the false parameters do
+  Wire.begin(OLED_SDA, OLED_SCL);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true, false)) { 
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
   }
@@ -108,6 +104,7 @@ void setup() {
 
 void loop() {
   Serial.println("Got this far!!");
+  display.display();
   delay(1000);
   /*
   if (millis() - lastSendTime > 10000) {
