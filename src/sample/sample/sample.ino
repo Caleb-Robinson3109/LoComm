@@ -19,9 +19,9 @@
 #define BAND 915E6
 
 //OLED pins
-#define OLED_SDA 4
-#define OLED_SCL 15 
-#define OLED_RST 16
+#define OLED_SDA 21
+#define OLED_SCL 22 
+#define OLED_RST -1
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
@@ -29,36 +29,32 @@
 int lastSendTime = 0;
 int byteCount = 0;
 
-//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 void setup() {
   //initialize Serial Monitor
   Serial.begin(9600);
 
-  //reset OLED display via software //TODO This is causing weird serial behavior for some reason!
-  /*
-  pinMode(OLED_RST, OUTPUT);
-  digitalWrite(OLED_RST, LOW);
-  delay(20);
-  digitalWrite(OLED_RST, HIGH);
-  */
+
   
 
   //initialize OLED
   delay(1000);
   Serial.println("Beginning OLED Init");
   Serial.flush();
-  /*
-  Wire.begin(OLED_SDA, OLED_SCL);
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32 //TODO figure out what the false parameters do
+  
+  //Wire.begin(OLED_SDA, OLED_SCL);
+  Wire.setPins(OLED_SDA, OLED_SCL);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3D, false, true)) { // Address 0x3C for 128x32 //TODO figure out what the false parameters do
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
   }
   display.clearDisplay();
-  display.setTextColor(WHITE);
+  display.setTextColor(SSD1306_WHITE);
+  display.drawPixel(10, 10, SSD1306_WHITE);
   display.setTextSize(1);
-  */
-  /*
+  
+  
   Serial.println("Beginning LoRa Init");
   //Initialize LoRa device
   SPI.begin(SCK, MISO, MOSI, SS);
@@ -73,8 +69,9 @@ void setup() {
   display.setCursor(0,10);
   display.print("LoRa Initializing OK!");
   display.display();
+  Serial.println("Output to screen!");
   delay(2000);
-  */
+  
 }
 
 //Notes for programming...
@@ -110,6 +107,8 @@ void setup() {
 
 
 void loop() {
+  Serial.println("Got this far!!");
+  delay(1000);
   /*
   if (millis() - lastSendTime > 10000) {
     lastSendTime = millis();
