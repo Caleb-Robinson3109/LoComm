@@ -26,32 +26,40 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 //packet counter
-int counter = 0;
+int lastSendTime = 0;
+int byteCount = 0;
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 void setup() {
   //initialize Serial Monitor
-  Serial.begin(115200);
+  Serial.begin(9600);
 
-  //reset OLED display via software
+  //reset OLED display via software //TODO This is causing weird serial behavior for some reason!
+  /*
   pinMode(OLED_RST, OUTPUT);
   digitalWrite(OLED_RST, LOW);
   delay(20);
   digitalWrite(OLED_RST, HIGH);
+  */
+  
 
   //initialize OLED
+  delay(1000);
+  Serial.println("Beginning OLED Init");
+  Serial.flush();
+  /*
   Wire.begin(OLED_SDA, OLED_SCL);
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32 //TODO figure out what the false parameters do
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
   }
-  
-  //initialize OLED
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
-
+  */
+  /*
+  Serial.println("Beginning LoRa Init");
   //Initialize LoRa device
   SPI.begin(SCK, MISO, MOSI, SS);
   //setup LoRa transceiver module
@@ -66,6 +74,7 @@ void setup() {
   display.print("LoRa Initializing OK!");
   display.display();
   delay(2000);
+  */
 }
 
 //Notes for programming...
@@ -101,6 +110,25 @@ void setup() {
 
 
 void loop() {
-  
-  delay(10000);
+  /*
+  if (millis() - lastSendTime > 10000) {
+    lastSendTime = millis();
+    LoRa.beginPacket();
+    LoRa.print("meow");
+    LoRa.endPacket(0);
+    Serial.println("Sending Packet");
+  }
+
+  if (LoRa.parsePacket()) {
+    Serial.println("Received Packet");
+    display.setCursor(0, 0);
+    while (LoRa.available()) {
+      display.print(LoRa.read());
+      byteCount++;
+    }
+    display.setCursor(0, 32);
+    display.print(byteCount);
+    display.display();
+  }
+  */
 }
