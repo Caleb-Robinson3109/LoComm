@@ -17,3 +17,17 @@ src/driver/*
 ## ESP Code
 src/esp/*
 
+
+## USB Serial Communication Protocol
+Serial Communication Protocol
+	Start byte - 0x69
+	Header - 
+		Message length (1 byte)
+		Sender - (1 byte)
+		Receiver - (1 byte)
+		Extra - (1 byte)
+	Body - 
+		Data
+	CRC (checksum on the header and body) - (2 bytes)
+	End byte - 0xAF
+
