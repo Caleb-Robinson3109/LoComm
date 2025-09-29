@@ -1,55 +1,67 @@
-# Prerequisites
-*.d
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.env
+.venv
+venv/
+ENV/
 
-# Object files
+# ---- VSCode ----
+.vscode/
+*.code-workspace
+
+# ---- C / C++ ----
+# Compiled object files
 *.o
-*.ko
 *.obj
-*.elf
 
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
+# Precompiled headers
 *.gch
 *.pch
 
-# Libraries
-*.lib
+# Compiled static libraries
 *.a
-*.la
-*.lo
+*.lib
 
-# Shared objects (inc. Windows DLLs)
-*.dll
+# Compiled dynamic libraries
 *.so
-*.so.*
 *.dylib
+*.dll
 
 # Executables
 *.exe
 *.out
 *.app
-*.i*86
-*.x86_64
 *.hex
+*.elf
 
 # Debug files
 *.dSYM/
-*.su
-*.idb
-*.pdb
+*.stackdump
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+# ---- Arduino / ESP ----
+# Arduino build folder
+*.arduino_build/
+*.arduino_cache/
+*.arduino/
+*.ino.cpp
+*.ino.d
+*.ino.elf
+*.ino.hex
 
-# debug information files
-*.dwo
+# ESP-IDF specific
+build/
+sdkconfig
+sdkconfig.old
+
+# PlatformIO
+.pio/
+.piolibdeps/
+.pioenvs/
+
