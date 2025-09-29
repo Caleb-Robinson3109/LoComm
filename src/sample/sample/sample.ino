@@ -103,10 +103,6 @@ void setup() {
 
 
 void loop() {
-  Serial.println("Got this far!!");
-  display.display();
-  delay(1000);
-  /*
   if (millis() - lastSendTime > 10000) {
     lastSendTime = millis();
     LoRa.beginPacket();
@@ -126,5 +122,4 @@ void loop() {
     display.print(byteCount);
     display.display();
   }
-  */
 }
