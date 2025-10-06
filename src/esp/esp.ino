@@ -1,11 +1,13 @@
 //Libraries for LoRa
 #include <SPI.h>
-#include <LoRa.h>
+#include "LoRa.h"
 
 //Libraries for OLED Display
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+#include "esp.h"
 
 #define LORA_RX_BUFFER_SIZE 1024
 #define LORA_TX_BUFFER_SIZE 1024
@@ -29,16 +31,43 @@ uint32_t nextCADTime = 0;
 
 uint8_t lastDeviceMode = IDLE_MODE;
 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 void setup() {
-  // put your setup code here, to run once:
+  //Initialize Serial Connection to Computer
   Serial.begin(9600);
 
-  //TODO register all callbacks
-  //TODO figure out what initial state we should use for the LoRa
+  //Initialize OLED Screen
+  delay(1000);
+  Wire.begin(OLED_SDA, OLED_SCL);
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true, false)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+
+  //Initialize LoRa
+  SPI.begin(SCK, MISO, MOSI, SS);
+  LoRa.setPins(SS, RST, DIO0);
+  if (!LoRa.begin(BAND)) {
+    Serial.println("Starting LoRa failed!");
+    display.clearDisplay();
+    display.print("Failed to init LoRa");
+    display.display();
+    while (1);
+  }
+
+  //Register Callbacks
+  LoRa.onTxDone(onTxDone);
+  LoRa.onCadDone(onCadDone);
+  LoRa.onReceive(onReceive);
+
+  //Set idle mode
+  LoRa.idle();
 }
 
-//TODO go thru all conditionals and make sure we are using the correct < <= or > >=
 //TODO check all buffer logic
 
 void loop() {
@@ -52,18 +81,25 @@ void loop() {
 
   // --------------------------------------------------------------- LoRa MODE HANDLING ---------------------------------------------------------------
 
-  if (lTxBufferStart != lTxBufferEnd) { //if there is data in the tx buffer...
-    //try to enter activity detection mode
-    enterChannelActivityDetectionMode();
-  } else {
-    //otherwise, go to receive mode
+  //if the lora tx buffer is empty...
+  if (lTxBufferStart + 1 == lTxBufferEnd || (lTxBufferStart == LORA_TX_BUFFER_SIZE - 1 && lTxBufferEnd == 0)) { 
+    //go to receive mode
     enterReceiveMode();
+  } else {
+    //otherwise, begin the transmission process
+    enterChannelActivityDetectionMode();
   }
   
 }
 
 void writeToTxBuffer(uint8_t* buffer, uint16_t length) {
+  if (length > 256) {
+    Serial.println("Attempt to write 256+ byte message to buffer rejected");
+  } else if (length == 0) {
+    Serial.println("Attempt to write 0 byte message to buffer rejected");
+  }
 
+  //TODO Finish
 }
 
 void enterChannelActivityDetectionMode() {
@@ -90,7 +126,7 @@ void onCadDone(bool detectedSignal) {
   if (detectedSignal) {
     //since we detected a signal, lets back off a random amount of time
     nextCADTime = MIN_CAD_WAIT_INTERVAL_MS * ((esp_random() % 10) + 1);
-    idle(); //go back to the idle state. NOTE - this may not be necessary
+    LoRa.idle(); //go back to the idle state. NOTE - this may not be necessary
     lastDeviceMode = IDLE_MODE;
   } else {
     //not signal detected. Time to write!
@@ -113,10 +149,11 @@ void onCadDone(bool detectedSignal) {
 void onTxDone() {
   //free the device on send mode
   lastDeviceMode = IDLE_MODE;
-  idle();
+  LoRa.idle();
 }
 
 void onReceive(int size) {
+  //TODO ensure size < 256
   //dump the length of the packet, the rssi of the packet, and the packet itself into the rx buffer
   //whenever we dump a packet, we should move the variable indicating the end position of the rx buffer
   
@@ -130,20 +167,38 @@ void onReceive(int size) {
 
   if (size + 2 > remainingBufferSize) { //if the message would overflow the buffer, ignore it
     lastDeviceMode = IDLE_MODE;
-    idle();
+    LoRa.idle();
     return;
   }
 
-  //Write the message to the buffer
-  if (LORA_RX_BUFFER_SIZE - lRxBufferEnd < size + 2) { //if adding to the buffer would wrap it around...
-    //TODO need to do some additional checking for those first two bits
-    
-    LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), LORA_RX_BUFFER_SIZE - lRxBufferEnd);
-    
-    memcpy(&(loraRxBuffer[lRxBufferEnd]),   )
+  //handle getting the first two bytes written first (size, RSSI)
+  loraRxBuffer[lRxBufferEnd++] = size;
+  if (lRxBufferEnd >= LORA_RX_BUFFER_SIZE) { //if there is no room left in the buffer, then place the two bytes at the start of the buffer and set the new buffer end
+    loraRxBuffer[0] = size;
+    loraRxBuffer[1] = (-1) * LoRa.packetRssi();
+    lRxBufferEnd = 2;
+  } else if (lRxBufferEnd = LORA_RX_BUFFER_SIZE - 1) { //if theres only room for one
+    loraRxBuffer[LORA_RX_BUFFER_SIZE - 1] = size;
+    loraRxBuffer[0] = (-1) * LoRa.packetRssi();
+    lRxBufferEnd = 1;
+  } else {
+    loraRxBuffer[lRxBufferEnd++] = size;
+    loraRxBuffer[lRxBufferEnd++] = LoRa.packetRssi();
   }
 
-  //return in idle mode
+  //Write the message to the buffer
+  if (LORA_RX_BUFFER_SIZE - lRxBufferEnd < size) { //if adding to the buffer would wrap it around...
+    LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), LORA_RX_BUFFER_SIZE - lRxBufferEnd);
+    LoRa.readBytes(loraRxBuffer, size - (LORA_RX_BUFFER_SIZE - lRxBufferEnd));
+    lRxBufferEnd = size - (LORA_RX_BUFFER_SIZE - lRxBufferEnd);
+  } else { //otherwise, just write the whole message
+    LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), size);
+    lRxBufferEnd += size;
+  }
+
+  lastDeviceMode = IDLE_MODE;
+  LoRa.idle();
+  return;
 }
 
 //void writeToBuffer(uint8_t *buffer, uint32_t *bufferStart, uint32_t *bufferEnd, const uint32_t bufferSize, const)
