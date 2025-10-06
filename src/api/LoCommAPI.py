@@ -7,9 +7,14 @@ from api_funcs.LoCommAPIReciveMessage import locomm_api_receive_message
 from api_funcs.LoCommAPIPairDevices import locomm_api_pair_devices
 from api_funcs.LoCommAPIStopPair import locomm_api_stop_pair
 
+import serial
+
+serial_conn: serial.Serial
+
 #this function allows you to connect to a device.Returns true if connection is successful, false otherwise.
 def connect_to_device() -> bool:
-    locomm_api_connect_to_device()
+    ret, serial_conn = locomm_api_connect_to_device()
+    return ret
 
 #this function inputs the password. If the password matches the password stored on the ESP, then the function returns true, false otherwise.
 def enter_password(password: str) -> bool:
