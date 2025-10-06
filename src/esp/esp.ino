@@ -12,19 +12,30 @@
 #define LORA_RX_BUFFER_SIZE 1024
 #define LORA_TX_BUFFER_SIZE 1024
 #define MIN_CAD_WAIT_INTERVAL_MS 1
+#define VBUF_SIZE 512
 
 #define IDLE_MODE 1
 #define RX_MODE 2
 #define TX_MODE 3
 #define CAD_MODE 4
 
-uint8_t loraTxBuffer[LORA_TX_BUFFER_SIZE]; //format: length, data
+//Since the LoRa library doesn't implement buffers at all, we will do them ourselves! The hope is that the TX buffer will have a write command the RX buffer will have a read command.
+//To prevent unnecessary buffer reorgs, we will use a cyclic pattern where the start and then end of the data in the buffer cycles around as new messages are pushed/popped
+uint8_t loraTxBuffer[LORA_TX_BUFFER_SIZE]; //format: length of data field, placeholder, data
 uint32_t lTxBufferStart = 0; //points to the front of the buffer
 uint32_t lTxBufferEnd = 0; //points to the end, at the first open position in the buffer
 
-uint8_t loraRxBuffer[LORA_RX_BUFFER_SIZE]; //format: length (not including data), rssi, data
+uint8_t loraRxBuffer[LORA_RX_BUFFER_SIZE]; //format: length of data field, rssi, data
 uint32_t lRxBufferStart = 0;
 uint32_t lRxBufferEnd = 0;
+
+//The buffer is added to by placing and then incrementing the bufferEnd location, making sure it properly wraps around.
+//The buffer is removed from by popping from and then incrementing the bufferStart location. 
+//Thus, if we pop out the full contents of the buffer, the start and end location should line up
+
+
+//temporary buffer for various purposes
+uint8_t vBuf[VBUF_SIZE];
 
 uint32_t nextCADTime = 0;
 
@@ -78,11 +89,25 @@ void loop() {
 
   //if there is something to send over serial, write to the tx buffer
 
+  //test code to test sending::
+  if (Serial.available()) {
+    if (Serial.read()) {
+      Serial.println("TEST: Attempting to write to TX Buffer");
+      vBuf[0] = 1;
+      vBuf[1] = 2;
+      if (writeDataToLoraBuffer(vBuf, loraTxBuffer, 2, lTxBufferStart, lTxBufferEnd, LORA_TX_BUFFER_SIZE, 0)) {
+        Serial.println("TEST: Wrote to tx buffer");
+      } else {
+        Serial.println("TEST: Failed to write to tx buffer!");
+      }
+    }
+  }
+
 
   // --------------------------------------------------------------- LoRa MODE HANDLING ---------------------------------------------------------------
 
   //if the lora tx buffer is empty...
-  if (lTxBufferStart + 1 == lTxBufferEnd || (lTxBufferStart == LORA_TX_BUFFER_SIZE - 1 && lTxBufferEnd == 0)) { 
+  if (lTxBufferStart == lTxBufferEnd) {
     //go to receive mode
     enterReceiveMode();
   } else {
@@ -92,14 +117,18 @@ void loop() {
   
 }
 
-void writeToTxBuffer(uint8_t* buffer, uint16_t length) {
+void writeToTxBuffer(uint8_t* messageBuffer, uint16_t length) {
   if (length > 256) {
     Serial.println("Attempt to write 256+ byte message to buffer rejected");
   } else if (length == 0) {
     Serial.println("Attempt to write 0 byte message to buffer rejected");
   }
 
-  //TODO Finish
+  if (writeDataToLoraBuffer(messageBuffer, loraTxBuffer, length, lTxBufferStart, lTxBufferEnd, LORA_TX_BUFFER_SIZE, 0)) {
+    Serial.println("Wrote Message to LoRa TX Buffer");
+  } else {
+    Serial.println("Failed to write message to LoRa TX Buffer, buffer is full!");
+  }
 }
 
 void enterChannelActivityDetectionMode() {
@@ -129,18 +158,19 @@ void onCadDone(bool detectedSignal) {
     LoRa.idle(); //go back to the idle state. NOTE - this may not be necessary
     lastDeviceMode = IDLE_MODE;
   } else {
-    //not signal detected. Time to write!
+    //not signal detected. Time to write directly from the tx buffer to save time
+    //TODO make sure all these buffer start stop if statements look right. Then we should be good
     LoRa.beginPacket();
     uint8_t messageLength = loraTxBuffer[lTxBufferStart];
-    if (lTxBufferStart + messageLength > LORA_TX_BUFFER_SIZE){ //if the message loops around the end of the buffer...
+    if (lTxBufferStart + messageLength + 1 > LORA_TX_BUFFER_SIZE){ //if the message loops around the end of the buffer...
       LoRa.write(&(loraTxBuffer[lTxBufferStart]), LORA_TX_BUFFER_SIZE - lTxBufferStart);
-      LoRa.write(loraTxBuffer, messageLength + lTxBufferStart - LORA_TX_BUFFER_SIZE);
+      LoRa.write(loraTxBuffer, messageLength + 1 + lTxBufferStart - LORA_TX_BUFFER_SIZE);
       lTxBufferStart = messageLength + lTxBufferStart - LORA_TX_BUFFER_SIZE;
     } else {
       LoRa.write(&(loraTxBuffer[lTxBufferStart]), messageLength);
       lTxBufferStart += messageLength;
     }
-    //now that the packet has been written, enter send mode!
+    //now that the packet has been written, enter send mode to disable other callbacks until the message is dispatched
     lastDeviceMode = TX_MODE;
     LoRa.endPacket(true); //NOTE - this sets the callback to the onTxDone, so rec and cad callbacks wont trigger
   }
@@ -153,17 +183,12 @@ void onTxDone() {
 }
 
 void onReceive(int size) {
-  //TODO ensure size < 256
+  //TODO if the size is greater than the vBuf size, then we will have a buffer overflow! add an explicit
   //dump the length of the packet, the rssi of the packet, and the packet itself into the rx buffer
   //whenever we dump a packet, we should move the variable indicating the end position of the rx buffer
   
   //First, make sure we have enough space in the buffer
-  uint32_t remainingBufferSize;
-  if (lRxBufferStart <= lRxBufferEnd) { //if the buffer is currently not wrapped around...
-    remainingBufferSize = lRxBufferStart + (LORA_RX_BUFFER_SIZE - lRxBufferEnd);
-  } else {
-    remainingBufferSize = lRxBufferStart - lRxBufferEnd;
-  }
+  uint32_t remainingBufferSize = getBufferSize(loraRxBuffer, LORA_RX_BUFFER_SIZE, lRxBufferStart, lRxBufferEnd);
 
   if (size + 2 > remainingBufferSize) { //if the message would overflow the buffer, ignore it
     lastDeviceMode = IDLE_MODE;
@@ -171,29 +196,18 @@ void onReceive(int size) {
     return;
   }
 
-  //handle getting the first two bytes written first (size, RSSI)
-  loraRxBuffer[lRxBufferEnd++] = size;
-  if (lRxBufferEnd >= LORA_RX_BUFFER_SIZE) { //if there is no room left in the buffer, then place the two bytes at the start of the buffer and set the new buffer end
-    loraRxBuffer[0] = size;
-    loraRxBuffer[1] = (-1) * LoRa.packetRssi();
-    lRxBufferEnd = 2;
-  } else if (lRxBufferEnd = LORA_RX_BUFFER_SIZE - 1) { //if theres only room for one
-    loraRxBuffer[LORA_RX_BUFFER_SIZE - 1] = size;
-    loraRxBuffer[0] = (-1) * LoRa.packetRssi();
-    lRxBufferEnd = 1;
-  } else {
-    loraRxBuffer[lRxBufferEnd++] = size;
-    loraRxBuffer[lRxBufferEnd++] = LoRa.packetRssi();
+  //Now, pull the message into our volatile buffer so we can send it to the RX buffer
+  LoRa.readBytes(vBuf,size);
+
+  if (size > 256) {
+    Serial.println("Received LoRa message larger than 256 bytes! ignoring!");
   }
 
-  //Write the message to the buffer
-  if (LORA_RX_BUFFER_SIZE - lRxBufferEnd < size) { //if adding to the buffer would wrap it around...
-    LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), LORA_RX_BUFFER_SIZE - lRxBufferEnd);
-    LoRa.readBytes(loraRxBuffer, size - (LORA_RX_BUFFER_SIZE - lRxBufferEnd));
-    lRxBufferEnd = size - (LORA_RX_BUFFER_SIZE - lRxBufferEnd);
-  } else { //otherwise, just write the whole message
-    LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), size);
-    lRxBufferEnd += size;
+  //Write the message to the rxBuffer
+  if (writeDataToLoraBuffer(vBuf, loraRxBuffer, size, lRxBufferStart, lRxBufferEnd, LORA_RX_BUFFER_SIZE, LoRa.rssi())) {
+    Serial.println("Wrote to TX Buffer!");
+  } else {
+    Serial.println("Write to LoRa RX Buffer failed! Buffer doesn't have enough space!");
   }
 
   lastDeviceMode = IDLE_MODE;
@@ -201,4 +215,61 @@ void onReceive(int size) {
   return;
 }
 
-//void writeToBuffer(uint8_t *buffer, uint32_t *bufferStart, uint32_t *bufferEnd, const uint32_t bufferSize, const)
+uint32_t getBufferSize(uint8_t* buffer, const uint32_t bufferSize, const uint32_t bufferStart, const uint32_t bufferEnd) {
+  if (bufferStart == bufferEnd) {
+    return bufferSize;
+  }
+  if (bufferStart < bufferEnd) { //if the buffer is currently not wrapped around...
+    return bufferStart + (bufferSize - bufferEnd);
+  } else {
+    return bufferStart - bufferEnd;
+  }
+} 
+
+bool writeDataToLoraBuffer(uint8_t *src, uint8_t *buffer, uint32_t size, uint32_t &bufferStart, uint32_t &bufferEnd, const uint32_t bufferSize, uint8_t rssi) {
+  //first, make sure buffer has enough room
+  if (getBufferSize(buffer, bufferSize, bufferStart, bufferEnd) < size + 2) {
+    return false;
+  }
+
+
+  //first, write the size to the buffer
+  if (bufferEnd == bufferSize) { //if the buffer is perfectly at the end, wrap around
+    Serial.println("WARNING: Reached unexpected case where bufferEnd was equal to buffer size");
+    buffer[0] = size;
+    buffer[1] = rssi;
+    bufferEnd = 2;
+  } else if (bufferEnd == bufferSize - 1) {
+    buffer[bufferEnd] = size;
+    buffer[0] = rssi;
+    bufferEnd = 1;
+  } else if (bufferEnd == bufferSize - 2) {
+    buffer[bufferEnd++] = size;
+    buffer[bufferEnd++] = rssi;
+    bufferEnd = 0;
+  } else {
+    buffer[bufferEnd++] = size;
+    buffer[bufferEnd++] = rssi;
+  }
+
+
+  if (bufferSize - bufferEnd < size) { //if adding to the buffer would wrap it around...
+    memcpy(&(buffer[bufferEnd]), src, sizeof(uint8_t) * (bufferSize - bufferEnd));
+    memcpy(buffer, src, sizeof(uint8_t) * (size - (bufferSize - bufferEnd)));
+    
+    //LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), LORA_RX_BUFFER_SIZE - lRxBufferEnd);
+    //LoRa.readBytes(loraRxBuffer, size - (LORA_RX_BUFFER_SIZE - lRxBufferEnd));
+    bufferEnd = size - (bufferSize - bufferEnd);
+  } else { //otherwise, just write the whole message
+    memcpy(&(buffer[bufferEnd]), src, size);
+    //LoRa.readBytes(&(loraRxBuffer[lRxBufferEnd]), size);
+    bufferEnd += size;
+  }
+
+  if (bufferEnd == bufferSize) bufferEnd = 0;
+  return true;
+}
+
+bool readFromLoraBuffer(uint8_t* buffer, uint8_t dst, const uint32_t bufferSize) {
+  return false;
+}
