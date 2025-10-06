@@ -30,7 +30,7 @@ uint32_t lRxBufferStart = 0;
 uint32_t lRxBufferEnd = 0;
 
 //The buffer is added to by placing and then incrementing the bufferEnd location, making sure it properly wraps around.
-//The buffer is removed from by popping from and then incrementing the bufferStart location. 
+//The buffer is removed from by popping from and then incrementing the bufferStart location, making sure it properly also maps around
 //Thus, if we pop out the full contents of the buffer, the start and end location should line up
 
 
@@ -79,7 +79,7 @@ void setup() {
   LoRa.idle();
 }
 
-//TODO check all buffer logic
+//TODO check the buffer reading logic
 
 void loop() {
   // --------------------------------------------------------------- SERIAL HANDLING ---------------------------------------------------------------
@@ -131,6 +131,20 @@ void writeToTxBuffer(uint8_t* messageBuffer, uint16_t length) {
   }
 }
 
+void readFromRxBuffer(uint8_t* dst) { //the entire message will be written into the dst, where the first byte is the length, the second is the -rssi, and the last is the data
+  uint16_t messageLength = loraRxBuffer[lRxBufferStart];
+  if (messageLength == 0) messageLength = 256;
+  //now we will read the next messageLength+2 bytes
+  if (lRxBufferStart + messageLength > LORA_RX_BUFFER_SIZE){ //if the message loops around the end of the buffer...
+    memcpy(dst, &(loraRxBuffer[lRxBufferStart]), sizeof(uint8_t) * (LORA_RX_BUFFER_SIZE - lRxBufferStart));
+    memcpy(&(dst[LORA_RX_BUFFER_SIZE - lRxBufferStart]), loraRxBuffer, sizeof(uint8_t) * (messageLength - (LORA_RX_BUFFER_SIZE - lRxBufferStart)));
+    lRxBufferStart = messageLength + lRxBufferStart - LORA_TX_BUFFER_SIZE;
+  } else {
+    memcpy(dst, &(loraRxBuffer[lRxBufferStart]), sizeof(uint8_t) * messageLength);
+    lRxBufferStart += messageLength;
+  }
+}
+
 void enterChannelActivityDetectionMode() {
   //NOTE - we don't seem to have a way to check if an message is actively being received. Thus, we may accidentally kick the device out of RX mode while is message is transmitting.
   if (millis() > nextCADTime) {
@@ -158,13 +172,14 @@ void onCadDone(bool detectedSignal) {
     LoRa.idle(); //go back to the idle state. NOTE - this may not be necessary
     lastDeviceMode = IDLE_MODE;
   } else {
-    //not signal detected. Time to write directly from the tx buffer to save time
-    //TODO make sure all these buffer start stop if statements look right. Then we should be good
+    //no signal detected. Time to write directly from the tx buffer to save time
     LoRa.beginPacket();
-    uint8_t messageLength = loraTxBuffer[lTxBufferStart];
-    if (lTxBufferStart + messageLength + 1 > LORA_TX_BUFFER_SIZE){ //if the message loops around the end of the buffer...
+    uint16_t messageLength = loraTxBuffer[lTxBufferStart++];
+    if (messageLength == 0) messageLength = 256;
+    if (++lTxBufferStart > LORA_TX_BUFFER_SIZE) lTxBufferStart = 0;
+    if (lTxBufferStart + messageLength > LORA_TX_BUFFER_SIZE){ //if the message loops around the end of the buffer...
       LoRa.write(&(loraTxBuffer[lTxBufferStart]), LORA_TX_BUFFER_SIZE - lTxBufferStart);
-      LoRa.write(loraTxBuffer, messageLength + 1 + lTxBufferStart - LORA_TX_BUFFER_SIZE);
+      LoRa.write(loraTxBuffer, messageLength + lTxBufferStart - LORA_TX_BUFFER_SIZE);
       lTxBufferStart = messageLength + lTxBufferStart - LORA_TX_BUFFER_SIZE;
     } else {
       LoRa.write(&(loraTxBuffer[lTxBufferStart]), messageLength);
@@ -183,7 +198,7 @@ void onTxDone() {
 }
 
 void onReceive(int size) {
-  //TODO if the size is greater than the vBuf size, then we will have a buffer overflow! add an explicit
+  //TODO if the size is greater than the vBuf size, then we will have a buffer overflow! add an explicit check
   //dump the length of the packet, the rssi of the packet, and the packet itself into the rx buffer
   //whenever we dump a packet, we should move the variable indicating the end position of the rx buffer
   
@@ -268,8 +283,4 @@ bool writeDataToLoraBuffer(uint8_t *src, uint8_t *buffer, uint32_t size, uint32_
 
   if (bufferEnd == bufferSize) bufferEnd = 0;
   return true;
-}
-
-bool readFromLoraBuffer(uint8_t* buffer, uint8_t dst, const uint32_t bufferSize) {
-  return false;
 }
