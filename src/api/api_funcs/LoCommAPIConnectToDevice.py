@@ -12,22 +12,13 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial]:
         # Wait for device initialization
         time.sleep(1)
         
-        # Read response
-        response = ser.readline()
-        print(f"Received: {response.decode('utf-8').strip()}")
+        #Read response
+        #response = ser.readline()
+        #print(f"Received: {response.decode('utf-8').strip()}")
         
-        # Close connection
-        ser.close()
-        print("Connection closed")
         
-    except serial.SerialException as e:
+    except Exception as e:
         print(f"Serial error: {e}")
-        return False, None
-    except FileNotFoundError:
-        print("Port not found - check device connection")
-        return False, None
-    except PermissionError:
-        print("Permission denied - see troubleshooting guide")
         return False, None
     
     return True, ser
