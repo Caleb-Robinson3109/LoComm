@@ -10,14 +10,16 @@ from api_funcs.LoCommAPIDisconnectFromDevice import locomm_api_disconnect_from_d
 
 import serial
 
-serial_conn: serial.Serial = None
+serial_conn: serial.Serial | None = None
 
 #this function allows you to connect to a device.Returns true if connection is successful, false otherwise.
 def connect_to_device() -> bool:
+    global serial_conn
     ret, serial_conn = locomm_api_connect_to_device()
     return ret
 
 def disconnect_from_device() -> bool:
+    global serial_conn
     return locomm_api_disconnect_from_device(serial_conn)
 
 #this function inputs the password. If the password matches the password stored on the ESP, then the function returns true, false otherwise.
@@ -38,7 +40,8 @@ def send_message(name: str, message: str) -> bool:
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> name, message.
 def receive_message() -> tuple[str, str]:
-    return locomm_api_receive_message()
+    global serial_conn
+    return locomm_api_receive_message(serial_conn)
 
 #this function sends a signal to the ESP to go into pairing mode. Returns true if there was successful pairing, false otherwise.
 def pair_devices() -> bool:

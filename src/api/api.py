@@ -1,29 +1,8 @@
-import serial
-import time
+from LoCommAPI import connect_to_device
+from LoCommAPI import disconnect_from_device
+from LoCommAPI import receive_message
 
-def test_serial():
-    try:
-        # Open connection
-        ser = serial.Serial('COM3', 9600, timeout=10)
-        print(f"Connected to {ser.name}")
-        
-        # Wait for device initialization
-        time.sleep(1)
-        
-        # Read response
-        response = ser.readline()
-        print(f"Received: {response.decode('utf-8').strip()}")
-        
-        # Close connection
-        ser.close()
-        print("Connection closed")
-        
-    except serial.SerialException as e:
-        print(f"Serial error: {e}")
-    except FileNotFoundError:
-        print("Port not found - check device connection")
-    except PermissionError:
-        print("Permission denied - see troubleshooting guide")
-
-if __name__ == "__main__":
-    test_serial()
+connect_to_device()
+name, message = receive_message()
+print(f"{name} - {message}")
+disconnect_from_device()
