@@ -33,11 +33,12 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
 
-            ser = serial.Serial(port, 9600, timeout=5)
+            ser = serial.Serial(port.name, 9600, timeout=10)
 
             # Wait for device initialization (if there is one lol)
             time.sleep(1)  
 
+            print(f"giving packet {packet} to port {port}")
             ser.write(packet)
 
             #wait for responce timeout defined in ser def
@@ -74,7 +75,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
                     continue
 
                 #all the checks pass this is the correct COM port
-                conn_port = port.name
+                conn_port: str = port.name
                 ser.close()
                 break
 
