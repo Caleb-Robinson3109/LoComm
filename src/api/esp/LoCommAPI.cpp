@@ -1,4 +1,11 @@
-#include "api.h"
+#include "LoCommAPI.h"
+
+
+
+extern bool message_from_computer_flag = false;
+extern bool message_for_computer_flag = false;
+extern bool message_from_device_flag = false;
+extern bool message_for_device_flag = false;
 
 uint_16 crc_16(const uint_8* data, size_t len){
     uint16_t crc = 0x0000;
@@ -49,6 +56,10 @@ bool build_SACK_packet(uint_8* packet, size_t packet_size, uint_32 tag){
     return true;
 }
 
-void recive_packet_from_app(){
+void recive_packet_from_computer(){
 
+}
+
+void clear_buf(*uint8_t buf, size_t buf_size){
+    
 }
