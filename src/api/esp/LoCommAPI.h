@@ -26,8 +26,14 @@ extern bool message_from_device_flag;
 //flag for if there is a message for the device to be sent out
 extern bool message_to_device_flag;
 
+//this is the size of the packet going out to the computer 
 extern size_t computer_out_size;
+//this is the size of the packet going out to the other device
 extern size_t device_out_size;
+//this is the size of the computer incomming packet
+extern size_t computer_in_size;
+//this is the size of the incomming device packet
+extern size_t device_in_size;
 
 //Computues a crc-16 checksum
 uint16_t crc_16(const uint8_t* data, size_t len);
@@ -39,12 +45,12 @@ void build_SACK_packet();
 //if there is a message it sets the message_from_computer_flag to true, and stores the message in the computer_in_packet buf
 void recive_packet_from_computer();
 
+//this funcion if we see that the message from computer flag is high then call this function. it "answers" message, sending out a message to the device out buf if needed
+//setting the approprate flags to handle the message
 void handle_message_from_computer();
 
+//this functions handles the message that is in the computer out buf sending it to the computer
 void handle_message_to_computer();
-
-//TODO this func
-//void clear_buf(uint8_t* buf, size_t buf_size);
 
 //this checks a message to a string name
 bool message_type_match(const uint8_t* mes, const char* str, size_t len);

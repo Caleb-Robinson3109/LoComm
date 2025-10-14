@@ -12,6 +12,8 @@ bool message_from_device_flag = false;
 bool message_to_device_flag = false;
 size_t computer_out_size = 0;
 size_t device_out_size = 0;
+size_t computer_in_size = 0;
+size_t device_in_size = 0;
 
 uint16_t crc_16(const uint8_t* data, size_t len){
     uint16_t crc = 0x0000;
@@ -62,10 +64,12 @@ void recive_packet_from_computer(){
     if(Serial.available() == 0){
         return;
     }
-    //blinky(Serial.available());
+    lcd.clear();
+    lcd.setCursor(0,0);
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
+        lcd.write(computer_in_packet[serial_index]);
         computer_in_packet[serial_index++] = Serial.read();
-        //blinky(2);
+        delay(100);
     }
     message_from_computer_flag = true;
 }
@@ -92,23 +96,10 @@ void handle_message_from_computer(){
     }
 
     //the build_TYPE_packet will build in the device_out_packet[]
-    //blinky(2);
-    //delay(1000);
-    
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print((char*)message_type);
     if(message_type_match(message_type, "CONN", 4)){
-        //blinky(5);
         build_SACK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
-        //lcd.clear();
-        //lcd.setCursor(0, 0);
-        //lcd.print("mtcf :() - ");                     // Use print for strings
-        //lcd.print((int)message_to_computer_flag); // Use print for numbers
-        //delay(305);
-        //blinky(4);
     }
 }
 
@@ -120,20 +111,9 @@ void handle_message_to_computer(){
 
 bool message_type_match(const uint8_t* buf, const char* str, size_t len){
     for (size_t i = 0; i < len; i++) {
-        /*
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("buf: ");
-        lcd.write((char)buf[i]);   // show byte as character
-        lcd.print("  str: ");
-        lcd.print(str[i]);         // show matching char
-        delay(700);
-        */
         if (buf[i] != (uint8_t)str[i]) {
             return false;
         }
     }
     return true;
 }
-
-//void clear_buf(*uint8_t buf, size_t buf_size){

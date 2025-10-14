@@ -26,6 +26,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
         #iterates though open ports to see witch ones responds correctory to our CONN request
         conn_port: str = None
+        #for _ in range(2):
         for port in ports:
             #send conn and wait for responce
             print("try conn port - " + port.name)
@@ -33,14 +34,12 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
 
-            ser = serial.Serial(port.name, 9600, timeout=10)
-
-            # Wait for device initialization (if there is one lol)
-            time.sleep(1)  
+            ser = serial.Serial(port=port.name, baudrate=9600, timeout=10)
+            #let ser init in device
+            time.sleep(2)
 
             print(f"giving packet {packet} to port {port}")
             ser.write(packet)
-
             #wait for responce timeout defined in ser def
             data: bytes = ser.read(14)
 
@@ -83,6 +82,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
                 conn_port: str = port.name
                 ser.close()
                 break
+            ser.close()
 
 
         if conn_port == None:
