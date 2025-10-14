@@ -15,6 +15,7 @@ def print_input():
 #main
 connect_to_device()
 
+""""
 thread = threading.Thread(target=print_input, daemon=True)
 thread.start()
 
@@ -24,4 +25,6 @@ while True:
         stop_flag = True
         break
 
+"""
 disconnect_from_device()
+
