@@ -159,5 +159,11 @@ void onReceive(int size) {
   receiveReady = true;
 }
 
+void Log(LOG_LEVEL level, const char* text) {
+  if (level <= CURRENT_LOG_LEVEL) {
+    Serial.printf("[%s]: %s\n", logLevelEnumToChar(level), text);
+  }
+}
+
 
 

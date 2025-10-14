@@ -15,16 +15,15 @@ class CyclicArrayList {
       }
     }
 
-    const uint32_t& spaceLeft() {
+    uint32_t spaceLeft() {
       if (bufferFull) return 0;
       if (bufferStart == bufferEnd) {
         return SIZE;
       }
       if (bufferStart < bufferEnd) {
         return bufferStart + (SIZE - bufferEnd);
-      return bufferStart - bufferEnd;
-
       }
+      return bufferStart - bufferEnd;
     }
 
     bool pushBack(uint8_t* src, int size) {

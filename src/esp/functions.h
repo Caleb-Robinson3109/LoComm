@@ -7,5 +7,5 @@
 
 enum LOG_LEVEL { LOG_LEVEL_ERROR, LOG_LEVEL_WARNING, LOG_LEVEL_LOG, LOG_LEVEL_DEBUG };
 
-const char* Log(LOG_LEVEL level, const char* text);
+void Log(LOG_LEVEL level, const char* text);
 const char* logLevelEnumToChar(LOG_LEVEL level);

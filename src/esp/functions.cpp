@@ -1,12 +1,5 @@
 #include "functions.h"
 
-const char* Log(LOG_LEVEL level, const char* text) {
-  if (level <= CURRENT_LOG_LEVEL) {
-    return sprintf("[%s]: %s\n", logLevelEnumToChar(level), text);
-  }
-  return "";
-}
-
 const char* logLevelEnumToChar(LOG_LEVEL level) {
   switch (level) {
     case LOG_LEVEL_ERROR:
