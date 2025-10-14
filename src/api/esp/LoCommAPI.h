@@ -1,5 +1,12 @@
+/*
+This file contianes the functions that hande the state of the device to computer communcation
+*/
+
 #ifndef API_H
 #define API_H
+
+#include "LoCommBuildPacket.h"
+#include "LoCommLib.h"
 
 #include <stdint.h> //uint8_t, uint32_t, ...
 #include <stddef.h> //size_t
@@ -35,12 +42,6 @@ extern size_t computer_in_size;
 //this is the size of the incomming device packet
 extern size_t device_in_size;
 
-//Computues a crc-16 checksum
-uint16_t crc_16(const uint8_t* data, size_t len);
-
-//builds the SACK (send ack) packet
-void build_SACK_packet();
-
 //This function waits for 1 sec and if there is no message to be recived from the computer continues
 //if there is a message it sets the message_from_computer_flag to true, and stores the message in the computer_in_packet buf
 void recive_packet_from_computer();
@@ -51,8 +52,5 @@ void handle_message_from_computer();
 
 //this functions handles the message that is in the computer out buf sending it to the computer
 void handle_message_to_computer();
-
-//this checks a message to a string name
-bool message_type_match(const uint8_t* mes, const char* str, size_t len);
 
 #endif
