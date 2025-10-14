@@ -59,18 +59,23 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
                 #check all of the recived parts are valid
                 if start_bytes != 0x1234:
+                    print("fail at start bytes")
                     ser.close()
                     continue
                 if message_type != b"SACK":
+                    print(f"fail at message type - {message_type}")
                     ser.close()
                     continue
                 if ret_tag != tag:
+                    print("fail at tag")
                     ser.close()
                     continue
                 if crc != crc_check:
+                    print("fail at crc")
                     ser.close()
                     continue
                 if end_bytes != 0x5678:
+                    print("fail at end bytes")
                     ser.close()
                     continue
 

@@ -33,7 +33,7 @@ extern size_t device_out_size;
 uint16_t crc_16(const uint8_t* data, size_t len);
 
 //builds the SACK (send ack) packet
-bool build_SACK_packet(uint8_t* packet, uint32_t tag);
+void build_SACK_packet();
 
 //This function waits for 1 sec and if there is no message to be recived from the computer continues
 //if there is a message it sets the message_from_computer_flag to true, and stores the message in the computer_in_packet buf
@@ -48,8 +48,5 @@ void handle_message_to_computer();
 
 //this checks a message to a string name
 bool message_type_match(const uint8_t* mes, const char* str, size_t len);
-
-void blinky1();
-void blinky2();
 
 #endif
