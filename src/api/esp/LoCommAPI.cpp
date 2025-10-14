@@ -28,14 +28,19 @@ void recive_packet_from_computer(){
     }
     message_from_computer_flag = true;
     //set the lenght of the incommed packet
-    computer_in_size = serial_index + 1;
+    computer_in_size = serial_index;
+    //lcd.setCursor(1,0);
+    //lcd.print("size: ");
+    //lcd.print(serial_index + 1);
 }
 
 void handle_message_from_computer(){
     //check start bytes
+    lcd.setCursor(0,1);
     if(!(computer_in_packet[0] == 0x12 && computer_in_packet[1] == 0x34)){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        lcd.print("fbs error");
         return;
     }
 
@@ -44,16 +49,20 @@ void handle_message_from_computer(){
     if(packet_size != computer_in_size){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        lcd.print("size error");
         return;
     }
 
     //chech crc
-    //use packet_size - 4 so we dont do the start and end bytes
-    uint16_t crc = crc_16(&computer_in_packet[2], packet_size - 4);
+    //use packet_size - 6 so we dont do the start and end bytes and crc itself
+    uint16_t crc = crc_16(&computer_in_packet[2], packet_size - 6);
+    uint8_t crc_high = (crc >> 8) & 0xFF;
+    uint8_t crc_low  = crc & 0xFF;
     //if the 4th to last byte and 3rd to last byte (packet crc) of the computer in packet are not equal to our crc
-    if(!((((crc << 8) & 0xFF) == computer_in_packet[packet_size - 4]) && ((crc & 0xFF) == computer_in_packet[packet_size - 3]))){
+    if(crc_high != computer_in_packet[packet_size - 4] || crc_low  != computer_in_packet[packet_size - 3]){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        lcd.print("crc error");
         return;
     }
 
@@ -61,6 +70,7 @@ void handle_message_from_computer(){
     if(computer_in_packet[packet_size - 2] != 0x56 && computer_in_packet[packet_size - 1] != 0x78){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        lcd.print("lbs error");
         return;
     }
 
@@ -68,6 +78,8 @@ void handle_message_from_computer(){
     uint8_t message_type[4];
     for(int i = 0; i < 4; i++){
         message_type[i] = computer_in_packet[i+4];
+        lcd.write(computer_in_packet[i+4]);
+
     }
 
     //the build_TYPE_packet will build in the device_out_packet[]

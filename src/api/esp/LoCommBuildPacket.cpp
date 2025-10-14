@@ -5,16 +5,16 @@ void build_SACK_packet(){
     computer_out_packet[0] = 0x12;
     computer_out_packet[1] = 0x34;
 
-    //CACK
-    computer_out_packet[2] = 'S';
-    computer_out_packet[3] = 'A';
-    computer_out_packet[4] = 'C';
-    computer_out_packet[5] = 'K';
-
     //packet size
     uint16_t packet_size = 16;
-    computer_out_packet[6] = (packet_size >> 8) & 0xFF; 
-    computer_out_packet[7] = packet_size & 0xFF;
+    computer_out_packet[2] = (packet_size >> 8) & 0xFF; 
+    computer_out_packet[3] = packet_size & 0xFF;
+
+    //CACK
+    computer_out_packet[4] = 'S';
+    computer_out_packet[5] = 'A';
+    computer_out_packet[6] = 'C';
+    computer_out_packet[7] = 'K';
 
     //tag 4 bytes, big-endian
     computer_out_packet[8]  = computer_in_packet[8];

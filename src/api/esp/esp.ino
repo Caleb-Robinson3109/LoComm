@@ -13,6 +13,7 @@ void setup() {
   //set up serial
   Serial.begin(9600);
   delay(1000);
+  blinky(2);
 
   Wire.begin(21, 22);
   lcd.begin();

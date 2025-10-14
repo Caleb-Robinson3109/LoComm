@@ -35,9 +35,8 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
 
-            ser = serial.Serial(port=port.name, baudrate=9600, timeout=10)
+            ser = serial.Serial(port=port.name, baudrate=9600, timeout=30) #Adjust timout if it is not connection on first try -> make longer
             #let ser init in device
-            time.sleep(2)
 
             print(f"giving packet {packet} to port {port}")
             ser.write(packet)
@@ -47,7 +46,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             #check to make sure that SACK has been sent the SACK should be 14 bytes long
             if len(data) == 16:
                 start_bytes: int
-                packet_size: int # dont really need this because we already check that the recv packet is 16 bytes
+                packet_size: int
                 message_type: bytes
                 ret_tag: int
                 crc: int
@@ -55,7 +54,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
                 start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", data)
 
                 #crc calc
-                payload: bytes = message_type + struct.pack(">I", ret_tag)
+                payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag)
                 crc_check: int = binascii.crc_hqx(payload, 0)
 
                 #check all of the recived parts are valid
@@ -94,7 +93,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
         print(f"Connected to {ser.name}")
         
         # Wait for device initialization
-        time.sleep(1)   
+        time.sleep(2)   
         
     except Exception as e:
         print(f"Serial error: {e}")
