@@ -7,15 +7,16 @@ import binascii #crc-16 (crc_hqx)
 
 def craft_CONN_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
+    packet_size: int = 16
     message_type: bytes = b"CONN"
     
     #compute checksum for payload
-    payload: bytes = message_type + struct.pack(">I", tag)
+    payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag)
     crc: int = binascii.crc_hqx(payload, 0)
     
     end_bytes: int = 0x5678
 
-    packet: bytes = struct.pack(">H4sIHH", start_bytes, message_type, tag, crc, end_bytes)
+    packet: bytes = struct.pack(">HH4sIHH", start_bytes, packet_size, message_type, tag, crc, end_bytes)
 
     return packet
 
@@ -41,16 +42,17 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             print(f"giving packet {packet} to port {port}")
             ser.write(packet)
             #wait for responce timeout defined in ser def
-            data: bytes = ser.read(14)
+            data: bytes = ser.read(16)
 
             #check to make sure that SACK has been sent the SACK should be 14 bytes long
-            if len(data) == 14:
+            if len(data) == 16:
                 start_bytes: int
+                packet_size: int # dont really need this because we already check that the recv packet is 16 bytes
                 message_type: bytes
                 ret_tag: int
                 crc: int
                 end_bytes: int 
-                start_bytes, message_type, ret_tag, crc, end_bytes = struct.unpack(">H4sIHH", data)
+                start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", data)
 
                 #crc calc
                 payload: bytes = message_type + struct.pack(">I", ret_tag)

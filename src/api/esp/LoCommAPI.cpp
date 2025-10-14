@@ -40,22 +40,27 @@ void build_SACK_packet(){
     computer_out_packet[4] = 'C';
     computer_out_packet[5] = 'K';
 
+    //packet size
+    uint16_t packet_size = 16;
+    computer_out_packet[6] = (packet_size >> 8) & 0xFF; 
+    computer_out_packet[7] = packet_size & 0xFF;
+
     //tag 4 bytes, big-endian
-    //tag >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
-    computer_out_packet[6]  = computer_in_packet[6];
-    computer_out_packet[7]  = computer_in_packet[7];
     computer_out_packet[8]  = computer_in_packet[8];
     computer_out_packet[9]  = computer_in_packet[9];
+    computer_out_packet[10]  = computer_in_packet[10];
+    computer_out_packet[11]  = computer_in_packet[11];
 
-    //compute CRC of Message Type + Tag (8 bytes total)
-    uint16_t crc = crc_16(&computer_out_packet[2], 8);
-    computer_out_packet[10] = (crc >> 8) & 0xFF;
-    computer_out_packet[11] = crc & 0xFF;
+    //compute CRC of Message packet size + Type + Tag (10 bytes total)
+    //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
+    uint16_t crc = crc_16(&computer_out_packet[2], 10);
+    computer_out_packet[12] = (crc >> 8) & 0xFF;
+    computer_out_packet[13] = crc & 0xFF;
 
     //end bytes
-    computer_out_packet[12] = 0x56;
-    computer_out_packet[13] = 0x78;
-    computer_out_size = 14;
+    computer_out_packet[14] = 0x56;
+    computer_out_packet[15] = 0x78;
+    computer_out_size = 16;
 }
 
 void recive_packet_from_computer(){
@@ -72,27 +77,47 @@ void recive_packet_from_computer(){
         delay(100);
     }
     message_from_computer_flag = true;
+    //set the lenght of the incommed packet
+    computer_in_size = serial_index + 1;
 }
 
 void handle_message_from_computer(){
-    //start bytes failed
+    //check start bytes
     if(!(computer_in_packet[0] == 0x12 && computer_in_packet[1] == 0x34)){
         message_from_computer_flag = false;
+        computer_in_size = 0;
+        return;
+    }
+
+    //check lenght
+    uint16_t packet_size = ((uint16_t)computer_in_packet[2] << 8) | computer_in_packet[3];
+    if(packet_size != computer_in_size){
+        message_from_computer_flag = false;
+        computer_in_size = 0;
+        return;
+    }
+
+    //chech crc
+    //use packet_size - 4 so we dont do the start and end bytes
+    uint16_t crc = crc_16(computer_in_packet[2], packet_size - 4);
+    //if the 4th to last byte and 3rd to last byte (packet crc) of the computer in packet are not equal to our crc
+    if(!((((crc << 8) & 0xFF) == computer_in_packet[packet_size - 4]) && ((crc & 0xFF) == computer_in_packet[packet_size - 3]))){
+        message_from_computer_flag = false;
+        computer_in_size = 0;
         return;
     }
 
     //check end bytes
-
-    //check lenght
-
-    //chech crc
-
-    //more checks
+    if(computer_in_packet[packet_size - 2] != 0x56 && computer_in_packet[packet_size - 1] != 0x78){
+        message_from_computer_flag = false;
+        computer_in_size = 0;
+        return;
+    }
 
     //get the message type of the packet
     uint8_t message_type[4];
     for(int i = 0; i < 4; i++){
-        message_type[i] = computer_in_packet[i+2];
+        message_type[i] = computer_in_packet[i+4];
     }
 
     //the build_TYPE_packet will build in the device_out_packet[]
