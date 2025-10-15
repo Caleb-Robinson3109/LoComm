@@ -24,7 +24,8 @@ def disconnect_from_device() -> bool:
 
 #this function inputs the password. If the password matches the password stored on the ESP, then the function returns true, false otherwise.
 def enter_password(password: str) -> bool:
-    return locomm_api_enter_password(password)
+    global serial_conn
+    return locomm_api_enter_password(password, serial_conn)
 
 #this function sets a new password. Returns true if successful, false otherwise.
 def set_password(old: str, new: str) -> bool:

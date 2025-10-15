@@ -11,6 +11,10 @@ This file contianes the functions that hande the state of the device to computer
 #include <stdint.h> //uint8_t, uint32_t, ...
 #include <stddef.h> //size_t
 #include <Arduino.h> //delay, ...
+//persistant storage (for password hash sotrage and keys)
+#include <Preferences.h>
+#include <string.h> //memcpy
+#include "mbedtls/sha256.h" // sha256
 
 #define MAX_COMPUTER_PACKET_SIZE 100
 #define MAX_DEVICE_PACKET_SIZE 100
@@ -42,6 +46,18 @@ extern size_t computer_in_size;
 //this is the size of the incomming device packet
 extern size_t device_in_size;
 
+//this is the defalt password
+extern const uint8_t default_password[32];
+
+//this is where the password hash is held the default is the hash of password
+extern uint8_t password_hash[32];
+
+//this is used to encript the keys. also good to have it stored on the device (volitile)
+extern uint8_t password_ascii[32];
+
+//this is the storage that will be used to store the password hash and the keys
+extern Preferences storage;
+
 //This function waits for 1 sec and if there is no message to be recived from the computer continues
 //if there is a message it sets the message_from_computer_flag to true, and stores the message in the computer_in_packet buf
 void recive_packet_from_computer();
@@ -52,5 +68,8 @@ void handle_message_from_computer();
 
 //this functions handles the message that is in the computer out buf sending it to the computer
 void handle_message_to_computer();
+
+//this handles a incomming PASS packet and changes the password on the device
+void handle_PASS_packet();
 
 #endif

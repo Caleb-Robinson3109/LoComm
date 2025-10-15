@@ -13,6 +13,23 @@ size_t device_out_size = 0;
 size_t computer_in_size = 0;
 size_t device_in_size = 0;
 
+const uint8_t default_password[32] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd',
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+uint8_t password_hash[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    uint8_t password_ascii[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+Preferences storage;
+
 void recive_packet_from_computer(){
     size_t serial_index = 0;
     delay(1000);
@@ -84,7 +101,14 @@ void handle_message_from_computer(){
 
     //the build_TYPE_packet will build in the device_out_packet[]
     if(message_type_match(message_type, "CONN", 4)){
-        build_SACK_packet();
+        build_CACK_packet();
+        message_to_computer_flag = true;
+        message_from_computer_flag = false;
+    }
+
+    if(message_type_match(message_type, "PASS", 4)){
+        handle_PASS_packet();
+        build_PWAK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
     }
@@ -96,3 +120,25 @@ void handle_message_to_computer(){
     computer_out_size = 0;
 }
 
+void handle_PASS_packet(){
+    //get the lenght of the password
+    uint16_t password_size = ((uint16_t)computer_in_packet[2] << 8) | computer_in_packet[3];
+    password_size -= 16;
+
+    //get the new password in the packet
+    uint8_t new_password [32];
+
+    for(int i = 0; i < packet_size; i++){
+        new_password[i] = computer_in_packet[i + 12];
+    }
+
+    //fill in with 0x00 with any extra space
+    for(int i = packet_size; i < 32; i++){
+        new_password[i] = 0x00;
+    }
+
+    //set the new password
+    memcpy(password_ascii, new_password, 32);
+    mbedtls_sha256(new_password, 32, password_hash, 0);
+    storage.putBytes("password", password_hash, 32);
+}
