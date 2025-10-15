@@ -62,6 +62,11 @@ class CyclicArrayList {
       return true;
     }
 
+    void clearBuffer() {
+      bufferStart = 0;
+      bufferEnd = 0;
+    }
+
   private:
     uint8_t buffer[SIZE];
     bool bufferFull = false;

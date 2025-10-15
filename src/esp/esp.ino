@@ -42,11 +42,19 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 bool receiveReady = false;
 
 CyclicArrayList<LORA_RX_BUFFER_SIZE> rxBuffer;
-uint8_t rxMessageArray[512];
+SimpleArraySet<256, 9> rxMessageArray;
+DefraggingBuffer<2048> rxMessageBuffer;
+
+SimpleArraySet<256, 6> txMessageArray;
+DefraggingBuffer<2048> txMessageBuffer;
+
+CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer;
 
 void setup() {
   //initialize variables
   rxBuffer = CyclicArrayList<LORA_RX_BUFFER_SIZE>();
+  rxMessageArray = SimpleArraySet<512, 8>();
+  rxMessagebuffer = DefraggingBuffer<2048>();
 
 
   //Initialize Serial Connection to Computer
@@ -131,14 +139,14 @@ void loop() {
       rxBuffer.dropFront(startIndex);
       startIndex = 0;
       
-      for (int i = 1; i < min((int)rxBuffer.size(), startIndex + 256); i++) {
+      for (int i = 1; i < min((int)rxBuffer.size(), startIndex + 256); i++) { //i+1 is now the total message length
         if (rxBuffer[i] == END_BYTE) {
           uint8_t tempBuf[256];
 
           //TODO Decrypt the message and store it in tempBuf. 
           //For now we will send unencrypted messages, so we will just copy it over and not touch it
           memcpy(tempBuf, &(rxBuffer[1]), sizeof(uint8_t) * (i - 1)); //copy contents, excluding start and stop byte
-          //now tempbuf contains just the message, going from 0 to i-2
+          //now tempbuf contains just the message, going from 0 to i-2, so it contains i-1 bytes
 
           //check if its a data packet or ack packet
           if (tempBuf[0] != 0 && tempBuf[0] != 1) continue;
@@ -151,25 +159,128 @@ void loop() {
           uint16_t msgCrc = (tempBuf[i-3] << 8) + tempBuf[i-2]; 
           if ((crc & 0xFFFF) != msgCrc) continue;
 
+          //Since the message is valid, make sure we send an ACK TODO
+
+
           //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
           if (tempBuf[0] == 0) {
             //Normal message
             const int8_t messageNumber = tempBuf[3];
 
             //check if the message number is already being tracked in rxMessageArray
-            
-          }
+            uint16_t loc = rxMessageArray.find(messageNumber)
+            if (loc != 65535) {
+              //message number was found in rxMessageArray already, check if this sequence is needed stil
+              const uint8_t sequenceNumber = tempBuf[4];
+              const uint8_t sequenceBitmask = rxMessageArray.get(loc)[6];
+              if (sequenceBitmask & (1 << sequenceNumber)) {
+                //message already received, so no need to reprocess
+              } else {
+                //message not received yet, so mark it in the bitmask and then add the data to the buffer allocation
+                rxMessageArray.get(loc)[6] = sequenceBitmask & (1 << sequenceNumber);
+                const uint16_t bufferStart = rxMessageArray.get(loc)[1] * 256 + rxMessageArray.get(loc)[2];
+                const uint8_t sequenceBaseSize = rxMessageArray.get(loc)[7];
+                const uint8_t sequenceSize = i-1 - 8;
+                if (sequenceSize > sequenceBaseSize) {
+                  LError("Received packet with data size bigger than maximum sequence size!");
+                  HALT();
+                }
+                memcpy(&(rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber]), tempBuf[6], sequenceSize);
+                //TODO fill the rest of the buffer with 0x00 if we are populating the final packet
+              }
+            } else {
+              //message was not found, so we need to add it
+              const uint8_t messageNumber = tempBuf[3];
+              const uint8_t sequenceNumber = tempBuf[4];
+              const uint8_t sequenceCount = tempBuf[5];
+              
+              //Unfortunately, if the last packet is received first, its not possible to tell the total size of the data. 
+              //For now, we will just drop the packet and wait for an earlier sequence number packet to arrive first
+              //UNLESS its just a one packet message. Then we're good.
+              if (sequenceNumber != 0 && sequenceNumber == sequenceCount - 1) {
+                continue; //attempt next packet
+              }
 
+              const uint8_t sequenceSize = i - 1 - 8;
+              const uint32_t totalSequenceSize = sequenceSize * sequenceCount;
+
+              //try to allocate space in the buffer
+              const uint16_t bufferLocation = rxMessageBuffer.tryReserve(totalSequenceSize);
+              if (bufferLocation == 0xFFFFFFFF) {
+                LError("No space for new message found in rx message buffer, dropping!");
+              }
+
+              //populate the rxMessageArray
+              uint8_t headerBuf[9];
+              headerBuf[0] = messageNumber;
+              headerBuf[1] = bufferLocation >> 8;
+              headerBuf[2] = bufferLocation & 0xFF;
+              headerBuf[3] = totalSequenceSize >> 8;
+              headerBuf[4] = totalSequenceSize & 0xFF;
+              headerBuf[5] = sequenceCount;
+              headerBuf[6] = 1 << sequenceNumber;
+              headerBuf[7] = sequenceSize;
+              headerBuf[8] = (millis() / 1000) % 255; //TODO THIS DOESNT WORK - we need to add overflow checking
+
+              if (rxMessageArray.add(headerBuf)) {
+                LDebug("Added new rx message to buffer");
+              } else {
+                LError("Failed to add new rx message to buffer, rxBufferArray is full!");
+              }
+
+              //now that the rxMessageArray and rxMessageBuffer were successfully created, lets populate the rxMessageBuffer
+              memcpy(&(rxMessageBuffer[bufferLocation + sequenceSize * sequenceNumber]), tempBuf[i], sequenceSize);
+            }
+          } else {
+            //Ack Message
+            //TODO implement
+          }
         }
       }
+
+      //Now we have finished processing all possible messages that stem from teh current start byte. So, remove the start byte
+      rxBuffer.dropFront(1); //TODO it might be better to drop more than just one byte
+    } else {
+      //Start byte wasn't found at all in the buffer. Clear the buffer
+      rxBuffer.clearBuffer();
+    }
+  }
+
+  // -------------------------------------------- Transmit Loop Behavior ---------------------------------------------
+  //TODO we should probably rate limit this
+  for (int i = 0; i < txMessageArray.length(); i++) {
+    const uint8_t sendCount = txMessageArray.get(i)[4] & 0b01111111;
+    const uint16_t location = (txMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1];
+    //If we've reached the max number of send attempts, drop the data all together
+    if (sendCount > LORA_SEND_COUNT_MAX) {
+      txMessageBuffer.free(location);
+      txMessageArray.remove(i--); //decrement i so that we still iterate over all remaining entries
+      continue;
     }
 
-    
-
-    if (startIndex != 65535) {
-      // 
-    } 
+    //If it has been over a second since the previous send, try again //TODO move this to a different value
+    uint16_t lastSendTime = (txMessageArray.get(i)[3] << 8) + txMessageArray.get(i)[4];
+    if ((millis() % 65535) - lastSendTime > 1000) { //TODO THIS WILL NOT WORK - need to do proper overflow checking
+      lastSendTime = millis(); //TODO - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
+      txMessageArray.get(i)[3] = lastSendTime >> 8;
+      txMessageArray.get(i)[4] = lastSendTime & 0xFF;
+      int8_t tBuf[3];
+      tBuf[0] = txMessageArray.get(i)[0]; //location high byte
+      tBuf[1] = txMessageArray.get(i)[1]; //location low byte
+      tBuf[2] = txMessageArray.get(i)[2]; //size
+      if (readyToSendBuffer.pushBack(tBuf, 3)) {
+        LDebug("Added message to ready to send buffer");
+      } else {
+        LError("Failed to add message to ready to send buffer because it was full");
+      }
+    }
   }
+
+  if (readyToSendBuffer.size() > 0) {
+    enterChannelActivityDetectionMode();
+  }
+
+  // ------------------------------------------------------------------------------------------------------------------------------------------
 
 
   //TEST CODE
