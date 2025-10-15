@@ -20,6 +20,8 @@ void setup() {
   lcd.backlight();
   lcd.setCursor(0,0);
   lcd.print("LoComm");
+
+  init_password();
 }
 
 void loop() {
