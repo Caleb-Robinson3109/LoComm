@@ -7,15 +7,16 @@ import binascii #crc-16 (crc_hqx)
 
 def craft_CONN_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
+    packet_size: int = 16
     message_type: bytes = b"CONN"
     
     #compute checksum for payload
-    payload: bytes = message_type + struct.pack(">I", tag)
+    payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag)
     crc: int = binascii.crc_hqx(payload, 0)
     
     end_bytes: int = 0x5678
 
-    packet: bytes = struct.pack(">H4sIHH", start_bytes, message_type, tag, crc, end_bytes)
+    packet: bytes = struct.pack(">HH4sIHH", start_bytes, packet_size, message_type, tag, crc, end_bytes)
 
     return packet
 
@@ -26,6 +27,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
         #iterates though open ports to see witch ones responds correctory to our CONN request
         conn_port: str = None
+        #for _ in range(2):
         for port in ports:
             #send conn and wait for responce
             print("try conn port - " + port.name)
@@ -33,28 +35,26 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
 
-            ser = serial.Serial(port.name, 9600, timeout=10)
-
-            # Wait for device initialization (if there is one lol)
-            time.sleep(1)  
+            ser = serial.Serial(port=port.name, baudrate=9600, timeout=30) #Adjust timout if it is not connection on first try -> make longer
+            #let ser init in device
 
             print(f"giving packet {packet} to port {port}")
             ser.write(packet)
-
             #wait for responce timeout defined in ser def
-            data: bytes = ser.read(14)
+            data: bytes = ser.read(16)
 
             #check to make sure that SACK has been sent the SACK should be 14 bytes long
-            if len(data) == 14:
+            if len(data) == 16:
                 start_bytes: int
+                packet_size: int
                 message_type: bytes
                 ret_tag: int
                 crc: int
                 end_bytes: int 
-                start_bytes, message_type, ret_tag, crc, end_bytes = struct.unpack(">H4sIHH", data)
+                start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", data)
 
                 #crc calc
-                payload: bytes = message_type + struct.pack(">I", ret_tag)
+                payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag)
                 crc_check: int = binascii.crc_hqx(payload, 0)
 
                 #check all of the recived parts are valid
@@ -83,6 +83,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
                 conn_port: str = port.name
                 ser.close()
                 break
+            ser.close()
 
 
         if conn_port == None:
@@ -92,7 +93,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
         print(f"Connected to {ser.name}")
         
         # Wait for device initialization
-        time.sleep(1)   
+        time.sleep(2)   
         
     except Exception as e:
         print(f"Serial error: {e}")

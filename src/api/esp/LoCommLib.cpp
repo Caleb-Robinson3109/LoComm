@@ -1,4 +1,6 @@
-#include "blinky.h"
+#include "LoCommLib.h"
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void blinky1(){
   digitalWrite(2, HIGH);
@@ -35,4 +37,27 @@ void blinky(int blinks){
         digitalWrite(2, LOW);
         delay(250);
     }
+}
+
+uint16_t crc_16(const uint8_t* data, size_t len){
+    uint16_t crc = 0x0000;
+    for (size_t i = 0; i < len; i++) {
+        crc ^= (uint16_t)data[i] << 8;
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 0x8000)
+            crc = (crc << 1) ^ 0x1021;
+            else
+            crc <<= 1;
+        }
+    }
+    return crc;   
+}
+
+bool message_type_match(const uint8_t* buf, const char* str, size_t len){
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] != (uint8_t)str[i]) {
+            return false;
+        }
+    }
+    return true;
 }
