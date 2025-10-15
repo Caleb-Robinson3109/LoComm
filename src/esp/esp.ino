@@ -10,6 +10,15 @@
 #define CAD_FINISHED 5
 #define SLEEP_MODE 0
 
+#define LLog(x) Log(LOG_LEVEL_LOG, x)
+#define LDebug(x) Log(LOG_LEVEL_DEBUG, x)
+#define LWarn(x) Log(LOG_LEVEL_WARNING, x)
+#define LError(x) Log(LOG_LEVEL_ERROR, x)
+#define HALT() Serial.println("Exiting"); while(1)
+
+#define START_BYTE 0xc1
+#define END_BYTE 0x8c
+
 //Libraries for LoRa
 #include <SPI.h>
 #include "LoRa.h"
@@ -19,11 +28,12 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <esp_rom_crc.h>
 
 #include "esp.h"
 
 
-
+uint8_t deviceID = 1; //TODO store this at the EEPROM instead of as a variable here
 
 uint8_t lastDeviceMode = 1;
 uint32_t nextCADTime = 0;
@@ -32,6 +42,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 bool receiveReady = false;
 
 CyclicArrayList<LORA_RX_BUFFER_SIZE> rxBuffer;
+uint8_t rxMessageArray[512];
 
 void setup() {
   //initialize variables
@@ -46,7 +57,7 @@ void setup() {
   Wire.begin(OLED_SDA, OLED_SCL);
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true, false)) { 
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+    while(1); // Don't proceed, loop forever
   }
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -75,23 +86,89 @@ void setup() {
 }
 
 void loop() {
-  //Interrupt flags
+  static bool shouldScanRxBuffer = false; 
+
+  //------------------------------------------------------Interrupt flag handling ------------------------------------------------
   if (receiveReady) {
     int size = LoRa.available();
     receiveReady = false;
     
     //Dump the data into a temporary buffer
     uint8_t tempBuf[256];
-    LoRa.readBytes(tempBuf, size);
+    LoRa.readBytes(tempBuf, min(256, size));
 
     //Consider adding a debug check to see if there is still data in the buffer
-    if (rxBuffer.pushBack(tempBuf, size)) {
-      Serial.println("");
-    } else {
-      
+    if (LoRa.available()) {
+      LError("Received more than 256 bytes in LoRa buffer, which was unexpected!");
+      HALT();
     }
 
-    //If there is room, add it to the end of the buffer
+    //try to add data to the buffer
+    if (rxBuffer.pushBack(tempBuf, size)) {
+      LDebug("Added data to LoRa rx buffer");
+      shouldScanRxBuffer = true;
+
+    } else {
+      LWarn("Rx Buffer is currently full, not adding data");
+    }
+
+  }
+
+  // -------------------------------------------------- Receive Loop Behavior ---------------------------------------------
+  if (shouldScanRxBuffer) {
+    shouldScanRxBuffer = false;
+    uint16_t startIndex = 65535;
+    uint16_t endIndex = 65535;
+    //First, detect the first start byte
+    for (int i = 0; i < rxBuffer.size(); i++) {
+      if (rxBuffer[i] == START_BYTE) {
+        startIndex = i;
+        break;
+      }
+    }
+    if (startIndex != 65535) {
+      //clear everything before the first start byte
+      rxBuffer.dropFront(startIndex);
+      startIndex = 0;
+      
+      for (int i = 1; i < min((int)rxBuffer.size(), startIndex + 256); i++) {
+        if (rxBuffer[i] == END_BYTE) {
+          uint8_t tempBuf[256];
+
+          //TODO Decrypt the message and store it in tempBuf. 
+          //For now we will send unencrypted messages, so we will just copy it over and not touch it
+          memcpy(tempBuf, &(rxBuffer[1]), sizeof(uint8_t) * (i - 1)); //copy contents, excluding start and stop byte
+          //now tempbuf contains just the message, going from 0 to i-2
+
+          //check if its a data packet or ack packet
+          if (tempBuf[0] != 0 && tempBuf[0] != 1) continue;
+
+          //check if the receiver is correct
+          if (tempBuf[3] != deviceID) continue;
+
+          //Calculate the CRC and check if its correct 
+          uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)tempBuf, i - 1))^0xffffffff;
+          uint16_t msgCrc = (tempBuf[i-3] << 8) + tempBuf[i-2]; 
+          if ((crc & 0xFFFF) != msgCrc) continue;
+
+          //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
+          if (tempBuf[0] == 0) {
+            //Normal message
+            const int8_t messageNumber = tempBuf[3];
+
+            //check if the message number is already being tracked in rxMessageArray
+            
+          }
+
+        }
+      }
+    }
+
+    
+
+    if (startIndex != 65535) {
+      // 
+    } 
   }
 
 

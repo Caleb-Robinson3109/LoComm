@@ -1,9 +1,11 @@
 #pragma once
 
+//TODO this could be optimized by actually tracking size instead of calculating it
+
 template <int SIZE>
 class CyclicArrayList {
   public:
-    CyclicArrayList();
+    //CyclicArrayList();
 
     const uint8_t& operator[](unsigned int index) {
       if (index >= SIZE) {
@@ -26,6 +28,10 @@ class CyclicArrayList {
       return bufferStart - bufferEnd;
     }
 
+    uint32_t size() {
+      return SIZE - this->spaceLeft();
+    }
+
     bool pushBack(uint8_t* src, int size) {
       if (size > this->spaceLeft()) return false;
       
@@ -40,12 +46,28 @@ class CyclicArrayList {
       return true;
     }
 
+    bool peakFront(uint8_t* dst, int size) {
+      return true;
+    }
+
+    bool dropFront(int size) {
+      if (size == 0) return true;
+      if (size >= this->size()) {
+        bufferStart = 0;
+        bufferEnd = 0;
+      } else {
+        bufferStart += size;
+        if (bufferStart >= SIZE) bufferStart -= SIZE;
+      }
+      return true;
+    }
+
   private:
     uint8_t buffer[SIZE];
     bool bufferFull = false;
-    uint16_t bufferEnd = 0; //location of the first open byte of data
-    uint16_t bufferStart = 0; //location of the first byte of data
-    uint16_t size = 0;
+    uint32_t bufferEnd = 0; //location of the first open byte of data
+    uint32_t bufferStart = 0; //location of the first byte of data
+    //uint16_t size = 0;
 
     
 };
