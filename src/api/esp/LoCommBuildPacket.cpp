@@ -56,11 +56,25 @@ void build_PWAK_packet(){
     computer_out_packet[10]  = computer_in_packet[10];
     computer_out_packet[11]  = computer_in_packet[11];
 
+    //Status
+    if(password_entered_flag){
+        computer_out_packet[12]  = 'O';
+        computer_out_packet[13]  = 'K';
+        computer_out_packet[14]  = 'A';
+        computer_out_packet[15]  = 'Y';
+    }
+    else{
+        computer_out_packet[12]  = 'F';
+        computer_out_packet[13]  = 'A';
+        computer_out_packet[14]  = 'I';
+        computer_out_packet[15]  = 'L';
+    }
+
     //compute CRC of Message packet size + Type + Tag + message (14 bytes total)
     //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
     uint16_t crc = crc_16(&computer_out_packet[2], 14);
-    computer_out_packet[12] = (crc >> 8) & 0xFF;
-    computer_out_packet[13] = crc & 0xFF;
+    computer_out_packet[16] = (crc >> 8) & 0xFF;
+    computer_out_packet[17] = crc & 0xFF;
 
     //end bytes
     computer_out_packet[18] = 0x56;

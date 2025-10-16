@@ -1,6 +1,7 @@
 from LoCommAPI import connect_to_device
 from LoCommAPI import disconnect_from_device
 from LoCommAPI import receive_message
+from LoCommAPI import enter_password
 
 import threading
 
@@ -14,6 +15,8 @@ def print_input():
 
 #main
 connect_to_device()
+
+enter_password("ddpassword")
 
 """"
 thread = threading.Thread(target=print_input, daemon=True)

@@ -8,6 +8,7 @@ bool message_from_computer_flag = false;
 bool message_to_computer_flag = false;
 bool message_from_device_flag = false;
 bool message_to_device_flag = false;
+bool password_entered_flag = false;
 size_t computer_out_size = 0;
 size_t device_out_size = 0;
 size_t computer_in_size = 0;
@@ -107,8 +108,15 @@ void handle_message_from_computer(){
     }
 
     if(message_type_match(message_type, "PASS", 4)){
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("preh ");
         handle_PASS_packet();
+        lcd.print("posth ");
         build_PWAK_packet();
+        lcd.print("pawk ");
+        lcd.setCursor(0,1);
+        lcd.print((char*)password_ascii);
         message_to_computer_flag = true;
         message_from_computer_flag = false;
     }
@@ -124,21 +132,28 @@ void handle_PASS_packet(){
     //get the lenght of the password
     uint16_t password_size = ((uint16_t)computer_in_packet[2] << 8) | computer_in_packet[3];
     password_size -= 16;
+    uint8_t input_password_hash[32];
 
     //get the new password in the packet
-    uint8_t new_password [32];
+    uint8_t input_password [32];
 
-    for(int i = 0; i < packet_size; i++){
-        new_password[i] = computer_in_packet[i + 12];
+    for(int i = 0; i < password_size; i++){
+        input_password[i] = computer_in_packet[i + 12];
     }
 
     //fill in with 0x00 with any extra space
-    for(int i = packet_size; i < 32; i++){
-        new_password[i] = 0x00;
+    for(int i = password_size; i < 32; i++){
+        input_password[i] = 0x00;
     }
 
-    //set the new password
-    memcpy(password_ascii, new_password, 32);
-    mbedtls_sha256(new_password, 32, password_hash, 0);
-    storage.putBytes("password", password_hash, 32);
+    //get the password hash stored in storage and check it aginst the enterne password.
+    //if the password is corrext store it and set the passowrd flag
+    mbedtls_sha256(input_password, 32, input_password_hash, 0);
+    if(memcmp(input_password_hash, password_hash, 32) == 0){
+        memcpy(password_ascii, input_password, 32);
+        password_entered_flag = true;
+    }
+    else{
+        password_entered_flag = false;
+    }
 }

@@ -36,6 +36,8 @@ extern bool message_to_computer_flag;
 extern bool message_from_device_flag;
 //flag for if there is a message for the device to be sent out
 extern bool message_to_device_flag;
+//if the correct password is put in then we put the flag to true
+extern bool password_entered_flag;
 
 //this is the size of the packet going out to the computer 
 extern size_t computer_out_size;
