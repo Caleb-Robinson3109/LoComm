@@ -88,7 +88,7 @@ def locomm_api_enter_password(password: str, ser: serial.Serial) -> bool:
         print("send PASS complete")
 
     except Exception as e:
-        print(f"password set error: {e}")
+        print(f"password enter error: {e}")
         return False
     
     return True

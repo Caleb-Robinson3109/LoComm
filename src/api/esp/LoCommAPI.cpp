@@ -41,7 +41,7 @@ void recive_packet_from_computer(){
     lcd.setCursor(0,0);
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
         computer_in_packet[serial_index++] = Serial.read();
-        lcd.write(computer_in_packet[serial_index]);
+        lcd.write(computer_in_packet[serial_index - 1]);
         delay(50);
     }
     delay(100);

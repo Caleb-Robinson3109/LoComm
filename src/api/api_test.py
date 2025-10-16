@@ -14,9 +14,10 @@ def print_input():
 
 
 #main
-connect_to_device()
+while(not connect_to_device()):
+    pass
 
-enter_password("ddpassword")
+enter_password("password")
 
 """"
 thread = threading.Thread(target=print_input, daemon=True)
@@ -29,5 +30,6 @@ while True:
         break
 
 """
+
 disconnect_from_device()
 
