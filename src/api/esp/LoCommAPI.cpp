@@ -40,16 +40,15 @@ void recive_packet_from_computer(){
     lcd.clear();
     lcd.setCursor(0,0);
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
-        lcd.write(computer_in_packet[serial_index]);
         computer_in_packet[serial_index++] = Serial.read();
-        delay(100);
+        lcd.write(computer_in_packet[serial_index]);
+        delay(50);
     }
+    delay(100);
+    lcd.clear();
     message_from_computer_flag = true;
     //set the lenght of the incommed packet
     computer_in_size = serial_index;
-    //lcd.setCursor(1,0);
-    //lcd.print("size: ");
-    //lcd.print(serial_index + 1);
 }
 
 void handle_message_from_computer(){
@@ -58,7 +57,6 @@ void handle_message_from_computer(){
     if(!(computer_in_packet[0] == 0x12 && computer_in_packet[1] == 0x34)){
         message_from_computer_flag = false;
         computer_in_size = 0;
-        lcd.print("fbs error");
         return;
     }
 
@@ -67,7 +65,6 @@ void handle_message_from_computer(){
     if(packet_size != computer_in_size){
         message_from_computer_flag = false;
         computer_in_size = 0;
-        lcd.print("size error");
         return;
     }
 
@@ -80,7 +77,6 @@ void handle_message_from_computer(){
     if(crc_high != computer_in_packet[packet_size - 4] || crc_low  != computer_in_packet[packet_size - 3]){
         message_from_computer_flag = false;
         computer_in_size = 0;
-        lcd.print("crc error");
         return;
     }
 
@@ -88,7 +84,6 @@ void handle_message_from_computer(){
     if(computer_in_packet[packet_size - 2] != 0x56 && computer_in_packet[packet_size - 1] != 0x78){
         message_from_computer_flag = false;
         computer_in_size = 0;
-        lcd.print("lbs error");
         return;
     }
 
@@ -96,30 +91,35 @@ void handle_message_from_computer(){
     uint8_t message_type[4];
     for(int i = 0; i < 4; i++){
         message_type[i] = computer_in_packet[i+4];
-        lcd.write(computer_in_packet[i+4]);
 
     }
 
     //the build_TYPE_packet will build in the device_out_packet[]
-    if(message_type_match(message_type, "CONN", 4)){
+    if(message_type_match(message_type, "CONN", MESSAGE_TYPE_SIZE)){
         build_CACK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
     }
 
-    if(message_type_match(message_type, "PASS", 4)){
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print("preh ");
+    else if(message_type_match(message_type, "PASS", MESSAGE_TYPE_SIZE)){
         handle_PASS_packet();
-        lcd.print("posth ");
         build_PWAK_packet();
-        lcd.print("pawk ");
-        lcd.setCursor(0,1);
-        lcd.print((char*)password_ascii);
         message_to_computer_flag = true;
         message_from_computer_flag = false;
     }
+
+    else if(message_type_match(message_type, "DCON", MESSAGE_TYPE_SIZE)){
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print((char*)password_ascii);
+        handle_DCON_packet();
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print((char*)password_ascii);
+        build_DCAK_packet();
+        message_to_computer_flag = true;
+        message_from_computer_flag = false;
+    }    
 }
 
 void handle_message_to_computer(){
@@ -156,4 +156,13 @@ void handle_PASS_packet(){
     else{
         password_entered_flag = false;
     }
+}
+
+void handle_DCON_packet(){
+    // overwrites the password and the password hash with 0x00
+    for(int i = 0; i < PASSWORD_SIZE; i++){
+        password_ascii[i] = 0x00;
+        password_hash[i] = 0x00;
+    }
+    //TODO eventuall the key with 0x00 
 }

@@ -18,6 +18,8 @@ This file contianes the functions that hande the state of the device to computer
 
 #define MAX_COMPUTER_PACKET_SIZE 100
 #define MAX_DEVICE_PACKET_SIZE 100
+#define MESSAGE_TYPE_SIZE 4
+#define PASSWORD_SIZE 32
 
 //a place to store the packet that has come from the computer
 extern uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -73,5 +75,8 @@ void handle_message_to_computer();
 
 //this handles a incomming PASS packet and changes the password on the device
 void handle_PASS_packet();
+
+//this handles an incomming DCON packet, overwritting the password from memory
+void handle_DCON_packet();
 
 #endif
