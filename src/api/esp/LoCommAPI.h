@@ -18,6 +18,8 @@ This file contianes the functions that hande the state of the device to computer
 
 #define MAX_COMPUTER_PACKET_SIZE 100
 #define MAX_DEVICE_PACKET_SIZE 100
+#define MESSAGE_TYPE_SIZE 4
+#define PASSWORD_SIZE 32
 
 //a place to store the packet that has come from the computer
 extern uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -36,6 +38,10 @@ extern bool message_to_computer_flag;
 extern bool message_from_device_flag;
 //flag for if there is a message for the device to be sent out
 extern bool message_to_device_flag;
+//if the correct password is put in then we put the flag to true
+extern bool password_entered_flag;
+//if the password is corred with sending a set password command
+extern bool set_password_flag;
 
 //this is the size of the packet going out to the computer 
 extern size_t computer_out_size;
@@ -71,5 +77,11 @@ void handle_message_to_computer();
 
 //this handles a incomming PASS packet and changes the password on the device
 void handle_PASS_packet();
+
+//this handles an incomming DCON packet, overwritting the password from memory
+void handle_DCON_packet();
+
+//this function handles an incomming set password STPW packet. setting a new password and its hash in storage
+void handle_STPW_packet();
 
 #endif

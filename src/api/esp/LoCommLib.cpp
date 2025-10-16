@@ -73,6 +73,7 @@ void init_password(){
         storage.putBytes("password", password_hash, 32);
     }
     else{
-        storage.getBytes("password", password_hash,32);
+        storage.getBytes("password", password_hash, 32);
     }
+
 }

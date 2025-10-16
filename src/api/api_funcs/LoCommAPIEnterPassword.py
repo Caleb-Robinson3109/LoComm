@@ -27,10 +27,7 @@ def craft_PASS_packet(tag: int, password: str) -> bytes:
     return packet
 
 
-def try_send_packet(packet: bytes, ser: serial.Serial, tag: int, tries: int) -> None:
-    if(tries > 10):
-        raise ValueError("exceed max number of tries")
-
+def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     ser.write(packet)
     #wait for respoce
     responce: bytes = ser.read(20)
@@ -55,34 +52,43 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int, tries: int) -> 
 
     #some part of the packet is wrong, so try again 
     if(start_bytes != 0x1234):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"start byte fail - {start_bytes}")
+        raise ValueError(f"return packet fail: start byte fail - 0x1234, {start_bytes}")
     
     if(packet_size != 20):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"packet size fail - {packet_size}")
+        raise ValueError(f"return packet fail: packet size fail - 20, {packet_size}")
     
     if(message_type != b"PWAK"):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"message type fail - {message_type}")
+        raise ValueError(f"return packet fail: message type fail - PWAK, {message_type}")
     
     if(ret_tag != tag):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"tag fail - {tag} {ret_tag}")
+        raise ValueError(f"return packet fail: tag fail - {tag}, {ret_tag}")
     
     if(message != b"OKAY"):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"message fail - {message}")
+        raise ValueError(f"return packet fail: message fail - OKAY, {message}")
 
     if(crc != crc_check):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"crc fail - {crc} {crc_check}")
+        raise ValueError(f"return packet fail: crc fail - {crc}, {crc_check}")
 
     if(end_bytes != 0x5678):
-        return try_send_packet(packet, ser, tag, tries + 1)
+        print(f"end byte fail - {end_bytes}")
+        raise ValueError(f"return packet fail: end byte fail - 0x5678, {end_bytes}")
 
 def locomm_api_enter_password(password: str, ser: serial.Serial) -> bool:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = craft_PASS_packet(tag, password)
-        try_send_packet(packet, ser, tag, 0)
+        print(f"PASS packet - {packet}")
+        try_send_packet(packet, ser, tag)
+        print("send PASS complete")
 
     except Exception as e:
-        print(f"password set error: {e}")
+        print(f"password enter error: {e}")
         return False
     
     return True
