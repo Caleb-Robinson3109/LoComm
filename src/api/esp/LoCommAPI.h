@@ -40,6 +40,8 @@ extern bool message_from_device_flag;
 extern bool message_to_device_flag;
 //if the correct password is put in then we put the flag to true
 extern bool password_entered_flag;
+//if the password is corred with sending a set password command
+extern bool set_password_flag;
 
 //this is the size of the packet going out to the computer 
 extern size_t computer_out_size;
@@ -78,5 +80,8 @@ void handle_PASS_packet();
 
 //this handles an incomming DCON packet, overwritting the password from memory
 void handle_DCON_packet();
+
+//this function handles an incomming set password STPW packet. setting a new password and its hash in storage
+void handle_STPW_packet();
 
 #endif

@@ -9,6 +9,7 @@ bool message_to_computer_flag = false;
 bool message_from_device_flag = false;
 bool message_to_device_flag = false;
 bool password_entered_flag = false;
+bool set_password_flag = false;
 size_t computer_out_size = 0;
 size_t device_out_size = 0;
 size_t computer_in_size = 0;
@@ -165,4 +166,44 @@ void handle_DCON_packet(){
         password_hash[i] = 0x00;
     }
     //TODO eventuall the key with 0x00 
+}
+
+void handle_STPW_packet(){
+    uint8_t old_password[32];
+    uint8_t old_size = computer_in_packet[12];
+
+    //get the old password and set the blank bytes to 0x00
+    for(int i = 0; i < old_size; i++){
+        old_password[i] = computer_in_packet[13 + i];
+    }
+    for(int i = old_size; i < 32; i++){
+        old_password[i] = 0x00;
+    }
+
+    //checks aginst the curr password and returns if it is not the same
+    if(memcmp(old_password, password_ascii, 32) == -1){
+        //not the same
+        set_password_flag = false;
+        return;
+    }
+
+    //get the new password
+    uint8_t new_password[32];
+    uint8_t new_password_hash[32];
+    uint8_t new_size = computer_in_packet[12 + old_size];
+    uint8_t new_start_index = 14 + old_size;
+
+    for(int i = 0; i < new_size; i++){
+        new_password[i] = computer_in_packet[new_start_index + i];
+    }
+    for(int i = new_size; i < 32; i++){
+        new_password[i] = 0x00;
+    }
+
+    //sets the new passowrd in storage hash and ascii
+    memcpy(password_ascii, new_password, 32);
+    mbedtls_sha256(new_password, 32, new_password_hash, 0);
+    memcpy(password_hash, new_password_hash, 32);
+    storage.putBytes("password", password_hash, 32);
+    set_password_flag = true;
 }
