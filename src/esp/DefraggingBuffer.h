@@ -30,7 +30,7 @@ class DefraggingBuffer {
           return allocationStartPositions[i-1] + allocationSizes[i-1];
         } 
         //No open spaces were found
-        return 0xFFFFFFFF
+        return 0xFFFFFFFF;
       } 
       
     }

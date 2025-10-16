@@ -32,7 +32,7 @@ class CyclicArrayList {
       return SIZE - this->spaceLeft();
     }
 
-    bool pushBack(uint8_t* src, int size) {
+    bool pushBack(uint8_t* src, int size) { //TODO need to put a lock around this
       if (size > this->spaceLeft()) return false;
       
       if (SIZE - bufferEnd < size) { //If adding to the buffer would wrap it around...
