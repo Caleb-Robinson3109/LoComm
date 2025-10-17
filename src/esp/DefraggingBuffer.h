@@ -8,7 +8,7 @@ class DefraggingBuffer {
       openSpaceBetweenAllocations[0] = SIZE;
     }
 
-    const uint8_t& operator[](unsigned int index) { //passthrough to buffer
+    uint8_t& operator[](unsigned int index) { //passthrough to buffer
       return buffer[index];
     }
 
@@ -21,18 +21,20 @@ class DefraggingBuffer {
       for (int i = 0; i < this->numAllocations+1; i++) {
         if (openSpaceBetweenAllocations[i] >= size) {
           //open space found! fit it in the metadata and then return the location
-          
+          uint32_t ret;
           if (i == 0) {
-            arrayInsert(&allocationStartPositions, numAllocations, 0, 0);
+            arrayInsert(&(allocationStartPositions[0]), numAllocations, 0, 0);
+            ret = 0;
           } else {
-            arrayInsert(&allocationStartPositions, numAllocations, i, allocationStartPositions[i-1] + allocationSizes[i-1]);
+            arrayInsert(&(allocationStartPositions[0]), numAllocations, i, allocationStartPositions[i-1] + allocationSizes[i-1]);
+            ret = allocationStartPositions[i-1] + allocationSizes[i-1];
 
           }
-          arrayInsert(&allocationSizes, numAllocations, i, size);
-          const uint32_t ret = allocationStartPositions[i-1] + allocationSizes[i-1];
+          arrayInsert(&(allocationSizes[0]), numAllocations, i, size);
+          
 
           //make sure the openSpaceBetweenAllocations table gets updated
-          arrayInsert(&openSpaceBetweenAllocations, numAllocations+1, i, 0);
+          arrayInsert(&(openSpaceBetweenAllocations[0]), numAllocations+1, i, 0);
           numAllocations++;
 
           return ret;
@@ -40,6 +42,7 @@ class DefraggingBuffer {
         //No open spaces were found
         return 0xFFFFFFFF;
       } 
+      return 0xFFFFFFFF;
       
     }
 
@@ -49,9 +52,9 @@ class DefraggingBuffer {
         if (location == allocationStartPositions[i]) {
           //we found the index of the allocation, lets remove it and then combine the surrounding open space plus the size of the allocation
           uint32_t newSize = openSpaceBetweenAllocations[i] + openSpaceBetweenAllocations[i+1] + allocationSizes[i];
-          arrayPop(&openSpaceBetweenAllocations, numAllocations, i);
-          arrayPop(&allocationSizes, numAllocations, i);
-          arrayPop(&allocationStartPositions, numAllocations+1, i);
+          arrayPop(&(openSpaceBetweenAllocations[0]), numAllocations, i);
+          arrayPop(&(allocationSizes[0]), numAllocations, i);
+          arrayPop(&(allocationStartPositions[0]), numAllocations+1, i);
           openSpaceBetweenAllocations[i] = newSize;
           numAllocations--;
           return true;
@@ -89,4 +92,4 @@ class DefraggingBuffer {
     uint16_t allocationStartPositions[MAX_ALLOCATIONS];
     uint16_t allocationSizes[MAX_ALLOCATIONS];
     uint16_t openSpaceBetweenAllocations[MAX_ALLOCATIONS + 1];
-}
+};

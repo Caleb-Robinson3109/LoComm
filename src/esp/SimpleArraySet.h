@@ -5,15 +5,21 @@
 template <int SIZE, int UNIT_SIZE>
 class SimpleArraySet {
   public:
-    uint32_t size() return length;
+    uint32_t size() {
+      return length;
+    }
 
-    uint8_t* get(int i) return (&buffer) + i*UNIT_SIZE;
+    uint8_t* get(int i) {
+      return (&(buffer[0])) + i*UNIT_SIZE;
+    }
+    uint16_t find(int8_t startByte) {
+      for (int i = 0; i < length; i++) {
+        if (buffer[UNIT_SIZE * i] == startByte) return i;
+      }
+      return 65535;
+    }
 
-    //uint16_t find(int8_t startByte) {
-    //  return 65535; //TODO implement
-    //}
-
-    bool add(int8_t* src) {
+    bool add(uint8_t* src) {
       if (length == SIZE) return false; //buffer full!
       memcpy(&(buffer[length * UNIT_SIZE]), src, UNIT_SIZE);
       length++;
@@ -37,4 +43,4 @@ class SimpleArraySet {
   private:
     uint8_t buffer[SIZE * UNIT_SIZE];
     uint32_t length = 0;
-}
+};
