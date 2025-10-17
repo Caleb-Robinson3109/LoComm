@@ -33,7 +33,7 @@ def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
 
     #check the packet
     if(len(responce) != 20):
-        ser.write(packet)
+        raise ValueError(f"incorrce recv packet len")
     
     start_bytes: int
     packet_size: int
@@ -83,7 +83,7 @@ def locomm_api_set_password(old: str, new: str, ser: serial.Serial) -> bool:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = build_STPW_packet(tag, old, new)
         print(f"STPW packet - {packet}")
-        send_recv_packet(packet, ser, tag)
+        send_recv_packet(tag, packet, ser)
         print("send STPW complete")
 
     except Exception as e:

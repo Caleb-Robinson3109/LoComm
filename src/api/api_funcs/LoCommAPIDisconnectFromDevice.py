@@ -69,11 +69,14 @@ def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet: bytes = build_DCON_packet(tag)
 
+        print(f"sending DCON packet {packet}")
+
         okay: bool = send_recv_packet(ser, packet, tag)
         tries: int = 0
 
         while(not okay and tries < 10):
             okay = send_recv_packet(ser, packet, tag)
+            print(f"try {tries + 1}")
             tries = tries + 1
 
         if(tries == 10 and not okay):

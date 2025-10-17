@@ -34,7 +34,8 @@ def set_password(old: str, new: str) -> bool:
 
 #this function resets the password, this results in all your device-to-device communication keys on the ESP to be deleted. Only use it if you cannot remember the password. Returns true if successful, false otherwise
 def reset_passoword(password: str) -> bool:
-    return locomm_api_reset_passoword(password)
+    global serial_conn
+    return locomm_api_reset_passoword(password, serial_conn)
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
 def send_message(name: str, message: str) -> bool:
