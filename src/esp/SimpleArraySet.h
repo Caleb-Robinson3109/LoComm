@@ -9,21 +9,30 @@ class SimpleArraySet {
 
     uint8_t* get(int i) return (&buffer) + i*UNIT_SIZE;
 
-    uint16_t find(int8_t startByte) {
-      return 65535; //TODO implement
-    }
+    //uint16_t find(int8_t startByte) {
+    //  return 65535; //TODO implement
+    //}
 
     bool add(int8_t* src) {
-      return true; //TODO impl
+      if (length == SIZE) return false; //buffer full!
+      memcpy(&(buffer[length * UNIT_SIZE]), src, UNIT_SIZE);
+      length++;
+      return true; 
     }
 
-    bool remove(int index) {
-      return true; //TODO impl
+    bool remove(uint16_t index) {
+      if (index >= length) return false; //invalid index
+      //if the index we are removing is at the very end, just shorten length
+      if (index == length - 1) {
+        length--;
+        return true;
+      } else {
+        //otherwise, replace the index being removed with the final unit
+        memcpy(&(buffer[index * UNIT_SIZE]), &(buffer[(length-1)*UNIT_SIZE]), UNIT_SIZE);
+        length--;
+        return true;
+      }
     }
-
-    
-
-
 
   private:
     uint8_t buffer[SIZE * UNIT_SIZE];

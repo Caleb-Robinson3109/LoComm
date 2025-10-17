@@ -17,6 +17,8 @@
 #define LError(x) Log(LOG_LEVEL_ERROR, x)
 #define HALT() Serial.println("Exiting"); while(1)
 
+#define diff(new, old, size) (new > old) ? new - old : size - old + new
+
 #define START_BYTE 0xc1
 #define END_BYTE 0x8c
 
@@ -34,7 +36,7 @@
 #include "esp.h"
 
 
-uint8_t deviceID = 1; //TODO store this at the EEPROM instead of as a variable here
+uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = 1;
 uint32_t nextCADTime = 0;
@@ -48,17 +50,23 @@ CyclicArrayList<LORA_RX_BUFFER_SIZE> rxBuffer;
 SimpleArraySet<256, 9> rxMessageArray;
 DefraggingBuffer<2048> rxMessageBuffer;
 
-SimpleArraySet<256, 6> txMessageArray;
+SimpleArraySet<256, 8> txMessageArray;
 DefraggingBuffer<2048> txMessageBuffer;
 
 CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer;
-CyclicArrayList<LORA_ACK_BUFFER_SIZE> actToSendBuffer;
+CyclicArrayList<LORA_ACK_BUFFER_SIZE> ackToSendBuffer;
 
 void setup() {
-  //initialize variables TODO INITIALIZE ALL OF THEM!!
+  //initialize variables
   rxBuffer = CyclicArrayList<LORA_RX_BUFFER_SIZE>();
-  rxMessageArray = SimpleArraySet<512, 8>();
-  rxMessagebuffer = DefraggingBuffer<2048>();
+  rxMessageArray = SimpleArraySet<512, 9>();
+  rxMessageBuffer = DefraggingBuffer<2048>();
+
+  txMessageArray = SimpleArraySet<256, 8>();
+  txMessageBuffer = DefraggingBuffer<2048>();
+
+  readyToSendBuffer = CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE>();
+  actToSendBuffer = CyclicArrayList<LORA_ACK_BUFFER_SIZE>();
 
 
   //Initialize Serial Connection to Computer
@@ -158,7 +166,7 @@ void loop() {
           LDebug("Found End Byte in rxBuffer");
           uint8_t tempBuf[256];
 
-          //TODO Decrypt the message and store it in tempBuf. 
+          //NOTE - eventually, we wil decrypt the message and store it in tempBuf. 
           //For now we will send unencrypted messages, so we will just copy it over and not touch it
           memcpy(tempBuf, &(rxBuffer[1]), sizeof(uint8_t) * (i - 1)); //copy contents, excluding start and stop byte
           //now tempbuf contains just the message, going from 0 to i-2, so it contains i-1 bytes
@@ -206,12 +214,21 @@ void loop() {
                 const uint16_t bufferStart = rxMessageArray.get(loc)[1] * 256 + rxMessageArray.get(loc)[2];
                 const uint8_t sequenceBaseSize = rxMessageArray.get(loc)[7];
                 const uint8_t sequenceSize = i-1 - 8;
+                const uint8_t sequenceCount = rxMessageArray.get(loc)[5];
                 if (sequenceSize > sequenceBaseSize) {
                   LError("Received packet with data size bigger than maximum sequence size!");
                   HALT();
                 }
                 memcpy(&(rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber]), tempBuf[6], sequenceSize);
-                //TODO fill the rest of the buffer with 0x00 if we are populating the final packet
+
+                //fill the rest of the buffer with 0x00 if we are populating the final packet 
+                if (sequenceNumber == sequenceCount-1) {
+                  LDebug("Last sequence message received, filling the rest of the buffer with zeros")
+                  for (int i = sequenceSize; i < sequenceBaseSize; i++) {
+                    rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber + i] = 0;
+                  } 
+                }
+                
               }
             } else {
               LDebug("Message is not in RX Message Array, adding...");
@@ -249,7 +266,7 @@ void loop() {
               headerBuf[5] = sequenceCount;
               headerBuf[6] = 1 << sequenceNumber;
               headerBuf[7] = sequenceSize;
-              headerBuf[8] = (millis() / 1000) % 255; //TODO THIS DOESNT WORK - we need to add overflow checking
+              headerBuf[8] = (millis() / 1000) % 255; //TODO THIS DOESNT WORK  still need code to handle expiring received messages
 
               if (rxMessageArray.add(headerBuf)) {
                 LDebug("Added new rx message to buffer");
@@ -261,19 +278,46 @@ void loop() {
 
             }
 
-            //TODO Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
-            LDebug("Sending ACK");
+            //Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
+            LDebug("Requesting ACK Send: Adding send to ack buffer");
+            uint8_t vBuf[9];
+            vBuf[0] = START_BYTE;
+            vBuf[1] = 1;
+            vBuf[2] = deviceID;
+            const uint8_t sender = tempBuf[1]; 
+            vBuf[3] = sender;
+            const uint8_t messageNumber = tempBuf[3];
+            vBuf[4] = messageNumber;
+            const uint8_t sequenceNumber = tempBuf[4];
+            vBuf[5] = sequenceNumber;
+            uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)vBuf[1], 5))^0xffffffff;
+            vBuf[6] = (crc & 0x0000FF00) >> 8;
+            vBuf[7] = crc & 0x000000FF;
+            vBuf[8] = END_BYTE;
+            ackToSendBuffer.pushBack(&vBuf, 9);
             
           } else {
             LDebug("Beginning ACK Message Processing");
-            //Ack Message - we need to let the sending functinality know this message has been received
-            //TODO implement
+            //Ack Message - we need to process the ack
+
+            const uint8_t messageNumber = tempBuf[3];
+            const uint8_t sequenceNumber = tempBuf[4];
+
+            //First, search for the relevant message in the txMessageArray by its
+            //TODO this might have to be a critical section
+            for (int i = 0; i < txMessageArray.size(); i++) {
+              if (txMessageArray.get(i)[0] == messageNumber && txMessageArray.get(i)[1] == sequenceNumber) {
+                LDebug("Found Message - Indicated ACK has been received");
+                //we found the right message, so indicate the ack has been received
+                txMessageArray.get(i)[7] |= 0b10000000;
+              }
+            }
           }
         }
       }
 
       //Now we have finished processing all possible messages that stem from teh current start byte. So, remove the start byte
-      rxBuffer.dropFront(1); //TODO it might be better to drop more than just one byte
+      rxBuffer.dropFront(1); //NOTE it might be better to drop more than just one byte
     } else {
       LDebug("Start Index Not Found, Clearing Buffer");
       //Start byte wasn't found at all in the buffer. Clear the buffer
@@ -292,37 +336,40 @@ void loop() {
     ackToSendBuffer.dropFront(9);
   }
 
+  static uint32_t lastTxProcess = millis(); //NOTE at some point, this should be made into a looping variable. It will overflow in about 1.5 months
+  if (millis() > lastTxProcess + 500) {
+    lastTxProcess = millis();
+    for (int i = 0; i < txMessageArray.length(); i++) {
+      const uint8_t sendCount = txMessageArray.get(i)[7] & 0b01111111;
+      const uint16_t location = (txMessageArray.get(i)[2] << 8) + txMessageArray.get(i)[3];
+      //If we've reached the max number of send attempts, drop the data all together
+      if (sendCount > LORA_SEND_COUNT_MAX) {
+        LDebug("Message has reached max send attempts, dropping from buffer");
+        txMessageBuffer.free(location);
+        txMessageArray.remove(i--); //decrement i so that we still iterate over all remaining entries
+        continue;
+      }
 
-  //TODO we should probably rate limit this
-  for (int i = 0; i < txMessageArray.length(); i++) {
-    const uint8_t sendCount = txMessageArray.get(i)[4] & 0b01111111;
-    const uint16_t location = (txMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1];
-    //If we've reached the max number of send attempts, drop the data all together
-    if (sendCount > LORA_SEND_COUNT_MAX) {
-      LDebug("Message has reached max send attempts, dropping from buffer");
-      txMessageBuffer.free(location);
-      txMessageArray.remove(i--); //decrement i so that we still iterate over all remaining entries
-      continue;
-    }
-
-    //If it has been over a second since the previous send, try again //TODO move this to a different value
-    uint16_t lastSendTime = (txMessageArray.get(i)[3] << 8) + txMessageArray.get(i)[4];
-    if ((millis() % 65535) - lastSendTime > 1000) { //TODO THIS WILL NOT WORK - need to do proper overflow checking
-      LDebug("Resending a message");
-      lastSendTime = millis(); //TODO - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
-      txMessageArray.get(i)[3] = lastSendTime >> 8;
-      txMessageArray.get(i)[4] = lastSendTime & 0xFF;
-      int8_t tBuf[3];
-      tBuf[0] = txMessageArray.get(i)[0]; //location high byte
-      tBuf[1] = txMessageArray.get(i)[1]; //location low byte
-      tBuf[2] = txMessageArray.get(i)[2]; //size
-      if (readyToSendBuffer.pushBack(tBuf, 3)) {
-        LDebug("Added message to ready to send buffer");
-      } else {
-        LError("Failed to add message to ready to send buffer because it was full");
+      //If it has been over a second since the previous send, try again //NOTE this 1s resent delay should probably be made shorter and controllable via a constant
+      uint16_t lastSendTime = (txMessageArray.get(i)[3] << 8) + txMessageArray.get(i)[4];
+      if (diff(millis() % 65535, lastSendTime, 65535) > 1000) {
+        LDebug("Resending a message");
+        lastSendTime = millis(); //NOTE - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
+        txMessageArray.get(i)[5] = lastSendTime >> 8;
+        txMessageArray.get(i)[6] = lastSendTime & 0xFF;
+        int8_t tBuf[3];
+        tBuf[0] = txMessageArray.get(i)[5]; //location high byte
+        tBuf[1] = txMessageArray.get(i)[6]; //location low byte
+        tBuf[2] = txMessageArray.get(i)[4]; //size
+        if (readyToSendBuffer.pushBack(tBuf, 3)) {
+          LDebug("Added message to ready to send buffer");
+        } else {
+          LError("Failed to add message to ready to send buffer because it was full");
+        }
       }
     }
   }
+  
 
   if (readyToSendBuffer.size() > 0 || ackToSendBuffer.size() > 0) {
     LDebug("One of the TX buffers has data, attempting to enter CAD Mode");
@@ -332,21 +379,7 @@ void loop() {
   // ------------------------------------------------------------------------------------------------------------------------------------------
 
 
-  //TEST CODE
-  static uint32_t mill = millis();
-  if (mill + 1000 < millis()) {
-    //LoRa.channelActivityDetection();
-    mill = millis();
-    Serial.printf("Current LoRa Operating Mode: %d\nCurrent IRQ Flag: %d\n", LoRa.readMode(), LoRa.readIrqFlag());
-  }
-
-  //TEST CODE
-  static uint8_t prevDeviceMode = 5;
-  if (prevDeviceMode != lastDeviceMode) {
-    Serial.printf("Device Mode Changed! New Mode = %d", lastDeviceMode);
-    prevDeviceMode = lastDeviceMode;
-  }
-  // --------------------------------------------------------------- SERIAL HANDLING ---------------------------------------------------------------
+  // ------------------------------------------------------------- SERIAL HANDLING ---------------------------------------------------------------
   //check for data on the serial rx buffer
   
   //if the data makes a message, handle the messages
@@ -376,7 +409,7 @@ void enterReceiveMode() {
   //Under normal flow, if a message is added to the send buffer, the device will go to CAD mode, then to TX mode, and then to IDLE mode. from there, we can reenter rec mode
   if (lastDeviceMode == IDLE_MODE) {
     lastDeviceMode = RX_MODE;
-    Serial.println("Entering Receive Mode");
+    LLog("Entering Receive Mode");
     LoRa.receive();
   }
 }
