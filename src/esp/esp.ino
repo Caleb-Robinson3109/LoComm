@@ -267,7 +267,7 @@ void loop() {
               headerBuf[5] = sequenceCount;
               headerBuf[6] = 1 << sequenceNumber;
               headerBuf[7] = sequenceSize;
-              headerBuf[8] = (millis() / 1000) % 255; //TODO THIS DOESNT WORK  still need code to handle expiring received messages
+              headerBuf[8] = (millis() / 1000) % 255; // TODO still need code to handle expiring received messages
 
               if (rxMessageArray.add(headerBuf)) {
                 LDebug("Added new rx message to buffer");
@@ -375,6 +375,8 @@ void loop() {
     LDebug("One of the TX buffers has data, attempting to enter CAD Mode");
     enterChannelActivityDetectionMode();
   }
+
+  //TODO need to write code to add code to the txMessageArray
 
   // ------------------------------------------------------------------------------------------------------------------------------------------
 

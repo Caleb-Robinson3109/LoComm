@@ -46,7 +46,18 @@ class CyclicArrayList {
       return true;
     }
 
-    bool peakFront(uint8_t* dst, int size) {
+    bool peakFront(uint8_t* dst, int s) {
+      if (s > this->size()) {
+        return false;
+      }
+      uint16_t readEnd = bufferStart + s;
+      if (readEnd > SIZE) {
+        //buffer is overlapped, will need to memcpy operations
+        memcpy(&(dst[0]), &(buffer[bufferStart]), SIZE - bufferStart);
+        memcpy(&(dst[SIZE-bufferStart]), &(buffer[0]), s - (SIZE - bufferStart));
+      } else {
+        memcpy(&(dst[0]), &(buffer[bufferStart]), s);
+      }
       return true;
     }
 
