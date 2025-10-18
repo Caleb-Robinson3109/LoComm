@@ -4,6 +4,7 @@
 #define LORA_READY_TO_SEND_BUFFER_SIZE 1024
 #define LORA_ACK_BUFFER_SIZE 256
 #define LORA_SEND_COUNT_MAX 8
+#define SERIAL_READY_TO_SEND_BUFFER_SIZE 128
 
 
 #define IDLE_MODE 1
@@ -59,6 +60,8 @@ DefraggingBuffer<2048, 8> txMessageBuffer;
 CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer;
 CyclicArrayList<LORA_ACK_BUFFER_SIZE> ackToSendBuffer;
 
+SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 3> serialReadyToSendBuffer; //message addr high, message addr low, message size
+
 void setup() {
   //initialize variables
   rxBuffer = CyclicArrayList<LORA_RX_BUFFER_SIZE>();
@@ -70,6 +73,8 @@ void setup() {
 
   readyToSendBuffer = CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE>();
   ackToSendBuffer = CyclicArrayList<LORA_ACK_BUFFER_SIZE>();
+
+  serialReadyToSendBuffer = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 3>();
 
 
   //Initialize Serial Connection to Computer
@@ -138,7 +143,6 @@ void loop() {
     if (rxBuffer.pushBack(tempBuf, size)) {
       LDebug("Added data to LoRa rx buffer");
       shouldScanRxBuffer = true;
-
     } else {
       LWarn("Rx Buffer is currently full, not adding data");
     }
@@ -201,7 +205,7 @@ void loop() {
 
             //check if the message number is already being tracked in rxMessageArray
             uint16_t loc = rxMessageArray.find(messageNumber);
-            if (loc != 65535) {
+            if (loc != 65535) { //TODO consider updating the time variable here
               LDebug("Message is already in RX Message Array");
               //message number was found in rxMessageArray already, check if this sequence is needed stil
               const uint8_t sequenceNumber = tempBuf[4];
@@ -325,6 +329,31 @@ void loop() {
     }
   }
 
+  //scan through the RX buffer and look for any completed messages or any expiring messages
+  static uint32_t lastRxProcess = millis();
+  if (millis() > lastRxProcess + 500) {
+    for (int i = 0; i < rxMessageArray.size(); i++) {
+      //check if a message has received all its parts
+      const uint8_t bitmask = rxMessageArray.get(i)[6];
+      const uint8_t sequenceCount = rxMessageArray.get(i)[5];
+      if (((bitmask + 1) >> sequenceCount) == 1) {
+        LDebug("Received message has completed"); 
+        //Now that we know the message has been fully received, we will drop it from the rxMessageArray, but keep its allocation in the buffer
+        //Then we will pass the index of that allocation off to the serial functionality
+        //TODO implement
+      }
+
+      //check if a message has expired
+      if (diff((millis() / 1000) % 255, rxMessageArray.get(i)[8], 255) > 10) { //TODO should this be 256?
+        LLog("Clearing message in RX buffer that has been around for 10 seconds");
+        //since it expired, remove its allocation and clear it from the message array
+        const uint16_t address = (rxMessageArray.get(i)[1] << 8) + rxMessageArray.get(i)[2]; 
+        rxMessageBuffer.free(address);
+        rxMessageArray.remove(i); 
+      }
+    }
+  }
+
   // -------------------------------------------- Transmit Loop Behavior ---------------------------------------------
   if (messageDispatched) { //if we sent a TX messsage clean it out of the buffer
     LDebug("Clearing sent normal message out of TX buffer");
@@ -392,6 +421,11 @@ void loop() {
 
   //
   
+}
+
+bool addMessageToTxArray(uint8_t* src, uint16_t size) {
+  //TODO impl
+  return false;
 }
 
 void enterChannelActivityDetectionMode() {
