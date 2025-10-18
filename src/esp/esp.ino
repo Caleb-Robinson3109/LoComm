@@ -20,7 +20,7 @@
 #define LDebug(x) Log(LOG_LEVEL_DEBUG, x)
 #define LWarn(x) Log(LOG_LEVEL_WARNING, x)
 #define LError(x) Log(LOG_LEVEL_ERROR, x)
-#define HALT() Serial.println("Exiting"); while(1)
+#define HALT() Serial.println("Halting"); while(1)
 
 #define diff(new, old, size) (new >= old) ? new - old : size - old + new
 
@@ -43,7 +43,7 @@
 
 uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
-uint8_t lastDeviceMode = 1;
+uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
@@ -109,9 +109,8 @@ void setup() {
   LoRa.onReceive(onReceive);
 
   //Set idle mode
-  
   Serial.println("Setup Finished");
-  LoRa.idle();
+  enterReceiveMode();
 }
 
 void loop() {
@@ -119,8 +118,8 @@ void loop() {
 
   //----------------------------------------------------- MISC State Behavior -------------------------------------------------
   if (lastDeviceMode == CAD_FAILED) {
-    LoRa.idle();
-    lastDeviceMode = IDLE_MODE;
+    LoRa.receive();
+    lastDeviceMode = RX_MODE;
     LError("CAD detected a signal! trying again later");
   }
 
@@ -420,9 +419,6 @@ void loop() {
     enterChannelActivityDetectionMode();
   }
 
-  // ------------------------------------------------------------------------------------------------------------------------------------------
-
-
   // ------------------------------------------------------------- SERIAL HANDLING ---------------------------------------------------------------
 
   //NOTE this is temporary code
@@ -535,7 +531,7 @@ void enterChannelActivityDetectionMode() {
       LLog("Entering Channel Activity Detection Mode");
       LoRa.idle();
       delay(5);
-      LoRa.channelActivityDetection(); //NOTE - this sets the callback to the CAD callback, so rec and txdone callbacks wont trigger
+      LoRa.channelActivityDetection(); 
     }
   }
 }
@@ -583,8 +579,8 @@ void onCadDone(bool detectedSignal) {
 }
 void onTxDone() {
   return;
-  lastDeviceMode = IDLE_MODE;
-  LoRa.idle();
+  lastDeviceMode = RX_MODE;
+  LoRa.receive();
 }
 
 void onReceive(int size) {
