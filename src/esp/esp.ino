@@ -5,6 +5,7 @@
 #define LORA_ACK_BUFFER_SIZE 256
 #define LORA_SEND_COUNT_MAX 8
 #define SERIAL_READY_TO_SEND_BUFFER_SIZE 128
+#define SEQUENCE_MAX_SIZE 128
 
 
 #define IDLE_MODE 1
@@ -21,7 +22,7 @@
 #define LError(x) Log(LOG_LEVEL_ERROR, x)
 #define HALT() Serial.println("Exiting"); while(1)
 
-#define diff(new, old, size) (new > old) ? new - old : size - old + new
+#define diff(new, old, size) (new >= old) ? new - old : size - old + new
 
 #define START_BYTE 0xc1
 #define END_BYTE 0x8c
@@ -60,7 +61,7 @@ DefraggingBuffer<2048, 8> txMessageBuffer;
 CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer;
 CyclicArrayList<LORA_ACK_BUFFER_SIZE> ackToSendBuffer;
 
-SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 3> serialReadyToSendBuffer; //message addr high, message addr low, message size
+SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //message addr high, message addr low, message size high, message size low
 
 void setup() {
   //initialize variables
@@ -74,7 +75,7 @@ void setup() {
   readyToSendBuffer = CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE>();
   ackToSendBuffer = CyclicArrayList<LORA_ACK_BUFFER_SIZE>();
 
-  serialReadyToSendBuffer = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 3>();
+  serialReadyToSendArray = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4>();
 
 
   //Initialize Serial Connection to Computer
@@ -205,7 +206,7 @@ void loop() {
 
             //check if the message number is already being tracked in rxMessageArray
             uint16_t loc = rxMessageArray.find(messageNumber);
-            if (loc != 65535) { //TODO consider updating the time variable here
+            if (loc != 65535) { 
               LDebug("Message is already in RX Message Array");
               //message number was found in rxMessageArray already, check if this sequence is needed stil
               const uint8_t sequenceNumber = tempBuf[4];
@@ -226,6 +227,9 @@ void loop() {
                   HALT();
                 }
                 memcpy(&(rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber]), &(tempBuf[6]), sequenceSize);
+
+                //update the rx timeout
+                rxMessageArray.get(loc)[8] = (millis() / 1000) % 255;
 
                 //fill the rest of the buffer with 0x00 if we are populating the final packet 
                 if (sequenceNumber == sequenceCount-1) {
@@ -271,7 +275,7 @@ void loop() {
               headerBuf[5] = sequenceCount;
               headerBuf[6] = 1 << sequenceNumber;
               headerBuf[7] = sequenceSize;
-              headerBuf[8] = (millis() / 1000) % 255; // TODO still need code to handle expiring received messages
+              headerBuf[8] = (millis() / 1000) % 255;
 
               if (rxMessageArray.add(headerBuf)) {
                 LDebug("Added new rx message to buffer");
@@ -307,7 +311,7 @@ void loop() {
             const uint8_t messageNumber = tempBuf[3];
             const uint8_t sequenceNumber = tempBuf[4];
 
-            //First, search for the relevant message in the txMessageArray by its
+            //First, search for the relevant message in the txMessageArray by its message number and sequence number
             //TODO this might have to be a critical section
             for (int i = 0; i < txMessageArray.size(); i++) {
               if (txMessageArray.get(i)[0] == messageNumber && txMessageArray.get(i)[1] == sequenceNumber) {
@@ -340,16 +344,27 @@ void loop() {
         LDebug("Received message has completed"); 
         //Now that we know the message has been fully received, we will drop it from the rxMessageArray, but keep its allocation in the buffer
         //Then we will pass the index of that allocation off to the serial functionality
-        //TODO implement
-      }
+        uint8_t tempBuf[4];
+        tempBuf[0] = rxMessageArray.get(i)[1];
+        tempBuf[1] = rxMessageArray.get(i)[2];
+        tempBuf[2] = rxMessageArray.get(i)[3];
+        tempBuf[3] = rxMessageArray.get(i)[4];
+
+        serialReadyToSendArray.add(&(tempBuf[0]));
+
+        //now remove it from rxMessageArray
+        rxMessageArray.remove(i);
+        i--;
+      } else
 
       //check if a message has expired
-      if (diff((millis() / 1000) % 255, rxMessageArray.get(i)[8], 255) > 10) { //TODO should this be 256?
+      if (diff((millis() / 1000) % 255, rxMessageArray.get(i)[8], 256) > 10) {
         LLog("Clearing message in RX buffer that has been around for 10 seconds");
         //since it expired, remove its allocation and clear it from the message array
         const uint16_t address = (rxMessageArray.get(i)[1] << 8) + rxMessageArray.get(i)[2]; 
         rxMessageBuffer.free(address);
         rxMessageArray.remove(i); 
+        i--;
       }
     }
   }
@@ -381,7 +396,7 @@ void loop() {
 
       //If it has been over a second since the previous send, try again //NOTE this 1s resent delay should probably be made shorter and controllable via a constant
       uint16_t lastSendTime = (txMessageArray.get(i)[3] << 8) + txMessageArray.get(i)[4];
-      if (diff(millis() % 65535, lastSendTime, 65535) > 1000) {
+      if (diff(millis() % 65536, lastSendTime, 65536) > 1000) {
         LDebug("Resending a message");
         lastSendTime = millis(); //NOTE - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
         txMessageArray.get(i)[5] = lastSendTime >> 8;
@@ -405,12 +420,25 @@ void loop() {
     enterChannelActivityDetectionMode();
   }
 
-  //TODO need to write code to add code to the txMessageArray
-
   // ------------------------------------------------------------------------------------------------------------------------------------------
 
 
   // ------------------------------------------------------------- SERIAL HANDLING ---------------------------------------------------------------
+
+  //NOTE this is temporary code
+  //For now, we will just push the code straight to the serial buffer
+  if (serialReadyToSendArray.size() > 0) {
+    for (int i = 0; i < serialReadyToSendArray.size(); i++) {
+      const uint16_t addr = (serialReadyToSendArray.get(i)[0] << 8) + serialReadyToSendArray.get(i)[1];
+      const uint16_t size = (serialReadyToSendArray.get(i)[2] << 8) + serialReadyToSendArray.get(i)[3];
+      Serial.write(&(rxMessageBuffer[addr]), size);
+      //after writing to the buffer, free it from the rx buffer
+      rxMessageBuffer.free(addr);
+    }
+    //clear the serialReadyToSendArray
+    serialReadyToSendArray.clearAll();
+  }
+
   //check for data on the serial rx buffer
   
   //if the data makes a message, handle the messages
@@ -423,9 +451,80 @@ void loop() {
   
 }
 
+//This function will take the data in src
 bool addMessageToTxArray(uint8_t* src, uint16_t size) {
-  //TODO impl
-  return false;
+  //first, make sure the data isn't too big
+  if (size > SEQUENCE_MAX_SIZE * 8) {
+    LWarn("Message will not be added to tx array because it is too long");
+    return false;
+  }
+  //NOTE we should probably also check the available space in txMessageBuffer, but that would require writing a defragging function so not now
+
+  uint8_t temp[8];
+  temp[5] = 0;
+  temp[6] = 0;
+  temp[7] = 0;
+
+  //Find an unused message number. First we will generate a random number
+  //Then we will look through all known message numbers. If there is a collision, we will try again
+  //If we somehow fail 10 times, then we will assume something has gone very wrong and HALT
+  bool foundNumber = false;
+  uint8_t messageNumber;
+  uint8_t attemptCount = 0;
+  while (!foundNumber) {
+    attemptCount++;
+    messageNumber = esp_random();
+    foundNumber = true;
+    
+    for (int i = 0; i < txMessageArray.size(); i++) {
+      if (messageNumber == txMessageArray.get(i)[0]) {
+        foundNumber = false;
+        break;
+      }
+    }
+    if (!foundNumber) continue;
+    for (int i = 0; i < rxMessageArray.size(); i++) {
+      if (messageNumber == rxMessageArray.get(i)[0]) {
+        foundNumber = false;
+        break;
+      }
+    }
+    if (attemptCount >= 10) {
+      LError("Reached 10 attempts to find a new message number");
+      HALT();
+    }
+  }
+
+  temp[0] = messageNumber;
+
+  uint8_t messageLength;
+  //now that we have the messageNumber, lets start placing in our messages
+  for (int i = 0; i <= size / SEQUENCE_MAX_SIZE; i++) {
+    temp[1] = i;
+    messageLength = min(size - (SEQUENCE_MAX_SIZE * i), SEQUENCE_MAX_SIZE);
+    if (messageLength == 0) continue; //occures if size is a multiple of the SEQUENCE_MAX_SIZE
+    temp[4] = messageLength;
+
+    //allocate space in txMessageBuffer
+    uint16_t addr = txMessageBuffer.malloc(messageLength);
+    if (addr == 0xFFFF) {
+      LError("Failed to allocate space in txMessageBuffer");
+      return false;
+    }
+
+    temp[2] = addr >> 8;
+    temp[3] = addr & 0xFF;
+
+    if (!txMessageArray.add(&(temp[0]))) {
+      LError("Failed to txMessage Array, deleting allocation in buffer");
+      txMessageBuffer.free(addr);
+      return false;
+    }
+
+    //now that we successfully added the message information to the array and the buffer, copy into the buffer (since its allocated now)
+    memcpy(&(txMessageBuffer[addr]), &(src[SEQUENCE_MAX_SIZE * i]), messageLength);
+  }
+  return true;
 }
 
 void enterChannelActivityDetectionMode() {

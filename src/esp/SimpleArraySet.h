@@ -40,6 +40,10 @@ class SimpleArraySet {
       }
     }
 
+    void clearAll() {
+      length = 0;
+    }
+
   private:
     uint8_t buffer[SIZE * UNIT_SIZE];
     uint32_t length = 0;
