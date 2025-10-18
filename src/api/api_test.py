@@ -2,6 +2,7 @@ from LoCommAPI import connect_to_device
 from LoCommAPI import disconnect_from_device
 from LoCommAPI import receive_message
 from LoCommAPI import enter_password
+from LoCommAPI import set_password
 
 import threading
 
@@ -18,6 +19,18 @@ while(not connect_to_device()):
     pass
 
 enter_password("password")
+#set_password("password", "admin")
+
+disconnect_from_device()
+
+"""
+while not connect_to_device():
+    pass
+
+enter_password("admin")
+
+disconnect_from_device()
+"""
 
 """"
 thread = threading.Thread(target=print_input, daemon=True)
@@ -30,6 +43,3 @@ while True:
         break
 
 """
-
-disconnect_from_device()
-

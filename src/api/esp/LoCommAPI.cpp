@@ -38,15 +38,16 @@ void recive_packet_from_computer(){
     if(Serial.available() == 0){
         return;
     }
-    lcd.clear();
-    lcd.setCursor(0,0);
+    //lcd.clear();
+    //lcd.setCursor(0,0);
+    //lcd.print("read");
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
         computer_in_packet[serial_index++] = Serial.read();
-        lcd.write(computer_in_packet[serial_index - 1]);
-        delay(50);
+        //lcd.setCursor(6,0);
+        //lcd.print(serial_index);
     }
-    delay(100);
-    lcd.clear();
+    //lcd.setCursor(0,0);
+    //lcd.print("done");
     message_from_computer_flag = true;
     //set the lenght of the incommed packet
     computer_in_size = serial_index;
@@ -113,6 +114,7 @@ void handle_message_from_computer(){
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print((char*)password_ascii);
+        delay(100);
         handle_DCON_packet();
         lcd.clear();
         lcd.setCursor(0,0);
@@ -120,7 +122,16 @@ void handle_message_from_computer(){
         build_DCAK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
-    }    
+        lcd.setCursor(0,1);
+        delay(200);
+    }
+
+    else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
+        handle_STPW_packet();
+        build_SPAK_packet();
+        message_to_computer_flag = true;
+        message_from_computer_flag = false;
+    }
 }
 
 void handle_message_to_computer(){
