@@ -113,8 +113,9 @@ void handle_message_from_computer(){
     else if(message_type_match(message_type, "DCON", MESSAGE_TYPE_SIZE)){
         lcd.clear();
         lcd.setCursor(0,0);
+        lcd.print("DCON - ");
         lcd.print((char*)password_ascii);
-        delay(100);
+        //delay(2000);
         handle_DCON_packet();
         lcd.clear();
         lcd.setCursor(0,0);
@@ -123,7 +124,7 @@ void handle_message_from_computer(){
         message_to_computer_flag = true;
         message_from_computer_flag = false;
         lcd.setCursor(0,1);
-        delay(200);
+        //delay(200);
     }
 
     else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
@@ -135,6 +136,14 @@ void handle_message_from_computer(){
 }
 
 void handle_message_to_computer(){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    for(int i = 0; i < 16; i++){
+        lcd.write(computer_out_packet[i]);
+    }
+    lcd.setCursor(0,1);
+    lcd.print("out packet");
+    delay(2000);
     Serial.write(computer_out_packet, computer_out_size);
     message_to_computer_flag = false;
     computer_out_size = 0;
@@ -172,10 +181,16 @@ void handle_PASS_packet(){
 
 void handle_DCON_packet(){
     // overwrites the password and the password hash with 0x00
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("clearing passes");
     for(int i = 0; i < PASSWORD_SIZE; i++){
         password_ascii[i] = 0x00;
         password_hash[i] = 0x00;
     }
+    lcd.setCursor(0,1);
+    lcd.print("done - del pass");
+    //delay(2000);
     //TODO eventuall the key with 0x00 
 }
 
