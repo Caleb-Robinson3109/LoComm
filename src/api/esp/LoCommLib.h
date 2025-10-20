@@ -34,6 +34,7 @@ uint16_t crc_16(const uint8_t* data, size_t len);
 bool message_type_match(const uint8_t* mes, const char* str, size_t len);
 
 //this function checks to see if there is a password hash being stored and if not it stores the default password hash
+//handle the storge of the hash in memeory in the handle_CONN_packet  function 
 void init_password();
 
 #endif
