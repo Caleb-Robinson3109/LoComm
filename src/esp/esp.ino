@@ -41,7 +41,7 @@
 #include "esp.h"
 
 
-uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -131,7 +131,7 @@ void loop() {
 
   //TODO write unit tests for the arrays types
   if (RUN_UNIT_TESTS) {
-    LLog("Running Cyclic Array List unit tests:");
+    LLog("Defragging Buffer Tests:");
 
     //TODO write these
   }
@@ -193,6 +193,11 @@ void loop() {
 
       bool messageFound = false;
       
+      //TODO we should add some optimization here so that, when new data comes in and we are still scanning off the same start byte, we should automatically start scanning at the point
+      //of the new data since we know the old data doesn't contain a message
+      //This problem is most prevalent when an invalid message with a valid end byte is in the buffer and the buffer is under 256 bytes.
+      //Every time new data gets added to the buffer, the message will attempt to be processed again 
+
       for (int i = 1; i < min((int)rxBuffer.size(), startIndex + 256); i++) { //i+1 is now the total message length
         if (rxBuffer[i] == END_BYTE) {
           LDebug("Found End Byte in rxBuffer");
@@ -220,7 +225,7 @@ void loop() {
           }
 
           //Calculate the CRC and check if its correct 
-          uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)tempBuf, i - 1))^0xffffffff;
+          uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)tempBuf, i - 3))^0xffffffff;
           uint16_t msgCrc = (tempBuf[i-3] << 8) + tempBuf[i-2]; 
           if ((crc & 0xFFFF) != msgCrc) {
             LDebug("Received RX message does not have matching CRC, skipping");
@@ -395,7 +400,7 @@ void loop() {
       } else
 
       //check if a message has expired
-      if (diff((millis() / 1000) % 255, rxMessageArray.get(i)[8], 256) > 10) {
+      if ((diff((millis() / 1000) % 255, rxMessageArray.get(i)[8], 256)) > 10) {
         LLog("Clearing message in RX buffer that has been around for 10 seconds");
         //since it expired, remove its allocation and clear it from the message array
         const uint16_t address = (rxMessageArray.get(i)[1] << 8) + rxMessageArray.get(i)[2]; 
@@ -458,10 +463,19 @@ void loop() {
   if (millis() > lastTxProcess + 500) {
     lastTxProcess = millis();
     for (int i = 0; i < txMessageArray.size(); i++) {
-      LDebug("Processing message in tx message array:");
-      dumpArrayToSerial(&(txMessageArray.get(i)[0]), 8);
+      LDebug("Processing message in tx message array");
       const uint8_t sendCount = txMessageArray.get(i)[7] & 0b01111111;
+      const bool ack = txMessageArray.get(i)[7] & 0b10000000;
       const uint16_t location = (txMessageArray.get(i)[2] << 8) + txMessageArray.get(i)[3];
+
+      //If the ack bit is set, drop the message
+      if (ack) {
+        LDebug("Ack detected for current tx message, dropping from buffer");
+        txMessageBuffer.free(location);
+        txMessageArray.remove(i--);
+        continue;
+      }
+
       //If we've reached the max number of send attempts, drop the data all together
       if (sendCount > LORA_SEND_COUNT_MAX) {
         LDebug("Message has reached max send attempts, dropping from buffer");
@@ -472,7 +486,9 @@ void loop() {
 
       //If it has been over a second since the previous send, try again //NOTE this 1s resent delay should probably be made shorter and controllable via a constant
       uint16_t lastSendTime = (txMessageArray.get(i)[5] << 8) + txMessageArray.get(i)[6];
-      if (diff(millis() % 65536, lastSendTime, 65536) > 4000) {
+      if ((diff(millis() % 65536, lastSendTime, 65536)) > 4000) {
+        LDebug("Message being processed has reached send time again");
+        dumpArrayToSerial(&(txMessageArray.get(i)[0]), 8);
         LDebug("adding a message to the readytosend buffer");
         Serial.printf("Diff = %d, 1 = %d, 2 = %d\n", diff(millis() % 65536, lastSendTime, 65536), millis() % 65536, lastSendTime);
         lastSendTime = millis() % 65536; //NOTE - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
@@ -504,9 +520,12 @@ void loop() {
   //NOTE this is temporary code
   //For now, we will just push the code straight to the serial buffer
   if (serialReadyToSendArray.size() > 0) {
+    LDebug("Detected messages ready to dump out to serial");
     for (int i = 0; i < serialReadyToSendArray.size(); i++) {
       const uint16_t addr = (serialReadyToSendArray.get(i)[0] << 8) + serialReadyToSendArray.get(i)[1];
       const uint16_t size = (serialReadyToSendArray.get(i)[2] << 8) + serialReadyToSendArray.get(i)[3];
+      LDebug("Writing received messge to serial...");
+      Serial.printf("Identified addr is %d, Identified size is %d\n", addr, size);
       Serial.write(&(rxMessageBuffer[addr]), size);
       //after writing to the buffer, free it from the rx buffer
       rxMessageBuffer.free(addr);
