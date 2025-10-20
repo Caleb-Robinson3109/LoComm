@@ -39,7 +39,8 @@ def reset_passoword(password: str) -> bool:
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
 def send_message(name: str, message: str) -> bool:
-    return locomm_api_send_message(name, message)
+    global serial_conn
+    return locomm_api_send_message(name, message, serial_conn)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> name, message.
 def receive_message() -> tuple[str, str]:
