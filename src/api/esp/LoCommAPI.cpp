@@ -98,6 +98,7 @@ void handle_message_from_computer(){
 
     //the build_TYPE_packet will build in the device_out_packet[]
     if(message_type_match(message_type, "CONN", MESSAGE_TYPE_SIZE)){
+        handle_CONN_packet();
         build_CACK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
@@ -114,12 +115,8 @@ void handle_message_from_computer(){
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("DCON - ");
-        lcd.print((char*)password_ascii);
         //delay(2000);
         handle_DCON_packet();
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print((char*)password_ascii);
         build_DCAK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
@@ -145,6 +142,7 @@ void handle_message_to_computer(){
     lcd.print("out packet");
     delay(2000);
     Serial.write(computer_out_packet, computer_out_size);
+    Serial.flush();
     message_to_computer_flag = false;
     computer_out_size = 0;
 }
@@ -166,6 +164,14 @@ void handle_PASS_packet(){
     for(int i = password_size; i < 32; i++){
         input_password[i] = 0x00;
     }
+
+    for(int i = 0; i < 16; i++){
+        lcd.setCursor(i,0);
+        lcd.write(password_ascii[i]);
+        lcd.setCursor(i,1);
+        lcd.write(input_password[i]);
+    }
+    delay(3000);
 
     //get the password hash stored in storage and check it aginst the enterne password.
     //if the password is corrext store it and set the passowrd flag
@@ -205,7 +211,15 @@ void handle_STPW_packet(){
     for(int i = old_size; i < 32; i++){
         old_password[i] = 0x00;
     }
-
+    lcd.clear();
+    
+    for(int i = 0; i < 16; i++){
+        lcd.setCursor(i,0);
+        lcd.write(password_ascii[i]);
+        lcd.setCursor(i,1);
+        lcd.write(old_password[i]);
+    }
+    delay(3000);
     //checks aginst the curr password and returns if it is not the same
     if(memcmp(old_password, password_ascii, 32) == -1){
         //not the same
@@ -232,4 +246,11 @@ void handle_STPW_packet(){
     memcpy(password_hash, new_password_hash, 32);
     storage.putBytes("password", password_hash, 32);
     set_password_flag = true;
+}
+
+void handle_CONN_packet(){
+    //TODO bring out the encripted keys
+    
+    //gets the password hash from sorage
+    storage.getBytes("password", password_hash, 32);
 }

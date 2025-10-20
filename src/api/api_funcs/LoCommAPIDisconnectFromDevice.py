@@ -20,6 +20,7 @@ def build_DCON_packet(tag: int) -> bytes:
 def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
     print(f"sending DCON packet {packet}")
     ser.write(packet)
+    ser.flush()
     recv: bytes = ser.read(16)
     print(f"{recv.hex()}")
     start_bytes: int

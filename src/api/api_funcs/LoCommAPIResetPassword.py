@@ -29,12 +29,14 @@ def craft_RSPW_packet(tag: int, password: str) -> bytes:
 
 def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     ser.write(packet)
+    ser.flush()
     #wait for respoce
     responce: bytes = ser.read(20)
 
     #check the packet
     if(len(responce) != 20):
         ser.write(packet)
+        ser.flush()
     
     start_bytes: int
     packet_size: int

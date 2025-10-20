@@ -29,12 +29,14 @@ def craft_PASS_packet(tag: int, password: str) -> bytes:
 
 def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     ser.write(packet)
+    ser.flush()
     #wait for respoce
     responce: bytes = ser.read(20)
 
     #check the packet
     if(len(responce) != 20):
         ser.write(packet)
+        ser.flush()
     
     start_bytes: int
     packet_size: int
@@ -45,7 +47,7 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     end_bytes: int
 
     start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", responce)
-
+    print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag) + message
     crc_check: int = binascii.crc_hqx(payload, 0)

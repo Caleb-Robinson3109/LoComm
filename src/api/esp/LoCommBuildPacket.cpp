@@ -42,7 +42,7 @@ void build_PWAK_packet(){
     computer_out_packet[2] = (PWAK_SIZE >> 8) & 0xFF; 
     computer_out_packet[3] = PWAK_SIZE & 0xFF;
 
-    //CACK
+    //PWAK
     computer_out_packet[4] = 'P';
     computer_out_packet[5] = 'W';
     computer_out_packet[6] = 'A';

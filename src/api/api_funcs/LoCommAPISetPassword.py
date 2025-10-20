@@ -28,6 +28,7 @@ def build_STPW_packet(tag: int, old: str, new: str) -> bytes:
 
 def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
     ser.write(packet)
+    ser.flush()
     #wait for respoce
     responce: bytes = ser.read(20)
 
