@@ -41,7 +41,7 @@
 #include "esp.h"
 
 
-uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -131,7 +131,7 @@ void loop() {
 
   //TODO write unit tests for the arrays types
   if (RUN_UNIT_TESTS) {
-    LLog("Running Cyclic Array List unit tests:");
+    LLog("Defragging Buffer Tests:");
 
     //TODO write these
   }
@@ -525,6 +525,7 @@ void loop() {
       const uint16_t addr = (serialReadyToSendArray.get(i)[0] << 8) + serialReadyToSendArray.get(i)[1];
       const uint16_t size = (serialReadyToSendArray.get(i)[2] << 8) + serialReadyToSendArray.get(i)[3];
       LDebug("Writing received messge to serial...");
+      Serial.printf("Identified addr is %d, Identified size is %d\n", addr, size);
       Serial.write(&(rxMessageBuffer[addr]), size);
       //after writing to the buffer, free it from the rx buffer
       rxMessageBuffer.free(addr);
