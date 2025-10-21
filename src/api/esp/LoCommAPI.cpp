@@ -94,30 +94,22 @@ void handle_message_from_computer(){
     //the build_TYPE_packet will build in the device_out_packet[]
     if(message_type_match(message_type, "CONN", MESSAGE_TYPE_SIZE)){
         handle_CONN_packet();
-        build_CACK_packet();
-        message_to_computer_flag = true;
-        message_from_computer_flag = false;
     }
 
     else if(message_type_match(message_type, "PASS", MESSAGE_TYPE_SIZE)){
         handle_PASS_packet();
-        build_PWAK_packet();
-        message_to_computer_flag = true;
-        message_from_computer_flag = false;
     }
 
     else if(message_type_match(message_type, "DCON", MESSAGE_TYPE_SIZE)){
         handle_DCON_packet();
-        build_DCAK_packet();
-        message_to_computer_flag = true;
-        message_from_computer_flag = false;
     }
 
     else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
         handle_STPW_packet();
-        build_SPAK_packet();
-        message_to_computer_flag = true;
-        message_from_computer_flag = false;
+    }
+
+    else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
+        handle_SEND_packet();
     }
 }
 
@@ -164,6 +156,10 @@ void handle_PASS_packet(){
     else{
         password_entered_flag = false;
     }
+
+    build_PWAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }
 
 void handle_DCON_packet(){
@@ -174,6 +170,10 @@ void handle_DCON_packet(){
     }
 
     //TODO eventuall the key with 0x00 
+
+    build_DCAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }
 
 void handle_STPW_packet(){
@@ -207,6 +207,11 @@ void handle_STPW_packet(){
         lcd.print("old != curr");
         delay(3000);
         set_password_flag = false;
+
+        build_SPAK_packet();
+        message_to_computer_flag = true;
+        message_from_computer_flag = false;
+
         return;
     }
     lcd.clear();
@@ -243,6 +248,10 @@ void handle_STPW_packet(){
     memcpy(password_hash, new_password_hash, 32);
     storage.putBytes("password", password_hash, 32);
     set_password_flag = true;
+
+    build_SPAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }
 
 void handle_CONN_packet(){
@@ -250,4 +259,29 @@ void handle_CONN_packet(){
     
     //gets the password hash from sorage
     storage.getBytes("password", password_hash, 32);
+
+    build_CACK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
+}
+
+void handle_SEND_packet(){
+    //puts the computer in packet into device out packet
+    memcpy(device_out_packet, computer_in_packet, MAX_PACKET_SIZE);
+
+    //set the message_to_device flag
+    message_to_device_flag = true;
+
+    //wait for the packet to be handled
+    while(message_to_device_flag){
+        //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
+        message_to_device_flag = false; // Completed transfer to Ethans code
+    }
+
+    //build SACK
+    build_SACK_packet();
+
+    //set the other flags to handle the sack to computer message
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }

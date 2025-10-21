@@ -63,7 +63,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
                     print("fail at start bytes")
                     ser.close()
                     continue
-                if message_type != b"SACK":
+                if message_type != b"CACK":
                     print(f"fail at message type - {message_type}")
                     ser.close()
                     continue
