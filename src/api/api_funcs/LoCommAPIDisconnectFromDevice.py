@@ -77,7 +77,7 @@ def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
 
 
         okay: bool = send_recv_packet(ser, packet, tag)
-        tries: int = 0
+        tries: int = 9
 
         while(not okay and tries < 10):
             okay = send_recv_packet(ser, packet, tag)

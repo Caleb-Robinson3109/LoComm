@@ -6,7 +6,7 @@ import random
 def build_STPW_packet(tag: int, old: str, new: str) -> bytes:
     start_bytes: int = 0x1234
     packet_size: int = 2 + len(old) + len(new) + 16
-    message_type: bytes = b"PASS"
+    message_type: bytes = b"STPW"
     message: bytes = struct.pack(">B", len(old)) + struct.pack(">B", len(new)) + old.encode('ascii') + new.encode('ascii')
 
     #computer the payload for the checksum
@@ -45,6 +45,7 @@ def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
     end_bytes: int
 
     start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", responce)
+    print(f"recv pakcet: {start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
 
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag) + message
@@ -61,7 +62,7 @@ def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
     
     if(message_type != b"SPAK"):
         print(f"message type fail - {message_type}")
-        raise ValueError(f"return packet fail: message type fail - PWAK, {message_type}")
+        raise ValueError(f"return packet fail: message type fail - SPAK, {message_type}")
     
     if(ret_tag != tag):
         print(f"tag fail - {tag} {ret_tag}")

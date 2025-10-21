@@ -38,24 +38,19 @@ void recive_packet_from_computer(){
     if(Serial.available() == 0){
         return;
     }
-    //lcd.clear();
-    //lcd.setCursor(0,0);
-    //lcd.print("read");
+
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
         computer_in_packet[serial_index++] = Serial.read();
-        //lcd.setCursor(6,0);
-        //lcd.print(serial_index);
     }
-    //lcd.setCursor(0,0);
-    //lcd.print("done");
+
     message_from_computer_flag = true;
+
     //set the lenght of the incommed packet
     computer_in_size = serial_index;
 }
 
 void handle_message_from_computer(){
     //check start bytes
-    lcd.setCursor(0,1);
     if(!(computer_in_packet[0] == 0x12 && computer_in_packet[1] == 0x34)){
         message_from_computer_flag = false;
         computer_in_size = 0;
@@ -112,16 +107,10 @@ void handle_message_from_computer(){
     }
 
     else if(message_type_match(message_type, "DCON", MESSAGE_TYPE_SIZE)){
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print("DCON - ");
-        //delay(2000);
         handle_DCON_packet();
         build_DCAK_packet();
         message_to_computer_flag = true;
         message_from_computer_flag = false;
-        lcd.setCursor(0,1);
-        //delay(200);
     }
 
     else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
@@ -135,12 +124,12 @@ void handle_message_from_computer(){
 void handle_message_to_computer(){
     lcd.clear();
     lcd.setCursor(0,0);
-    for(int i = 0; i < 16; i++){
+    for(int i = 4; i < 20; i++){
         lcd.write(computer_out_packet[i]);
     }
     lcd.setCursor(0,1);
     lcd.print("out packet");
-    delay(2000);
+    delay(3000);
     Serial.write(computer_out_packet, computer_out_size);
     Serial.flush();
     message_to_computer_flag = false;
@@ -165,14 +154,6 @@ void handle_PASS_packet(){
         input_password[i] = 0x00;
     }
 
-    for(int i = 0; i < 16; i++){
-        lcd.setCursor(i,0);
-        lcd.write(password_ascii[i]);
-        lcd.setCursor(i,1);
-        lcd.write(input_password[i]);
-    }
-    delay(3000);
-
     //get the password hash stored in storage and check it aginst the enterne password.
     //if the password is corrext store it and set the passowrd flag
     mbedtls_sha256(input_password, 32, input_password_hash, 0);
@@ -187,16 +168,11 @@ void handle_PASS_packet(){
 
 void handle_DCON_packet(){
     // overwrites the password and the password hash with 0x00
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("clearing passes");
     for(int i = 0; i < PASSWORD_SIZE; i++){
         password_ascii[i] = 0x00;
         password_hash[i] = 0x00;
     }
-    lcd.setCursor(0,1);
-    lcd.print("done - del pass");
-    //delay(2000);
+
     //TODO eventuall the key with 0x00 
 }
 
@@ -205,40 +181,61 @@ void handle_STPW_packet(){
     uint8_t old_size = computer_in_packet[12];
 
     //get the old password and set the blank bytes to 0x00
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("stpw oldpass");
+    lcd.setCursor(0,1);
     for(int i = 0; i < old_size; i++){
-        old_password[i] = computer_in_packet[13 + i];
+        old_password[i] = computer_in_packet[14 + i];
+        if(i < 16){
+            lcd.write(old_password[i]);
+        }
     }
     for(int i = old_size; i < 32; i++){
         old_password[i] = 0x00;
-    }
-    lcd.clear();
-    
-    for(int i = 0; i < 16; i++){
-        lcd.setCursor(i,0);
-        lcd.write(password_ascii[i]);
-        lcd.setCursor(i,1);
-        lcd.write(old_password[i]);
+        if(i < 16){
+            lcd.write(old_password[i]);
+        }
     }
     delay(3000);
+
     //checks aginst the curr password and returns if it is not the same
     if(memcmp(old_password, password_ascii, 32) == -1){
         //not the same
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("old != curr");
+        delay(3000);
         set_password_flag = false;
         return;
     }
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("old == curr");
+    delay(3000);
 
     //get the new password
     uint8_t new_password[32];
     uint8_t new_password_hash[32];
-    uint8_t new_size = computer_in_packet[12 + old_size];
+    uint8_t new_size = computer_in_packet[13];
     uint8_t new_start_index = 14 + old_size;
-
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("stpw newpass");
+    lcd.setCursor(0,1);
     for(int i = 0; i < new_size; i++){
         new_password[i] = computer_in_packet[new_start_index + i];
+        if(i < 16){
+            lcd.write(old_password[i]);
+        }
     }
     for(int i = new_size; i < 32; i++){
         new_password[i] = 0x00;
+        if(i < 16){
+            lcd.write(old_password[i]);
+        }
     }
+    delay(3000);
 
     //sets the new passowrd in storage hash and ascii
     memcpy(password_ascii, new_password, 32);
