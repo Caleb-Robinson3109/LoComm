@@ -4,6 +4,8 @@ from LoCommAPI import receive_message
 from LoCommAPI import enter_password
 from LoCommAPI import set_password
 
+import time
+
 import threading
 
 stop_flag = False
@@ -17,10 +19,10 @@ def print_input():
 #main
 while(not connect_to_device()):
     pass
-
+time.sleep(0.05)
 enter_password("password")
 #set_password("password", "admin")
-
+time.sleep(0.05)
 disconnect_from_device()
 
 """

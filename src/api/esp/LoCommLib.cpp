@@ -69,7 +69,7 @@ void init_password(){
     //check to see if there is storage of the password if not add default password
     size_t passowrd_len = storage.getBytesLength("password");
     if(passowrd_len == 0){
-        mbedtls_sha256(default_password, 32, password_hash, 0);
+        //mbedtls_sha256(default_password, 32, password_hash, 0);
         storage.putBytes("password", password_hash, 32);
     }
     else{

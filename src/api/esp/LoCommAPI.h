@@ -84,4 +84,8 @@ void handle_DCON_packet();
 //this function handles an incomming set password STPW packet. setting a new password and its hash in storage
 void handle_STPW_packet();
 
+//this function handles a incomming CONN by bringing up the password hash into memory and the encoded key into memrory
+void handle_CONN_packet();
+
+
 #endif

@@ -40,6 +40,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
             print(f"giving packet {packet} to port {port}")
             ser.write(packet)
+            ser.flush()
             #wait for responce timeout defined in ser def
             data: bytes = ser.read(16)
 

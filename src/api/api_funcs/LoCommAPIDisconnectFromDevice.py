@@ -18,9 +18,11 @@ def build_DCON_packet(tag: int) -> bytes:
     return packet
 
 def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
+    print(f"sending DCON packet {packet}")
     ser.write(packet)
+    ser.flush()
     recv: bytes = ser.read(16)
-
+    print(f"{recv.hex()}")
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -29,6 +31,8 @@ def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
     end_bytes: int
 
     start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", recv)
+
+    print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {crc} {end_bytes}")
 
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag)
     crc_check: int = binascii.crc_hqx(payload, 0)
@@ -57,6 +61,8 @@ def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
     if(end_bytes != 0x5678):
         print(f"DCAK end bytes fail - 0x5678, {end_bytes}")
         return False
+    
+    return True
 
 
 def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
@@ -69,7 +75,6 @@ def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet: bytes = build_DCON_packet(tag)
 
-        print(f"sending DCON packet {packet}")
 
         okay: bool = send_recv_packet(ser, packet, tag)
         tries: int = 0
