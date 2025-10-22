@@ -21,6 +21,7 @@
 #define LWarn(x) Log(LOG_LEVEL_WARNING, x)
 #define LError(x) Log(LOG_LEVEL_ERROR, x)
 #define HALT() Serial.println("Halting"); while(1)
+#define Debug(x) if (CURRENT_LOG_LEVEL == LOG_LEVEL_DEBUG) x
 
 #define diff(new, old, size) (new >= old) ? new - old : size - old + new
 
@@ -41,7 +42,7 @@
 #include "esp.h"
 
 
-uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -111,7 +112,7 @@ void setup() {
   LoRa.onReceive(onReceive);
 
   //Set idle mode
-  Serial.println("Setup Finished");
+  Debug(Serial.println("Setup Finished"));
   enterReceiveMode();
   display.clearDisplay();
   display.display();
@@ -124,16 +125,100 @@ void setup() {
 void loop() {
   static uint8_t tempDeviceMode = 255;
   if (lastDeviceMode != tempDeviceMode) {
-    Serial.printf("Device Mode change detected! New device mode is %d\n", lastDeviceMode);
+    Debug(Serial.printf("Device Mode change detected! New device mode is %d\n", lastDeviceMode));
     tempDeviceMode = lastDeviceMode;
   }
 
 
   //TODO write unit tests for the arrays types
   if (RUN_UNIT_TESTS) {
+    delay(2000);
+    
+    uint8_t tempBuf[256];
+    DefraggingBuffer<2048, 8> testBuffer = DefraggingBuffer<2048, 8>();
+    testBuffer.init();
     LLog("Defragging Buffer Tests:");
+    LLog("Allocating a buffer of size 100");
 
-    //TODO write these
+    uint16_t bufferOneLocation = testBuffer.malloc(100); 
+    if (bufferOneLocation != 0xFFFF) {
+      LDebug("Successfully malloced a single buffer of size 100");
+    } else {
+      LError("Failed to malloc a single buffer of size 100");
+      HALT();
+    }
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
+
+    LLog("Allocating a second buffer of size 70");
+    if (testBuffer.malloc(70) != 0xFFFFFFFF) {
+      LDebug("Successfully malloced a single buffer of size 70");
+    } else {
+      LError("Failed to malloc a second buffer of size 70");
+      HALT();
+    }
+
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
+
+    LLog("Freeing the initial malloc:");
+    if (testBuffer.free(0)) {
+      LDebug("Successfully freed initial malloc");
+    } else {
+      LError("Failed to release initial malloc");
+      HALT();
+    }
+
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
+
+    uint32_t buffer3 = testBuffer.malloc(30);
+    LLog("Mallocing a buffer of size 30, expecting it to be placted at the beginning");
+    if (buffer3 != 0) {
+      LError("Buffer was not placed at correct location!");
+      HALT();
+    }
+
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
+
+    LLog("Removing buffer that was just created");
+    if (!testBuffer.free(0)) {
+      LError("Failed to free buffer");
+      HALT();
+    }
+
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
+
+    //LLog("Deallocating")
+    LLog("Passed all tests, exiting");
+    HALT();
   }
 
   static bool shouldScanRxBuffer = false; 
@@ -164,8 +249,8 @@ void loop() {
     //try to add data to the buffer
     if (rxBuffer.pushBack(tempBuf, size)) {
       LDebug("Added data to LoRa rx buffer");
-      Serial.printf("First Byte of Data: %d\n", tempBuf[0]);
-      Serial.printf("Second Byte of Data: %d\n", tempBuf[1]);
+      Debug(Serial.printf("First Byte of Data: %d\n", tempBuf[0]));
+      Debug(Serial.printf("Second Byte of Data: %d\n", tempBuf[1]));
       shouldScanRxBuffer = true;
     } else {
       LWarn("Rx Buffer is currently full, not adding data");
@@ -202,7 +287,7 @@ void loop() {
         if (rxBuffer[i] == END_BYTE) {
           LDebug("Found End Byte in rxBuffer");
           LDebug("Message Identified...");
-          dumpArrayToSerial(&(rxBuffer[0]), i+1);
+          Debug(dumpArrayToSerial(&(rxBuffer[0]), i+1));
 
 
           uint8_t tempBuf[256];
@@ -429,7 +514,7 @@ void loop() {
       lastDeviceMode = TX_MODE;
       LoRa.endPacket(true);
       LDebug("Finishing writing Normal message to LoRa, dumping message");
-      dumpArrayToSerial(&(txMessageBuffer[src]), size);
+      Debug(dumpArrayToSerial(&(txMessageBuffer[src]), size));
     } else if (ackToSendBuffer.size() > 0) {
       LoRa.beginPacket();
       ackDispatched = true;
@@ -462,8 +547,8 @@ void loop() {
   static uint32_t lastTxProcess = millis(); //NOTE at some point, this should be made into a looping variable. It will overflow in about 1.5 months
   if (millis() > lastTxProcess + 500) {
     lastTxProcess = millis();
+    LDebug("attempting to process messagess in tx message array");
     for (int i = 0; i < txMessageArray.size(); i++) {
-      LDebug("Processing message in tx message array");
       const uint8_t sendCount = txMessageArray.get(i)[7] & 0b01111111;
       const bool ack = txMessageArray.get(i)[7] & 0b10000000;
       const uint16_t location = (txMessageArray.get(i)[2] << 8) + txMessageArray.get(i)[3];
@@ -488,9 +573,9 @@ void loop() {
       uint16_t lastSendTime = (txMessageArray.get(i)[5] << 8) + txMessageArray.get(i)[6];
       if ((diff(millis() % 65536, lastSendTime, 65536)) > 4000) {
         LDebug("Message being processed has reached send time again");
-        dumpArrayToSerial(&(txMessageArray.get(i)[0]), 8);
+        Debug(dumpArrayToSerial(&(txMessageArray.get(i)[0]), 8));
         LDebug("adding a message to the readytosend buffer");
-        Serial.printf("Diff = %d, 1 = %d, 2 = %d\n", diff(millis() % 65536, lastSendTime, 65536), millis() % 65536, lastSendTime);
+        Debug(Serial.printf("Diff = %d, 1 = %d, 2 = %d\n", diff(millis() % 65536, lastSendTime, 65536), millis() % 65536, lastSendTime));
         lastSendTime = millis() % 65536; //NOTE - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
         txMessageArray.get(i)[5] = lastSendTime >> 8;
         txMessageArray.get(i)[6] = lastSendTime & 0xFF;
@@ -501,7 +586,7 @@ void loop() {
         tBuf[2] = txMessageArray.get(i)[4]; //size
         if (readyToSendBuffer.pushBack(tBuf, 3)) {
           LDebug("Added message to ready to send buffer");
-          dumpArrayToSerial(&(tBuf[0]), 3);
+          Debug(dumpArrayToSerial(&(tBuf[0]), 3));
         } else {
           LError("Failed to add message to ready to send buffer because it was full");
         }
@@ -525,7 +610,7 @@ void loop() {
       const uint16_t addr = (serialReadyToSendArray.get(i)[0] << 8) + serialReadyToSendArray.get(i)[1];
       const uint16_t size = (serialReadyToSendArray.get(i)[2] << 8) + serialReadyToSendArray.get(i)[3];
       LDebug("Writing received messge to serial...");
-      Serial.printf("Identified addr is %d, Identified size is %d\n", addr, size);
+      Debug(Serial.printf("Identified addr is %d, Identified size is %d\n", addr, size));
       Serial.write(&(rxMessageBuffer[addr]), size);
       //after writing to the buffer, free it from the rx buffer
       rxMessageBuffer.free(addr);
@@ -627,7 +712,7 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size) {
     }
 
     LDebug("Dumped message in tx Array:");
-    dumpArrayToSerial(&(temp[0]), 8);
+    Debug(dumpArrayToSerial(&(temp[0]), 8));
 
     //now that we successfully added the message information to the array and the buffer, construct the message into the buffer
     //TODO when we add encryption, we need to encrypt allthis (excluding start and stop byte)
@@ -644,7 +729,7 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size) {
     txMessageBuffer[addr+7+messageLength+1] = (newCrc & 0x000000FF);
     txMessageBuffer[addr+7+messageLength+2] = END_BYTE;
     LDebug("Finished writing new data to tx message buffer:");
-    dumpArrayToSerial(&(txMessageBuffer[0]), 10 + messageLength);
+    Debug(dumpArrayToSerial(&(txMessageBuffer[0]), 10 + messageLength));
 
   }
   return true;
@@ -704,6 +789,15 @@ void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
   }
   Serial.printf("\n");
 }
+
+void dumpArray16ToSerial(const uint16_t* src, const uint16_t size) {
+  Serial.printf("Dumping Array to Serial: \n");
+  for (int i = 0; i < size; i++) {
+    Serial.printf("%d ", src[i]);
+  }
+  Serial.printf("\n");
+}
+
 
 
 
