@@ -2,6 +2,7 @@ import serial
 import struct
 import binascii
 import random
+from api_funcs.LoCommContext import LoCommContext
 
 def build_STPW_packet(tag: int, old: str, new: str) -> bytes:
     start_bytes: int = 0x1234
@@ -26,16 +27,7 @@ def build_STPW_packet(tag: int, old: str, new: str) -> bytes:
     
     return packet
 
-def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
-    ser.write(packet)
-    ser.flush()
-    #wait for respoce
-    responce: bytes = ser.read(20)
-
-    #check the packet
-    if(len(responce) != 20):
-        raise ValueError(f"incorrce recv packet len")
-    
+def check_SPAK_packet(packet: bytes, tag: int) -> None:
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -44,7 +36,7 @@ def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", responce)
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", packet)
     print(f"recv pakcet: {start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
 
     #crc calc
@@ -80,16 +72,26 @@ def send_recv_packet(tag: int, packet: bytes, ser: serial.Serial) -> None:
         print(f"end byte fail - {end_bytes}")
         raise ValueError(f"return packet fail: end byte fail - 0x5678, {end_bytes}")
 
-def locomm_api_set_password(old: str, new: str, ser: serial.Serial) -> bool:
+def locomm_api_set_password(old: str, new: str, ser: serial.Serial, context: LoCommContext) -> bool:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = build_STPW_packet(tag, old, new)
         print(f"STPW packet - {packet}")
-        send_recv_packet(tag, packet, ser)
+        
+        ser.write(packet)
+        ser.flush()
+
+        #wait for responce from LCC
+        while(not context.SPAK_flag):
+            pass
+
+        check_SPAK_packet(context.packet, tag)
         print("send STPW complete")
 
     except Exception as e:
         print(f"password set error: {e}")
+        context.SPAK_flag = False
         return False
     
+    context.SPAK_flag = False
     return True

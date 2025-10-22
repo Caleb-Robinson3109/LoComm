@@ -2,6 +2,7 @@ import serial
 import random
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
+from api_funcs.LoCommContext import LoCommContext
 
 def build_DCON_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
@@ -17,12 +18,7 @@ def build_DCON_packet(tag: int) -> bytes:
     packet: bytes = struct.pack(">HH4sIHH", start_bytes, packet_size, message_type, tag, crc, end_bytes)
     return packet
 
-def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
-    print(f"sending DCON packet {packet}")
-    ser.write(packet)
-    ser.flush()
-    recv: bytes = ser.read(16)
-    print(f"{recv.hex()}")
+def check_DCAK_packet(packet: bytes, tag: int) -> bool:
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -30,7 +26,7 @@ def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", recv)
+    start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", packet)
 
     print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {crc} {end_bytes}")
 
@@ -65,7 +61,7 @@ def send_recv_packet(ser: serial.Serial, packet: bytes, tag: int) -> bool:
     return True
 
 
-def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
+def locomm_api_disconnect_from_device(ser: serial.Serial, context: LoCommContext) -> bool:
     if ser == None:
         print(f"no serial connecton to close")
         return False
@@ -74,9 +70,17 @@ def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
         #tell device to delete password on the device
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet: bytes = build_DCON_packet(tag)
+        print(f"send DCON - {packet}")
+        ser.write(packet)
+        ser.flush()
 
+        #wait for responce
+        while (not context.DCAK_flag):
+            pass
 
-        okay: bool = send_recv_packet(ser, packet, tag)
+        okay: bool = check_DCAK_packet(context.packet, tag)
+        
+        """
         tries: int = 9
 
         while(not okay and tries < 10):
@@ -86,13 +90,13 @@ def locomm_api_disconnect_from_device(ser: serial.Serial) -> bool:
 
         if(tries == 10 and not okay):
             raise ValueError("tried to send DCON 10 times and failed each time")
+        """
 
-        # Close connection
-        ser.close()
-        print("Connection closed")
 
     except Exception as e:
         print(f"closing serial connection error - {e}")
+        context.DCAK_flag = False
         return False
     
+    context.DCAK_flag = False
     return True

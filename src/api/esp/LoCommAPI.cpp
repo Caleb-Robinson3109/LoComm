@@ -88,7 +88,6 @@ void handle_message_from_computer(){
     uint8_t message_type[4];
     for(int i = 0; i < 4; i++){
         message_type[i] = computer_in_packet[i+4];
-
     }
 
     //the build_TYPE_packet will build in the device_out_packet[]
@@ -108,20 +107,24 @@ void handle_message_from_computer(){
         handle_STPW_packet();
     }
 
-    else if(message_type_match(message_type, "STPW", MESSAGE_TYPE_SIZE)){
+    else if(message_type_match(message_type, "SEND", MESSAGE_TYPE_SIZE)){
         handle_SEND_packet();
+    }
+
+    else{
+        Serial.write("FAIL");
     }
 }
 
 void handle_message_to_computer(){
     lcd.clear();
     lcd.setCursor(0,0);
-    for(int i = 4; i < 20; i++){
+    for(int i = 0; i < 16; i++){
         lcd.write(computer_out_packet[i]);
     }
     lcd.setCursor(0,1);
     lcd.print("out packet");
-    delay(3000);
+    delay(1000);
     Serial.write(computer_out_packet, computer_out_size);
     Serial.flush();
     message_to_computer_flag = false;
@@ -181,31 +184,16 @@ void handle_STPW_packet(){
     uint8_t old_size = computer_in_packet[12];
 
     //get the old password and set the blank bytes to 0x00
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("stpw oldpass");
-    lcd.setCursor(0,1);
     for(int i = 0; i < old_size; i++){
         old_password[i] = computer_in_packet[14 + i];
-        if(i < 16){
-            lcd.write(old_password[i]);
-        }
     }
     for(int i = old_size; i < 32; i++){
         old_password[i] = 0x00;
-        if(i < 16){
-            lcd.write(old_password[i]);
-        }
     }
-    delay(3000);
 
     //checks aginst the curr password and returns if it is not the same
     if(memcmp(old_password, password_ascii, 32) == -1){
         //not the same
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print("old != curr");
-        delay(3000);
         set_password_flag = false;
 
         build_SPAK_packet();
@@ -214,33 +202,19 @@ void handle_STPW_packet(){
 
         return;
     }
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("old == curr");
-    delay(3000);
 
     //get the new password
     uint8_t new_password[32];
     uint8_t new_password_hash[32];
     uint8_t new_size = computer_in_packet[13];
     uint8_t new_start_index = 14 + old_size;
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("stpw newpass");
-    lcd.setCursor(0,1);
+
     for(int i = 0; i < new_size; i++){
         new_password[i] = computer_in_packet[new_start_index + i];
-        if(i < 16){
-            lcd.write(old_password[i]);
-        }
     }
     for(int i = new_size; i < 32; i++){
         new_password[i] = 0x00;
-        if(i < 16){
-            lcd.write(old_password[i]);
-        }
     }
-    delay(3000);
 
     //sets the new passowrd in storage hash and ascii
     memcpy(password_ascii, new_password, 32);
@@ -267,21 +241,46 @@ void handle_CONN_packet(){
 
 void handle_SEND_packet(){
     //puts the computer in packet into device out packet
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("handle SEND packet");
+    delay(1000);
     memcpy(device_out_packet, computer_in_packet, MAX_PACKET_SIZE);
 
     //set the message_to_device flag
     message_to_device_flag = true;
 
-    //wait for the packet to be handled
-    while(message_to_device_flag){
-        //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
-        message_to_device_flag = false; // Completed transfer to Ethans code
-    }
+    //gets the packet size
+    uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
+    device_out_size = packet_size;
 
     //build SACK
     build_SACK_packet();
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("device out packet");
+    delay(1000);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    for(int i = 0; i < 16; i++){
+        lcd.write(device_out_packet[i]);
+    }
+    delay(1000);
 
     //set the other flags to handle the sack to computer message
     message_to_computer_flag = true;
     message_from_computer_flag = false;
+}
+
+void handle_message_to_device(){
+    //wait for the packet to be handled
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("handle message to device");
+    delay(1000);
+    while(message_to_device_flag){
+        //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
+        message_to_device_flag = false; // Completed transfer to Ethans code
+        device_out_size = 0;
+    }
 }

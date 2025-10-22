@@ -2,6 +2,7 @@ import serial
 import random #for gen random tag
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
+from api_funcs.LoCommContext import LoCommContext
 
 def craft_RSPW_packet(tag: int, password: str) -> bytes:
     start_bytes: int = 0x1234
@@ -27,17 +28,7 @@ def craft_RSPW_packet(tag: int, password: str) -> bytes:
     return packet
 
 
-def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
-    ser.write(packet)
-    ser.flush()
-    #wait for respoce
-    responce: bytes = ser.read(20)
-
-    #check the packet
-    if(len(responce) != 20):
-        ser.write(packet)
-        ser.flush()
-    
+def check_RSPW_packet(packet: bytes, tag: int) -> None:
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -46,7 +37,7 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", responce)
+    start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", packet)
 
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag)
@@ -78,16 +69,27 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
         raise ValueError(f"return packet fail: end byte fail - 0x5678, {end_bytes}")
 
 
-def locomm_api_reset_passoword(password: str, ser: serial.Serial) -> bool:
+def locomm_api_reset_passoword(password: str, ser: serial.Serial, context: LoCommContext) -> bool:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = craft_RSPW_packet(tag, password)
         print(f"RSPW packet - {packet}")
-        try_send_packet(packet, ser, tag)
+
+        ser.write(packet)
+        ser.flush()
+
+        #wait for responce
+        while(not context.RPAK_flag):
+            pass
+
+        check_RSPW_packet(packet, tag)
+
         print("send RSPW complete")
 
     except Exception as e:
         print(f"password enter error: {e}")
+        context.RPAK_flag = False
         return False
     
+    context.RPAK_flag = False
     return True
