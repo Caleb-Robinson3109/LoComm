@@ -18,7 +18,7 @@ class DefraggingBuffer {
       if (numAllocations == MAX_ALLOCATIONS) return 0xFFFFFFFF;
 
       //find the first open position with enough space
-      for (int i = 0; i < this->numAllocations+1; i++) {
+      for (int i = 0; i < numAllocations+1; i++) {
         if (openSpaceBetweenAllocations[i] >= size) {
           //open space found! fit it in the metadata and then return the location
           uint32_t ret;
@@ -40,7 +40,7 @@ class DefraggingBuffer {
           return ret;
         } 
         //No open spaces were found
-        return 0xFFFFFFFF;
+        //return 0xFFFFFFFF;
       } 
       return 0xFFFFFFFF;
       
