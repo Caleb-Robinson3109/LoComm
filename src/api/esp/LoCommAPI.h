@@ -92,5 +92,8 @@ void handle_CONN_packet();
 //sets the flags and puts the message in the device out buf so that the device knows we have an outgoing message
 void handle_SEND_packet();
 
+//this function tells the eps to send out a message
+//once the message_to_device flag is set false it will know the the esp has handled the packet and sent it out
+void handle_message_to_device();
 
 #endif

@@ -40,8 +40,7 @@ void loop() {
     handle_message_from_computer();
   }
   if(message_to_device_flag){
-    //handle
-    ;;
+    handle_message_to_device();
   }
   if(message_to_computer_flag){
     handle_message_to_computer();

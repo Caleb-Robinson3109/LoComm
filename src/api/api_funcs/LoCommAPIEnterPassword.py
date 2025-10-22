@@ -3,6 +3,8 @@ import random #for gen random tag
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
 
+from api_funcs.LoCommContext import LoCommContext
+
 def craft_PASS_packet(tag: int, password: str) -> bytes:
     start_bytes: int = 0x1234
     packet_size: int = len(password) + 16
@@ -27,17 +29,7 @@ def craft_PASS_packet(tag: int, password: str) -> bytes:
     return packet
 
 
-def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
-    ser.write(packet)
-    ser.flush()
-    #wait for respoce
-    responce: bytes = ser.read(20)
-
-    #check the packet
-    if(len(responce) != 20):
-        ser.write(packet)
-        ser.flush()
-    
+def check_PWAK_packet(packet: bytes, tag: int) -> None:
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -46,7 +38,7 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", responce)
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", packet)
     print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag) + message
@@ -81,16 +73,27 @@ def try_send_packet(packet: bytes, ser: serial.Serial, tag: int) -> None:
         print(f"end byte fail - {end_bytes}")
         raise ValueError(f"return packet fail: end byte fail - 0x5678, {end_bytes}")
 
-def locomm_api_enter_password(password: str, ser: serial.Serial) -> bool:
+def locomm_api_enter_password(password: str, ser: serial.Serial, context: LoCommContext) -> bool:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = craft_PASS_packet(tag, password)
         print(f"PASS packet - {packet}")
-        try_send_packet(packet, ser, tag)
+
+        #send the packet
+        ser.write(packet)
+        ser.flush()
+
+        #wait for context to say we've recived a pwak 
+        while(not context.PWAK_flag):
+            pass
+        
+        check_PWAK_packet(context.packet, tag)
         print("send PASS complete")
 
     except Exception as e:
         print(f"password enter error: {e}")
+        context.PWAK_flag = False
         return False
     
+    context.PWAK_flag = False
     return True
