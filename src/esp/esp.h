@@ -1,12 +1,12 @@
 #pragma once
 
 //define the pins used by the LoRa transceiver module
-#define SCK 5
-#define MISO 19
-#define MOSI 27
-#define SS 18
-#define RST 14
-#define DIO0 26
+#define SCK_LORA 5
+#define MISO_LORA 19
+#define MOSI_LORA 27
+#define SS_LORA 18
+#define RST_LORA 14
+#define DIO0_LORA 26
 
 //Frequency Band
 #define BAND 915E6

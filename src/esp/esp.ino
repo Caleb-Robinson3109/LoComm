@@ -1,46 +1,5 @@
-#define LORA_RX_BUFFER_SIZE 1024
-#define LORA_TX_BUFFER_SIZE 1024
-#define MIN_CAD_WAIT_INTERVAL_MS 1
-#define LORA_READY_TO_SEND_BUFFER_SIZE 1024
-#define LORA_ACK_BUFFER_SIZE 256
-#define LORA_SEND_COUNT_MAX 8
-#define SERIAL_READY_TO_SEND_BUFFER_SIZE 128
-#define SEQUENCE_MAX_SIZE 128
-
-
-#define IDLE_MODE 1
-#define RX_MODE 2
-#define TX_MODE 3
-#define CAD_MODE 4
-#define CAD_FINISHED 5
-#define CAD_FAILED 6
-#define SLEEP_MODE 0
-
-#define LLog(x) Log(LOG_LEVEL_LOG, x)
-#define LDebug(x) Log(LOG_LEVEL_DEBUG, x)
-#define LWarn(x) Log(LOG_LEVEL_WARNING, x)
-#define LError(x) Log(LOG_LEVEL_ERROR, x)
-#define HALT() Serial.println("Halting"); while(1)
-#define Debug(x) if (CURRENT_LOG_LEVEL == LOG_LEVEL_DEBUG) x
-
-#define diff(new, old, size) (new >= old) ? new - old : size - old + new
-
-#define START_BYTE 0xc1
-#define END_BYTE 0x8c
-
 //Libraries for LoRa
-#include <SPI.h>
-#include "LoRa.h"
 #include "functions.h"
-
-//Libraries for OLED Display
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <esp_rom_crc.h>
-
-#include "esp.h"
-
 
 uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
@@ -96,8 +55,8 @@ void setup() {
   display.setTextSize(1);
 
   //Initialize LoRa
-  SPI.begin(SCK, MISO, MOSI, SS);
-  LoRa.setPins(SS, RST, DIO0);
+  SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_LORA);
+  LoRa.setPins(SS_LORA, RST_LORA, DIO0_LORA);
   if (!LoRa.begin(BAND)) {
     Serial.println("Starting LoRa failed!");
     display.clearDisplay();
@@ -132,93 +91,7 @@ void loop() {
 
   //TODO write unit tests for the arrays types
   if (RUN_UNIT_TESTS) {
-    delay(2000);
-    
-    uint8_t tempBuf[256];
-    DefraggingBuffer<2048, 8> testBuffer = DefraggingBuffer<2048, 8>();
-    testBuffer.init();
-    LLog("Defragging Buffer Tests:");
-    LLog("Allocating a buffer of size 100");
-
-    uint16_t bufferOneLocation = testBuffer.malloc(100); 
-    if (bufferOneLocation != 0xFFFF) {
-      LDebug("Successfully malloced a single buffer of size 100");
-    } else {
-      LError("Failed to malloc a single buffer of size 100");
-      HALT();
-    }
-    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
-    LLog("allocationStartPositions:");
-    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
-    LLog("allocationSizes:");
-    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
-    LLog("openSpaceBetweenAllocations:");
-    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
-
-    LLog("Allocating a second buffer of size 70");
-    if (testBuffer.malloc(70) != 0xFFFFFFFF) {
-      LDebug("Successfully malloced a single buffer of size 70");
-    } else {
-      LError("Failed to malloc a second buffer of size 70");
-      HALT();
-    }
-
-    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
-    LLog("allocationStartPositions:");
-    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
-    LLog("allocationSizes:");
-    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
-    LLog("openSpaceBetweenAllocations:");
-    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
-
-    LLog("Freeing the initial malloc:");
-    if (testBuffer.free(0)) {
-      LDebug("Successfully freed initial malloc");
-    } else {
-      LError("Failed to release initial malloc");
-      HALT();
-    }
-
-    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
-    LLog("allocationStartPositions:");
-    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
-    LLog("allocationSizes:");
-    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
-    LLog("openSpaceBetweenAllocations:");
-    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
-
-    uint32_t buffer3 = testBuffer.malloc(30);
-    LLog("Mallocing a buffer of size 30, expecting it to be placted at the beginning");
-    if (buffer3 != 0) {
-      LError("Buffer was not placed at correct location!");
-      HALT();
-    }
-
-    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
-    LLog("allocationStartPositions:");
-    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
-    LLog("allocationSizes:");
-    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
-    LLog("openSpaceBetweenAllocations:");
-    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
-
-    LLog("Removing buffer that was just created");
-    if (!testBuffer.free(0)) {
-      LError("Failed to free buffer");
-      HALT();
-    }
-
-    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
-    LLog("allocationStartPositions:");
-    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
-    LLog("allocationSizes:");
-    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
-    LLog("openSpaceBetweenAllocations:");
-    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1); 
-
-    //LLog("Deallocating")
-    LLog("Passed all tests, exiting");
-    HALT();
+    runTests();
   }
 
   static bool shouldScanRxBuffer = false; 
@@ -790,13 +663,7 @@ void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
   Serial.printf("\n");
 }
 
-void dumpArray16ToSerial(const uint16_t* src, const uint16_t size) {
-  Serial.printf("Dumping Array to Serial: \n");
-  for (int i = 0; i < size; i++) {
-    Serial.printf("%d ", src[i]);
-  }
-  Serial.printf("\n");
-}
+
 
 
 
