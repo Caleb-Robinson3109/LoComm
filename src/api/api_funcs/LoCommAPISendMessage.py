@@ -38,8 +38,7 @@ def check_SACK_packet(packet: bytes, tag: int, total_packets: int, packet_num: i
     crc: int
     end_bytes: int
 
-    #final one but other is used for testing
-    #start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sIHHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sIHHH", packet)
 
     if start_bytes != 0x1234:
         return f"start bytes error 0x1234, {start_bytes}", False
@@ -87,7 +86,6 @@ def locomm_api_send_message(name: str, message: str, ser: serial.Serial, context
             while(not context.SACK_flag):
                 pass
 
-            recv: bytes = ser.read(16)
             error_code: str
             send_status: bool
             error_code, send_status = check_SACK_packet(recv, tag, total_packets, i)

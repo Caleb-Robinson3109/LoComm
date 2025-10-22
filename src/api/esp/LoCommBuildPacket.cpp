@@ -166,10 +166,10 @@ void build_SACK_packet(){
     computer_out_packet[1] = 0x34;
 
     //packet size
-    computer_out_packet[2] = (CACK_SIZE >> 8) & 0xFF; 
-    computer_out_packet[3] = CACK_SIZE & 0xFF;
+    computer_out_packet[2] = (SACK_SIZE >> 8) & 0xFF; 
+    computer_out_packet[3] = SACK_SIZE & 0xFF;
 
-    //CACK
+    //SACK
     computer_out_packet[4] = 'S';
     computer_out_packet[5] = 'A';
     computer_out_packet[6] = 'C';
@@ -181,14 +181,18 @@ void build_SACK_packet(){
     computer_out_packet[10]  = computer_in_packet[10];
     computer_out_packet[11]  = computer_in_packet[11];
 
+    //message - the chuck #
+    computer_out_packet[12] = computer_in_packet[14];
+    computer_out_packet[13] = computer_in_packet[15];
+
     //compute CRC of Message packet size + Type + Tag (10 bytes total)
     //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
-    uint16_t crc = crc_16(&computer_out_packet[2], 10);
-    computer_out_packet[12] = (crc >> 8) & 0xFF;
-    computer_out_packet[13] = crc & 0xFF;
+    uint16_t crc = crc_16(&computer_out_packet[2], 12);
+    computer_out_packet[13] = (crc >> 8) & 0xFF;
+    computer_out_packet[15] = crc & 0xFF;
 
     //end bytes
-    computer_out_packet[14] = 0x56;
-    computer_out_packet[15] = 0x78;
+    computer_out_packet[16] = 0x56;
+    computer_out_packet[17] = 0x78;
     computer_out_size = SACK_SIZE;
 }
