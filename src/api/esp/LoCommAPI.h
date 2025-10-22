@@ -16,8 +16,9 @@ This file contianes the functions that hande the state of the device to computer
 #include <string.h> //memcpy
 #include "mbedtls/sha256.h" // sha256
 
-#define MAX_COMPUTER_PACKET_SIZE 1000
-#define MAX_DEVICE_PACKET_SIZE 100
+#define MAX_PACKET_SIZE 1055
+#define MAX_COMPUTER_PACKET_SIZE MAX_PACKET_SIZE
+#define MAX_DEVICE_PACKET_SIZE MAX_PACKET_SIZE
 #define MESSAGE_TYPE_SIZE 4
 #define PASSWORD_SIZE 32
 
@@ -86,6 +87,10 @@ void handle_STPW_packet();
 
 //this function handles a incomming CONN by bringing up the password hash into memory and the encoded key into memrory
 void handle_CONN_packet();
+
+//this function handles an incomming message from the computer with the message type of send. 
+//sets the flags and puts the message in the device out buf so that the device knows we have an outgoing message
+void handle_SEND_packet();
 
 
 #endif
