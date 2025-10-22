@@ -1,0 +1,26 @@
+limitations
+	messages can only have 8 sequences
+
+
+Unaccounted for issues. 
+	If a sequence number is chosen that is currently in the buffer, but this one has different data, then trouble will arise. 
+		We should probably choose a larger size
+
+
+TODO
+	Proper State control
+	Processing of messages after they get fully dumped in the rxMessageArray
+		We will probably have it be served straight to the Serial buffer
+	Sending messages to txMessageArray
+	Think about where critical sections might be needed
+
+
+
+
+Problems:
+	"Failed to allocate space in txMessageBuffer" when sending multiple messages
+		Malloc failes if there is already an allocation, we should probably just do some malloc tests
+
+Potential things to do to increase reliability:
+	Add OOB read/write detection to each buffer instance
+	

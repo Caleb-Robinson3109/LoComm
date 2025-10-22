@@ -119,7 +119,7 @@ void setup() {
   display.display();
 }
 
-#define RUN_UNIT_TESTS false
+#define RUN_UNIT_TESTS true
 
 void loop() {
   static uint8_t tempDeviceMode = 255;
@@ -131,9 +131,48 @@ void loop() {
 
   //TODO write unit tests for the arrays types
   if (RUN_UNIT_TESTS) {
+    delay(2000);
+    
+    uint8_t tempBuf[256];
+    DefraggingBuffer<2048, 8> testBuffer = DefraggingBuffer<2048, 8>();
+    testBuffer.init();
     LLog("Defragging Buffer Tests:");
+    LLog("Allocating a buffer of size 70");
 
-    //TODO write these
+    uint16_t bufferOneLocation = testBuffer.malloc(70); 
+    if (bufferOneLocation != 0xFFFF) {
+      LDebug("Successfully malloced a single buffer of size 70");
+    } else {
+      LError("Failed to malloc a single buffer of size 70");
+      HALT();
+    }
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
+
+    LLog("Allocating a second buffer of size 40");
+    if (testBuffer.malloc(40) != 0xFFFF) {
+      LDebug("Successfully malloced a single buffer of size 40");
+    } else {
+      LError("Failed to malloc a second buffer of size 40");
+      HALT();
+    }
+
+    Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+    LLog("allocationStartPositions:");
+    dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
+    LLog("allocationSizes:");
+    dumpArray16ToSerial(&(testBuffer.allocationSizes[0]), testBuffer.numAllocations);
+    LLog("openSpaceBetweenAllocations:");
+    dumpArray16ToSerial(&(testBuffer.openSpaceBetweenAllocations[0]), testBuffer.numAllocations + 1);
+
+    //LLog("Deallocating")
+
+    HALT();
   }
 
   static bool shouldScanRxBuffer = false; 
@@ -704,6 +743,15 @@ void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
   }
   Serial.printf("\n");
 }
+
+void dumpArray16ToSerial(const uint16_t* src, const uint16_t size) {
+  Serial.printf("Dumping Array to Serial: \n");
+  for (int i = 0; i < size; i++) {
+    Serial.printf("%d ", src[i]);
+  }
+  Serial.printf("\n");
+}
+
 
 
 

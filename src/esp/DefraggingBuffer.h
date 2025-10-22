@@ -32,7 +32,7 @@ class DefraggingBuffer {
           }
           arrayInsert(&(allocationSizes[0]), numAllocations, i, size);
           
-
+          openSpaceBetweenAllocations[i] -= size;
           //make sure the openSpaceBetweenAllocations table gets updated
           arrayInsert(&(openSpaceBetweenAllocations[0]), numAllocations+1, i, 0);
           numAllocations++;
@@ -72,7 +72,7 @@ class DefraggingBuffer {
       //NOTE implement only if needed
     }
 
-  private:
+  //private:
     void arrayInsert(uint16_t* array, uint16_t arraySize, int position, uint16_t data) {
       //move all elements in the array over
       for (int i = arraySize-1; i >= position; i--) {
