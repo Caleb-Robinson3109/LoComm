@@ -19,24 +19,24 @@ def serial_read():
             print(f"message type from master: {message_type}")
 
             if(message_type == b"PWAK"):
+                LoCommGlobals.context.packet = data
                 LoCommGlobals.context.PWAK_flag = True
-                LoCommGlobals.context.packet = data
-
+                
             elif(message_type == b"SPAK"):
-                LoCommGlobals.context.SPAK_flag = True
                 LoCommGlobals.context.packet = data
+                LoCommGlobals.context.SPAK_flag = True
             
             elif(message_type == b"RPAK"):
-                LoCommGlobals.context.RPAK_flag = True
                 LoCommGlobals.context.packet = data
+                LoCommGlobals.context.RPAK_flag = True
 
             elif(message_type == b"SACK"):
-                LoCommGlobals.context.SACK_flag = True
                 LoCommGlobals.context.packet = data
+                LoCommGlobals.context.SACK_flag = True
 
             elif(message_type == b"DCAK"):
-                LoCommGlobals.context.DCAK_flag = True
                 LoCommGlobals.context.packet = data
+                LoCommGlobals.context.DCAK_flag = True
 
             elif(message_type == b"SEND"):
                 LoCommGlobals.context.SEND_queue.put(data)

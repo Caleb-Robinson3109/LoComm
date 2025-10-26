@@ -188,7 +188,7 @@ void build_SACK_packet(){
     //compute CRC of Message packet size + Type + Tag (10 bytes total)
     //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
     uint16_t crc = crc_16(&computer_out_packet[2], 12);
-    computer_out_packet[13] = (crc >> 8) & 0xFF;
+    computer_out_packet[14] = (crc >> 8) & 0xFF;
     computer_out_packet[15] = crc & 0xFF;
 
     //end bytes

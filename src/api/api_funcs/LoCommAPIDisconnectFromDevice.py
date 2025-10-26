@@ -3,6 +3,7 @@ import random
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
 from api_funcs.LoCommContext import LoCommContext
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def build_DCON_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
@@ -28,7 +29,6 @@ def check_DCAK_packet(packet: bytes, tag: int) -> bool:
 
     start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", packet)
 
-    print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {crc} {end_bytes}")
 
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag)
     crc_check: int = binascii.crc_hqx(payload, 0)
@@ -70,7 +70,7 @@ def locomm_api_disconnect_from_device(ser: serial.Serial, context: LoCommContext
         #tell device to delete password on the device
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet: bytes = build_DCON_packet(tag)
-        print(f"send DCON - {packet}")
+        print_packet_debug(packet, True)        
         ser.write(packet)
         ser.flush()
 
@@ -78,6 +78,7 @@ def locomm_api_disconnect_from_device(ser: serial.Serial, context: LoCommContext
         while (not context.DCAK_flag):
             pass
 
+        print_packet_debug(context.packet, False)
         okay: bool = check_DCAK_packet(context.packet, tag)
         
         """

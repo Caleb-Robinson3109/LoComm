@@ -11,7 +11,6 @@ from api_funcs.LoCommContext import LoCommContext
 from api_funcs.LoCommSerailRead import serial_read
 import api_funcs.LoCommGlobals as LoCommGlobals
 
-import serial
 import threading
 
 #this function allows you to connect to a device.Returns true if connection is successful, false otherwise.

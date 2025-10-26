@@ -4,6 +4,7 @@ import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
 
 from api_funcs.LoCommContext import LoCommContext
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def craft_PASS_packet(tag: int, password: str) -> bytes:
     start_bytes: int = 0x1234
@@ -39,7 +40,6 @@ def check_PWAK_packet(packet: bytes, tag: int) -> None:
     end_bytes: int
 
     start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", packet)
-    print(f"{start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag) + message
     crc_check: int = binascii.crc_hqx(payload, 0)
@@ -77,8 +77,7 @@ def locomm_api_enter_password(password: str, ser: serial.Serial, context: LoComm
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = craft_PASS_packet(tag, password)
-        print(f"PASS packet - {packet}")
-
+        print_packet_debug(packet, True)
         #send the packet
         ser.write(packet)
         ser.flush()
@@ -87,8 +86,8 @@ def locomm_api_enter_password(password: str, ser: serial.Serial, context: LoComm
         while(not context.PWAK_flag):
             pass
         
+        print_packet_debug(context.packet, False)
         check_PWAK_packet(context.packet, tag)
-        print("send PASS complete")
 
     except Exception as e:
         print(f"password enter error: {e}")

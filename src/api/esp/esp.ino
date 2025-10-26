@@ -27,11 +27,7 @@ void setup() {
 void loop() {
   //there is a message from the device and the next 2 if statmetns handle that
   if(message_from_device_flag){
-    //handle
-    ;;
-  }
-  if(message_to_computer_flag){
-    handle_message_to_computer();
+    handle_message_from_device();
   }
 
   //there is a message from the device and the subsaquent funcs check and handle that

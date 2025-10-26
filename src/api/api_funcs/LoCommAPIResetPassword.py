@@ -3,6 +3,7 @@ import random #for gen random tag
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
 from api_funcs.LoCommContext import LoCommContext
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def craft_RSPW_packet(tag: int, password: str) -> bytes:
     start_bytes: int = 0x1234
@@ -73,8 +74,7 @@ def locomm_api_reset_passoword(password: str, ser: serial.Serial, context: LoCom
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = craft_RSPW_packet(tag, password)
-        print(f"RSPW packet - {packet}")
-
+        print_packet_debug(packet, True)
         ser.write(packet)
         ser.flush()
 
@@ -82,9 +82,9 @@ def locomm_api_reset_passoword(password: str, ser: serial.Serial, context: LoCom
         while(not context.RPAK_flag):
             pass
 
+        print_packet_debug(context.packet, False)
         check_RSPW_packet(packet, tag)
 
-        print("send RSPW complete")
 
     except Exception as e:
         print(f"password enter error: {e}")

@@ -96,4 +96,7 @@ void handle_SEND_packet();
 //once the message_to_device flag is set false it will know the the esp has handled the packet and sent it out
 void handle_message_to_device();
 
+//this function takes a message from the packet in buf from the  device and send it to the computer
+//it also waits for an ack from the computer
+void handle_message_from_device();
 #endif

@@ -284,3 +284,45 @@ void handle_message_to_device(){
         device_out_size = 0;
     }
 }
+
+void handle_message_from_device(){
+    //get the device packet in and cpy it to the computer packet out
+    memcpy(computer_out_packet, device_in_packet, device_in_size);
+    computer_out_size = device_in_size;
+    device_in_size = 0;
+
+    //send the  computer packet out to the computer
+    //wait for an ack
+    //if no ack in 0.5 secs resend
+    //try 10 or so times
+    bool ack_recv = false;
+    int times_tried = 0;
+    do{
+        Serial.write(computer_out_packet, computer_out_size);
+        Serial.flush();
+        delay(500);
+
+        if(Serial.available() == 0){
+            times_tried++;
+            continue;
+        }
+
+        ack_recv = true;
+        int serial_index = 0;
+        while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
+            computer_in_packet[serial_index++] = Serial.read();
+        }
+
+        computer_in_size = serial_index;
+    } while(!ack_recv && times_tried < 10);
+
+    //stop trying to send packet to computer if tries > 10, computer is broke or something
+    if(!ack_recv){
+        return;
+    }
+
+    //check thats its really an ack
+
+    //complete and set the appropate flags
+
+}

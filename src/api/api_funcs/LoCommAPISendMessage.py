@@ -4,10 +4,11 @@ import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
 import math
 from api_funcs.LoCommContext import LoCommContext
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def craft_SEND_packet(tag: int, name: str, text: str, total_packets: int, curr_packet) -> bytes:
     start_bytes: int = 0x1234
-    packet_size: int = len(name) + len(text) + 23 # recount to make sure this number is correct
+    packet_size: int = len(name) + len(text) + 23
     message_type: bytes = b"SEND"
     #total_packets - 2, curr_packet - 2, name len - 1, text len -2, name, text
     message: bytes = struct.pack(f">HHBH{len(name)}s{len(text)}s", total_packets, curr_packet, len(name), len(text), name.encode('ascii'), text.encode('ascii'))
@@ -26,7 +27,6 @@ def craft_SEND_packet(tag: int, name: str, text: str, total_packets: int, curr_p
                                 message,
                                 crc,
                                 end_bytes)
-    
     return packet
 
 def check_SACK_packet(packet: bytes, tag: int, total_packets: int, packet_num: int) -> tuple[str, bool]:
@@ -62,23 +62,23 @@ def check_SACK_packet(packet: bytes, tag: int, total_packets: int, packet_num: i
         return f"crc fail {crc}, {crc_check}", False
     
     if end_bytes != 0x5678:
-        return f"end bytes fail 0x5678, {end_bytes}"
+        return f"end bytes fail 0x5678, {end_bytes}", False
+    
+    return "no error", True 
 
 def locomm_api_send_message(name: str, message: str, ser: serial.Serial, context: LoCommContext) -> bool:
     #split the message into 1000 char chucnks and send each chunk (same tag)
     tag: int = random.randint(0, 0xFFFFFFFF)
     total_packets = math.ceil(len(message) / 1000)
-    
     for i in range (total_packets):
         #for each chucnk also checks if its the last chunk
         chunk: str = message[i * 1000 : (i+1) * 1000] if i != total_packets else message[i * 1000 : len(message)]
-
         #build packet
         packet: bytes = craft_SEND_packet(tag, name, chunk, total_packets, i)
 
         #send_recv_packet
         try:
-            print(f"sending SEND pacaket - {packet}")
+            print_packet_debug(packet, True)
             ser.write(packet)
             ser.flush()
 
@@ -86,11 +86,15 @@ def locomm_api_send_message(name: str, message: str, ser: serial.Serial, context
             while(not context.SACK_flag):
                 pass
 
+            print_packet_debug(context.packet, False)
             error_code: str
             send_status: bool
-            error_code, send_status = check_SACK_packet(recv, tag, total_packets, i)
+            try:
+                error_code, send_status = check_SACK_packet(context.packet, tag, total_packets, i)
+            except Exception as e:
+                raise ValueError(f"check SACK packet error {e}")
             if(not send_status):
-                raise ValueError(f"FAIL send of packet {i}/{total_packets} - error: {error_code}")
+                raise ValueError(f"FAIL send of packet {i+1}/{total_packets} - error: {error_code}")
         except Exception as e:
             print(f"Serial error when sending message: {e}")
             context.SACK_flag = False

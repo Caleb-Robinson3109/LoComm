@@ -3,6 +3,7 @@ import struct
 import binascii
 import random
 from api_funcs.LoCommContext import LoCommContext
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def build_STPW_packet(tag: int, old: str, new: str) -> bytes:
     start_bytes: int = 0x1234
@@ -37,7 +38,6 @@ def check_SPAK_packet(packet: bytes, tag: int) -> None:
     end_bytes: int
 
     start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI4sHH", packet)
-    print(f"recv pakcet: {start_bytes} {packet_size} {message_type} {ret_tag} {message} {crc} {end_bytes}")
 
     #crc calc
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", ret_tag) + message
@@ -76,8 +76,7 @@ def locomm_api_set_password(old: str, new: str, ser: serial.Serial, context: LoC
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = build_STPW_packet(tag, old, new)
-        print(f"STPW packet - {packet}")
-        
+        print_packet_debug(packet, True)        
         ser.write(packet)
         ser.flush()
 
@@ -85,8 +84,8 @@ def locomm_api_set_password(old: str, new: str, ser: serial.Serial, context: LoC
         while(not context.SPAK_flag):
             pass
 
+        print_packet_debug(context.packet, False)
         check_SPAK_packet(context.packet, tag)
-        print("send STPW complete")
 
     except Exception as e:
         print(f"password set error: {e}")

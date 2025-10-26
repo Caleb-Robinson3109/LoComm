@@ -4,6 +4,7 @@ import time #sleep
 import random #for gen random tag
 import struct #creation of the packet
 import binascii #crc-16 (crc_hqx)
+from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def craft_CONN_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
@@ -37,13 +38,12 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
             ser = serial.Serial(port=port.name, baudrate=9600, timeout=10) #Adjust timout if it is not connection on first try -> make longer
             #let ser init in device
-
-            print(f"giving packet {packet} to port {port}")
+            print_packet_debug(packet, True)
             ser.write(packet)
             ser.flush()
             #wait for responce timeout defined in ser def
             data: bytes = ser.read(16)
-
+            print_packet_debug(data, False)
             #check to make sure that SACK has been sent the SACK should be 14 bytes long
             if len(data) == 16:
                 start_bytes: int
