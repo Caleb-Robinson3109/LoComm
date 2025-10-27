@@ -11,7 +11,6 @@
 #define SERIAL_READY_TO_SEND_BUFFER_SIZE 128
 #define SEQUENCE_MAX_SIZE 128
 
-
 #define IDLE_MODE 1
 #define RX_MODE 2
 #define TX_MODE 3
@@ -31,6 +30,8 @@
 
 #define START_BYTE 0xc1
 #define END_BYTE 0x8c
+
+#define RUN_UNIT_TESTS false
 
 
 #include <stdio.h>

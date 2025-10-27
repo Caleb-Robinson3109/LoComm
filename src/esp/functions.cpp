@@ -23,7 +23,7 @@ void dumpArray16ToSerial(const uint16_t* src, const uint16_t size) {
   Serial.printf("\n");
 }
 
-void runTests() {
+void runTests() { //TODO write unit tests for the arrays types
   delay(2000);
   
   DefraggingBuffer<2048, 8> testBuffer = DefraggingBuffer<2048, 8>();
