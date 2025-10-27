@@ -171,7 +171,7 @@ void handle_DCON_packet(){
         password_ascii[i] = 0x00;
         password_hash[i] = 0x00;
     }
-
+    set_password_flag = false;
     //TODO eventuall the key with 0x00 
 
     build_DCAK_packet();
@@ -286,6 +286,13 @@ void handle_message_to_device(){
 }
 
 void handle_message_from_device(){
+    //if the password is not set then drop the packet
+    if(!set_password_flag){
+        //message_from_device_flag = false;
+        //device_in_size = 0;
+        return;
+    }
+
     //get the device packet in and cpy it to the computer packet out
     memcpy(computer_out_packet, device_in_packet, device_in_size);
     computer_out_size = device_in_size;
@@ -297,32 +304,49 @@ void handle_message_from_device(){
     //try 10 or so times
     bool ack_recv = false;
     int times_tried = 0;
-    do{
+    while(!ack_recv && times_tried < 10){
         Serial.write(computer_out_packet, computer_out_size);
         Serial.flush();
-        delay(500);
+
+        unsigned long start = millis();
+        while((millis() - start) < 500 && Serial.available() == 0){
+            delay(10);
+        }
 
         if(Serial.available() == 0){
             times_tried++;
             continue;
         }
 
-        ack_recv = true;
         int serial_index = 0;
         while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
             computer_in_packet[serial_index++] = Serial.read();
         }
-
         computer_in_size = serial_index;
-    } while(!ack_recv && times_tried < 10);
+
+        ack_recv = check_SACK();
+        if(!ack_recv){
+            times_tried++;
+            while(Serial.available()) Serial.read(); // clear buffer
+        }
+    }
 
     //stop trying to send packet to computer if tries > 10, computer is broke or something
     if(!ack_recv){
+        message_from_device_flag = false;
+        device_out_size = 0;
         return;
     }
 
-    //check thats its really an ack
+    //check thats its really an ack if not try one more time
+    if(!check_SACK()){
+        Serial.write(computer_out_packet, computer_out_size);
+        Serial.flush();
+        delay(500);
+        while(Serial.available()) Serial.read();
+    }
 
     //complete and set the appropate flags
-
+    message_from_device_flag = false;
+    device_out_size = 0;
 }

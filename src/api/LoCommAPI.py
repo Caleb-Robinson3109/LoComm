@@ -57,8 +57,8 @@ def send_message(name: str, message: str) -> bool:
     return locomm_api_send_message(name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> name, message.
-def receive_message() -> tuple[str, str]:
-    return locomm_api_receive_message(LoCommGlobals.serial_conn)
+def receive_message() -> tuple[str, str] | tuple[None, None]:
+    return locomm_api_receive_message()
 
 #this function sends a signal to the ESP to go into pairing mode. Returns true if there was successful pairing, false otherwise.
 def pair_devices() -> bool:

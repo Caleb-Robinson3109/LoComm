@@ -39,7 +39,7 @@ def serial_read():
                 LoCommGlobals.context.DCAK_flag = True
 
             elif(message_type == b"SEND"):
-                LoCommGlobals.context.SEND_queue.put(data)
+                LoCommGlobals.context.SEND_packet = data
 
             else:
                 print("ERROR - NOT RECONICED PACKET TYPE")

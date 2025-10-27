@@ -27,6 +27,9 @@ void blinky1();
 void blinky2();
 void blinky(int blinks);
 
+//puts a SEND message in the device in packet and sets all the correct vars for that, so that we can test how to handle it
+void debug_simulate_device_in_packet();
+
 //Computues a crc-16 checksum
 uint16_t crc_16(const uint8_t* data, size_t len);
 
@@ -36,5 +39,8 @@ bool message_type_match(const uint8_t* mes, const char* str, size_t len);
 //this function checks to see if there is a password hash being stored and if not it stores the default password hash
 //handle the storge of the hash in memeory in the handle_CONN_packet  function 
 void init_password();
+
+//this function chechs the send ack to confirm that it is all good
+bool check_SACK();
 
 #endif

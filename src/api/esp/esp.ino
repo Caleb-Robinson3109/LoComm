@@ -22,6 +22,7 @@ void setup() {
   lcd.print("LoComm");
 
   init_password();
+  debug_simulate_device_in_packet();
 }
 
 void loop() {
