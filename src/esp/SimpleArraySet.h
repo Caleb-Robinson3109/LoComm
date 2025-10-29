@@ -1,6 +1,6 @@
 #pragma once
 
-//we assume that the first byte is an identifier we plan to search, and the rest of the bytes in each unit is just general data
+//we assume that the first byte and second byte are identifiers we plan to search, and the rest of the bytes in each unit is just general data
 
 template <int SIZE, int UNIT_SIZE>
 class SimpleArraySet {
@@ -12,9 +12,9 @@ class SimpleArraySet {
     uint8_t* get(int i) {
       return (&(buffer[0])) + i*UNIT_SIZE;
     }
-    uint16_t find(int8_t startByte) {
+    uint16_t find(uint8_t firstByte, uint8_t secondByte) {
       for (int i = 0; i < length; i++) {
-        if (buffer[UNIT_SIZE * i] == startByte) return i;
+        if (buffer[UNIT_SIZE * i] == firstByte && buffer[UNIT_SIZE * i + 1] == secondByte) return i;
       }
       return 65535;
     }

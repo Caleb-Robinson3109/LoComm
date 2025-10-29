@@ -31,6 +31,8 @@
 #define START_BYTE 0xc1
 #define END_BYTE 0x8c
 
+#define AES_GCM_OVERHEAD 26
+
 #define RUN_UNIT_TESTS false
 
 
@@ -53,3 +55,5 @@ enum LOG_LEVEL {LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_WARNING, LOG_LEVEL_LO
 void Log(LOG_LEVEL level, const char* text);
 const char* logLevelEnumToChar(LOG_LEVEL level);
 void runTests();
+bool encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen);
+bool decryptD2DMessage(const uint8_t* ciphertext, size_t ciphertextLen, uint8_t* plaintextBuffer, size_t bufferSize, size_t* plaintextLen);

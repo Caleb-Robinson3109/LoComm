@@ -13,6 +13,8 @@ TODO
 		We will probably have it be served straight to the Serial buffer
 	Sending messages to txMessageArray
 	Think about where critical sections might be needed
+	Increase message number field size
+	Add timestamp to overall message
 
 
 
