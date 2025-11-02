@@ -1,7 +1,7 @@
 //Libraries for LoRa
 #include "functions.h"
 
-uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -291,11 +291,12 @@ void loop() {
             //check if the message was intended to be sent in the last 20 seconds based on the timestamp
             //Dirty hack since the timestamp is at different placements in each buffer
             const uint32_t timestamp = (tempBuf[5 + (1 - packetType)] << 24) + (tempBuf[6 + (1 - packetType)] << 16) + (tempBuf[7 + (1 - packetType)] << 8) + tempBuf[8 + (1 - packetType)];
-            if ((millis() / 1000) + epochAtBoot + 1 < timestamp) { //one is added for a bit of leeway
+            const uint32_t currentTime = (millis() / 1000) + epochAtBoot;
+            if (currentTime + 1 < timestamp) { //one is added for a bit of leeway
               LWarn("Received RX Message is from the future! someone likely has invalid time configuration");
               break;
             }
-            if ((millis() / 1000) + epochAtBoot - timestamp > 20) {
+            if (currentTime > timestamp && currentTime - timestamp > 20) {
               LWarn("received RX Message is very old, possible replay attack attempt");
               Debug(Serial.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
               //TODO logic to log replay attack attempt
@@ -366,6 +367,9 @@ void loop() {
                 //Check if the message ID is in the previouslyProcessedIds list. If it is, its possible we have already processed this message
                 if (previouslyProcessedIds.contains(messageNumber)) {
                   LWarn("Received Message has a previously seen ID, ignoring");
+                  //since the ID was previously processed, its likely that the message was already received, but the ack failed
+                  //Thus, we will still send an ack just in case, but we will otherwise silently drop the message
+                  sendAck(tempBuf[0], messageNumber, sequenceNumber);
                   continue;
                 }
 
@@ -416,44 +420,7 @@ void loop() {
 
               }
 
-              //Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
-              LDebug("Requesting ACK Send: Adding send to ack buffer");
-              uint8_t uBuf[9]; //this is the data that will eventually be encrypted
-              uBuf[0] = deviceID;
-              uBuf[1] = tempBuf[0];
-              uBuf[2] = messageNumber >> 8;
-              uBuf[3] = messageNumber & 0xFF;
-              uBuf[4] = sequenceNumber;
-              const uint32_t timestamp = (millis() / 1000) + epochAtBoot;
-              uBuf[5] = timestamp >> 24;
-              uBuf[6] = (timestamp >> 16) & 0xFF;
-              uBuf[7] = (timestamp >> 8) & 0xFF;
-              uBuf[8] = timestamp & 0xFF;
-
-              //construct actual message
-              uint8_t vBuf[14 + AES_GCM_OVERHEAD];
-              vBuf[0] = START_BYTE;
-              vBuf[1] = 1;
-              size_t ciphertextLen;
-              if (!encryptD2DMessage(&(uBuf[0]), 9, &(vBuf[2]), 14 + AES_GCM_OVERHEAD, &ciphertextLen)) {
-                LError("Failed to encrypt ACK message");
-                HALT();
-              }
-
-              //assert the encrypted string is the expected length
-              if (ciphertextLen != 9 + AES_GCM_OVERHEAD) {
-                LError("Encrypted ACK has unexpected length!");
-                HALT();
-              }
-
-              //Add CRC and construct rest of ACK
-              uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(vBuf[1])), 10 + AES_GCM_OVERHEAD))^0xffffffff; //note - this is one byte longer because it includes the start byte
-              vBuf[11 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
-              vBuf[12 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
-              vBuf[13 + AES_GCM_OVERHEAD] = END_BYTE;
-
-              //Push the ACK to the ack buffer
-              ackToSendBuffer.pushBack(&(vBuf[0]), 14 + AES_GCM_OVERHEAD);
+              sendAck(tempBuf[0], messageNumber, sequenceNumber);
               
             } else {
               ScopeLock(loraTxSpinLock, loraTxLock);
@@ -707,6 +674,47 @@ void loop() {
 
   //test code to test sending::
   
+}
+
+void sendAck(const uint8_t dstID, const uint16_t messageNumber, const uint8_t sequenceNumber) {
+  //Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
+  LDebug("Requesting ACK Send: Adding send to ack buffer");
+  uint8_t uBuf[9]; //this is the data that will eventually be encrypted
+  uBuf[0] = deviceID;
+  uBuf[1] = dstID;
+  uBuf[2] = messageNumber >> 8;
+  uBuf[3] = messageNumber & 0xFF;
+  uBuf[4] = sequenceNumber;
+  const uint32_t timestamp = (millis() / 1000) + epochAtBoot;
+  uBuf[5] = timestamp >> 24;
+  uBuf[6] = (timestamp >> 16) & 0xFF;
+  uBuf[7] = (timestamp >> 8) & 0xFF;
+  uBuf[8] = timestamp & 0xFF;
+
+  //construct actual message
+  uint8_t vBuf[14 + AES_GCM_OVERHEAD];
+  vBuf[0] = START_BYTE;
+  vBuf[1] = 1;
+  size_t ciphertextLen;
+  if (!encryptD2DMessage(&(uBuf[0]), 9, &(vBuf[2]), 14 + AES_GCM_OVERHEAD, &ciphertextLen)) {
+    LError("Failed to encrypt ACK message");
+    HALT();
+  }
+
+  //assert the encrypted string is the expected length
+  if (ciphertextLen != 9 + AES_GCM_OVERHEAD) {
+    LError("Encrypted ACK has unexpected length!");
+    HALT();
+  }
+
+  //Add CRC and construct rest of ACK
+  uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(vBuf[1])), 10 + AES_GCM_OVERHEAD))^0xffffffff; //note - this is one byte longer because it includes the start byte
+  vBuf[11 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
+  vBuf[12 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
+  vBuf[13 + AES_GCM_OVERHEAD] = END_BYTE;
+
+  //Push the ACK to the ack buffer
+  ackToSendBuffer.pushBack(&(vBuf[0]), 14 + AES_GCM_OVERHEAD);
 }
 
 //This function will take the data in src
