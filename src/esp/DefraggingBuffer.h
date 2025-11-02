@@ -72,6 +72,11 @@ class DefraggingBuffer {
       //NOTE implement only if needed
     }
 
+    void clear() {
+      numAllocations = 0;
+      openSpaceBetweenAllocations[0] = SIZE;
+    }
+
   //private:
     void arrayInsert(uint16_t* array, uint16_t arraySize, int position, uint16_t data) {
       //move all elements in the array over

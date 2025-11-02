@@ -1,7 +1,7 @@
 //Libraries for LoRa
 #include "functions.h"
 
-uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -13,6 +13,7 @@ uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at bo
 bool receiveReady = false;
 bool messageDispatched = false;
 bool ackDispatched = false;
+bool enableLora = true;
 CyclicArrayList<uint16_t, 128> previouslySeenIds;
 CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 
@@ -32,7 +33,18 @@ CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE> ackToSendBuffer; //Queue for Acks
 //TODO for sake of performance, this should probably be a CyclicArrayList
 SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Queue for sending data out to serial 
 
+//Since both the lora code and api code may need access to the lora rx and tx buffers, both need locks
+portMUX_TYPE loraRxSpinLock = portMUX_INITIALIZER_UNLOCKED;
+bool loraRxLock = false;
+portMUX_TYPE loraTxSpinLock = portMUX_INITIALIZER_UNLOCKED;
+bool loraTxLock = false;
+
+StackType_t apiStack[API_CODE_STACK_SIZE];
+StaticTask_t apiStackBuffer;
+
 void setup() {
+
+
   //initialize variables
   rxBuffer = CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE>();
   rxMessageArray = SimpleArraySet<256, 10>();
@@ -83,6 +95,24 @@ void setup() {
   display.clearDisplay();
   display.printf("Device ID: %d\n", deviceID);
   display.display();
+
+  //initialize api task
+  /*
+  xTaskCreateStaticPinnedToCore(
+    apiCode,
+    "APICODE",
+    API_CODE_STACK_SIZE,
+    (void*) 1,
+    1,
+    apiStack,
+    apiStackBuffer,
+    0
+  )
+  */
+}
+
+void apiCode() {
+
 }
 
 void loop() {
@@ -107,6 +137,40 @@ void loop() {
     lastDeviceMode = RX_MODE;
     LError("CAD detected a signal! trying again later");
   }
+
+  static bool lastLoraEnableStatus = !enableLora;
+  if (lastLoraEnableStatus != enableLora) {
+    switch (lastLoraEnableStatus) {
+      case true: //actually false since we are checking the previous state
+        LoRa.sleep();
+        lastDeviceMode = SLEEP_MODE;
+        receiveReady = false;
+        shouldScanRxBuffer = false;
+        {
+          ScopeLock(loraRxSpinLock, loraRxLock);
+          rxMessageArray.clearAll();
+          rxMessageBuffer.clear();
+        }
+        {
+          ScopeLock(loraTxSpinLock, loraTxLock);
+          txMessageArray.clearAll();
+          txMessageBuffer.clear();
+        }
+        rxBuffer.clearBuffer();
+        readyToSendBuffer.clearBuffer();
+        ackToSendBuffer.clearBuffer();
+        previouslySeenIds.clearBuffer();
+        previouslyProcessedIds.clearBuffer();
+        serialReadyToSendArray.clearAll();
+      break;
+      case false: //actually true since we are checking the opposite case
+        LoRa.receive();
+        lastDeviceMode = RX_MODE;
+    }
+    lastLoraEnableStatus = enableLora;
+  }
+
+  
 
   //------------------------------------------------------RX Interrupt flag handling ------------------------------------------------
   if (receiveReady) { //receiveReady indicates the LoRa has read data, and data is now available. This flag gets set by the RX interrupt
@@ -246,6 +310,7 @@ void loop() {
             }
 
             if (packetType == 0) {
+              ScopeLock(loraRxSpinLock, loraRxLock);
               LDebug("Beginning Normal Message Processing");
               //Normal message
               const uint8_t sequenceCount = tempBuf[5];
@@ -391,6 +456,7 @@ void loop() {
               ackToSendBuffer.pushBack(&(vBuf[0]), 14 + AES_GCM_OVERHEAD);
               
             } else {
+              ScopeLock(loraTxSpinLock, loraTxLock);
               LDebug("Beginning ACK Message Processing");
               //Ack Message - we need to process the ack
 
@@ -429,6 +495,8 @@ void loop() {
   //scan through the RX message array and look for any completed messages or any expiring messages
   static uint32_t lastRxProcess = millis();
   if (millis() > lastRxProcess + 500) {
+    //LDebug("Attemping to acquire rx scope lock");
+    ScopeLock(loraRxSpinLock, loraRxLock);
     lastRxProcess = millis();
     for (int i = 0; i < rxMessageArray.size(); i++) {
       //check if a message has received all its parts
@@ -472,6 +540,7 @@ void loop() {
   // -------------------------------------------- Transmit Interrupt Handling ---------------------------------------
   if (lastDeviceMode == CAD_FINISHED) { //if CAD detection finished and didn't detect any other signals
     LDebug("CAD Finished, beginning to send message");
+    //since all this function does is perform reads from the txMessageBuffer, it doesn't need a lock since the function that handles removing data from txMessageBuffer is located in this thread
     //We just finished CAD, so send a message
     if (readyToSendBuffer.size() > 0) { //if there is a normal message to send...
       LoRa.beginPacket();
@@ -509,10 +578,12 @@ void loop() {
 
   // -------------------------------------------- Transmit Loop Behavior ---------------------------------------------
   if (messageDispatched) { //if we sent a TX messsage clean it out of the buffer
+    ScopeLock(loraTxSpinLock, loraTxLock);
     LDebug("Clearing sent normal message out of TX buffer");
     messageDispatched = false;
     readyToSendBuffer.dropFront(3);
   } else if (ackDispatched) {
+    ScopeLock(loraTxSpinLock, loraTxLock);
     LDebug("Clearing sent ACK message out of TX buffer");
     ackDispatched = false;
     ackToSendBuffer.dropFront(14 + AES_GCM_OVERHEAD);
@@ -520,6 +591,8 @@ void loop() {
 
   static uint32_t lastTxProcess = millis(); //NOTE at some point, this should be made into a looping variable. It will overflow in about 1.5 months
   if (millis() > lastTxProcess + 500) {
+    //LDebug("Attempting to acquire tx lock");
+    ScopeLock(loraTxSpinLock, loraTxLock);
     lastTxProcess = millis();
     //LDebug("attempting to process messagess in tx message array");
     //for each message in the tx Array...
@@ -633,12 +706,11 @@ void loop() {
   //if there is something to send over serial, write to the tx buffer
 
   //test code to test sending::
-
-  //
   
 }
 
 //This function will take the data in src
+//NOTE whatever function that calls this needs to handle acquiring the correct lock
 bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
   //first, make sure the data isn't too big
   if (size > SEQUENCE_MAX_SIZE * 8) {
@@ -772,7 +844,7 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
 void enterChannelActivityDetectionMode() {
   //NOTE - we don't seem to have a way to check if an message is actively being received. Thus, we may accidentally kick the device out of RX mode while is message is transmitting.
   if (millis() > nextCADTime) {
-    if (lastDeviceMode == RX_MODE || lastDeviceMode == IDLE_MODE || lastDeviceMode == SLEEP_MODE) {
+    if (lastDeviceMode == RX_MODE || lastDeviceMode == IDLE_MODE) {
       lastDeviceMode = CAD_MODE;
       LLog("Entering Channel Activity Detection Mode");
       LoRa.idle();
@@ -822,6 +894,10 @@ void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
     Serial.printf("%d ", src[i]);
   }
   Serial.printf("\n");
+}
+
+void enterSleepMode() {
+
 }
 
 

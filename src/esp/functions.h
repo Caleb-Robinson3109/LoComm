@@ -10,6 +10,7 @@
 #define LORA_SEND_COUNT_MAX 8
 #define SERIAL_READY_TO_SEND_BUFFER_SIZE 128
 #define SEQUENCE_MAX_SIZE 128
+#define API_CODE_STACK_SIZE 1024
 
 #define IDLE_MODE 1
 #define RX_MODE 2
@@ -25,6 +26,8 @@
 #define LError(x) Log(LOG_LEVEL_ERROR, x)
 #define HALT() Serial.println("Halting"); while(1)
 #define Debug(x) if (CURRENT_LOG_LEVEL == LOG_LEVEL_DEBUG) x
+
+#define ScopeLock(spinLock, lock) ScopedLock aaaa = ScopedLock(&spinLock, &lock)
 
 #define diff(new, old, size) (new >= old) ? new - old : size - old + new
 
@@ -43,6 +46,7 @@
 #include "DefraggingBuffer.h"
 #include <SPI.h>
 #include "LoRa.h"
+#include "ScopedLock.h"
 
 //Libraries for OLED Display
 #include <Wire.h>
