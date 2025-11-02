@@ -13,17 +13,20 @@ uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at bo
 bool receiveReady = false;
 bool messageDispatched = false;
 bool ackDispatched = false;
+CyclicArrayList<uint16_t, 128> previouslySeenIds;
+CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 
 //LoRa RX Related Variables
-CyclicArrayList<LORA_RX_BUFFER_SIZE> rxBuffer; //buffer used to store raw data received from LoRa. This is then processed later 
+CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE> rxBuffer; //buffer used to store raw data received from LoRa. This is then processed later
+uint16_t rxBufferLastSize = 0;
 SimpleArraySet<256, 10> rxMessageArray; //used to store information about successfully processed received messages
 DefraggingBuffer<2048, 8> rxMessageBuffer; //used to combine received segmented messages into the final full message
 
 //LoRa TX Related Variables
 SimpleArraySet<256, 9> txMessageArray; //buffer used to store information about individual packets that should be dispatched
 DefraggingBuffer<2048, 8> txMessageBuffer; //used to store the raw data that should be dispatched
-CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer; //Queue for LoRa device. This just contains a length and an address into the txMessageBuffer
-CyclicArrayList<LORA_ACK_BUFFER_SIZE> ackToSendBuffer; //Queue for Acks for the LoRa device. This contains raw ACK messages since they are relatively small
+CyclicArrayList<uint8_t, LORA_READY_TO_SEND_BUFFER_SIZE> readyToSendBuffer; //Queue for LoRa device. This just contains a length and an address into the txMessageBuffer
+CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE> ackToSendBuffer; //Queue for Acks for the LoRa device. This contains raw ACK messages since they are relatively small
 
 //Serial TX Related Variables
 //TODO for sake of performance, this should probably be a CyclicArrayList
@@ -31,16 +34,18 @@ SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Qu
 
 void setup() {
   //initialize variables
-  rxBuffer = CyclicArrayList<LORA_RX_BUFFER_SIZE>();
+  rxBuffer = CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE>();
   rxMessageArray = SimpleArraySet<256, 10>();
   rxMessageBuffer = DefraggingBuffer<2048, 8>();
   rxMessageBuffer.init();
   txMessageArray = SimpleArraySet<256, 9>();
   txMessageBuffer = DefraggingBuffer<2048, 8>();
   txMessageBuffer.init();
-  readyToSendBuffer = CyclicArrayList<LORA_READY_TO_SEND_BUFFER_SIZE>();
-  ackToSendBuffer = CyclicArrayList<LORA_ACK_BUFFER_SIZE>();
+  readyToSendBuffer = CyclicArrayList<uint8_t, LORA_READY_TO_SEND_BUFFER_SIZE>();
+  ackToSendBuffer = CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE>();
   serialReadyToSendArray = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4>();
+  previouslySeenIds = CyclicArrayList<uint16_t, 128>();
+  previouslyProcessedIds = CyclicArrayList<uint16_t, 128>();
 
   //Initialize Serial Connection to Computer
   Serial.begin(9600);
@@ -136,252 +141,288 @@ void loop() {
 
   // -------------------------------------------------- Receive Loop Behavior ---------------------------------------------
   if (shouldScanRxBuffer) { //this gets set to true when data gets added to rxBuffer, or if theres still potentially a message in rxBuffer after a scan
-    LDebug("Scanning RX Buffer");
+    //First, we will scan for start bytes. If we find any, we will then scan from the start byte to j in range(rxBufferLastSize, actual buffer size)
+    //If we find a valid message, we will clear any data from the buffer before the valid message.
+    /*PseudoCode
+      for each start byte:
+        if there is a valid message with the end byte in (rxBufferLastSize, actual buffer size)
+          process messages
+          clear all data in the buffer up to the end of the message
+          update rxBufferLastSize to the end of the messages
+        if no valid message is found and we've scanned 256 bytes, then clear everything up to and including the start byte
+      if no message was ever found, then update rxBufferLastSizeto the end of the data
+    
+
+    */
     shouldScanRxBuffer = false;
-    uint16_t startIndex = 65535;
-    //First, detect the first start byte
-    for (int i = 0; i < rxBuffer.size(); i++) {
-      if (rxBuffer[i] == START_BYTE) {
-        startIndex = i;
-        break;
+    bool messageFound = false;
+    for (int startByteLocation = 0; startByteLocation < rxBuffer.size(); startByteLocation++) {
+      
+      if (rxBuffer[startByteLocation] == START_BYTE) {
+        //start byte found, scan from rxBufferLastSize to rxBuffer.size() for the end byte
+        if (rxBufferLastSize > rxBuffer.size()) {
+          LDebug("RXBufferLastSize was not properly updated, and it is now larger than rxBuffer!");
+          HALT();
+        }
+        for (int endByteLocation = max(startByteLocation+1, (int) (rxBufferLastSize - 1)); endByteLocation < min((int) (startByteLocation + 256), (int) rxBuffer.size()); endByteLocation++) {
+          if (rxBuffer[endByteLocation] == END_BYTE) {
+            const uint8_t messageSize = endByteLocation - startByteLocation + 1;
+            if (messageSize < 8 + AES_GCM_OVERHEAD) continue;
+            LDebug("Found End Byte in rxBuffer");
+            LDebug("Message Identified...");
+            //Debug(dumpArrayToSerial(&(rxBuffer[0]), i+1));
+
+            //First, Calculate the CRC and check if its correct 
+            uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(rxBuffer[startByteLocation+1])), messageSize - 4))^0xffffffff;
+            uint16_t msgCrc = (rxBuffer[endByteLocation-2] << 8) + rxBuffer[endByteLocation-1]; 
+            if ((crc & 0xFFFF) != msgCrc) {
+              LDebug("Received RX message does not have matching CRC, skipping");
+              continue;
+            } 
+
+            //check if its a data packet or ack packet
+            const uint8_t packetType = rxBuffer[startByteLocation+1];
+            if (packetType != 0 && packetType != 1) {
+              LDebug("Received RX message does not have proper type byte, skipping");
+              continue;
+            }
+
+            //Since CRC passed, its time to decrypt the message, so lets decrypt it into a temp buffer
+            uint8_t tempBuf[256];
+            size_t plaintextLen;
+            if (!decryptD2DMessage(&(rxBuffer[startByteLocation+2]), messageSize-5, &(tempBuf[0]), 256, &plaintextLen)) {
+              LDebug("Decryption Failed, assuming message has been tampered with since CRC still passed");
+              //TODO tamper detection OR different key detection
+              continue;
+            }
+
+            //Verify the plaintextLen is what is expected
+            if (plaintextLen != messageSize - 5 - AES_GCM_OVERHEAD) {
+              LError("Received plaintext message from rx is unexpected size!");
+              HALT();
+            }
+
+            //Now, the message should be fully contained in tempBuf with length plainTextLen, which excludes the start/stop bytes, the message type, the encryption overhead, and the CRC
+            //since we got this far, we can reasonably assume the message is valid, so we can remove it from the buffer
+            messageFound = true;
+            rxBuffer.dropFront(endByteLocation+1);
+            rxBufferLastSize = 0;
+            shouldScanRxBuffer = true; //there could be another message to find, go look again
+
+            const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3];
+
+            //check if the receiver is correct
+            if (tempBuf[1] != deviceID) {
+              LDebug("Received RX message is not intended for sender, skipping");
+              //if the message is a data message, then we will log the message ID
+              if (packetType == 0) {
+                previouslySeenIds.pushBack(&messageNumber, 1);
+                if (previouslySeenIds.size() >= 128) {
+                  previouslySeenIds.dropFront(1);
+                }
+              }
+              break; //the message was valid, so lets break out
+            }
+
+            //check if the message was intended to be sent in the last 20 seconds based on the timestamp
+            //Dirty hack since the timestamp is at different placements in each buffer
+            const uint32_t timestamp = (tempBuf[5 + (1 - packetType)] << 24) + (tempBuf[6 + (1 - packetType)] << 16) + (tempBuf[7 + (1 - packetType)] << 8) + tempBuf[8 + (1 - packetType)];
+            if ((millis() / 1000) + epochAtBoot + 1 < timestamp) { //one is added for a bit of leeway
+              LWarn("Received RX Message is from the future! someone likely has invalid time configuration");
+              break;
+            }
+            if ((millis() / 1000) + epochAtBoot - timestamp > 20) {
+              LWarn("received RX Message is very old, possible replay attack attempt");
+              Debug(Serial.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
+              //TODO logic to log replay attack attempt
+              break; //the message was valid, so lets break out
+            }
+            
+            //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
+            const uint8_t sequenceNumber = tempBuf[4];
+            if (sequenceNumber > 7) {
+              LError("Invalid sequence number! dropping");
+              break;
+            }
+
+            if (packetType == 0) {
+              LDebug("Beginning Normal Message Processing");
+              //Normal message
+              const uint8_t sequenceCount = tempBuf[5];
+              const uint8_t sequenceSize = plaintextLen - 10; //subtracting header size
+
+              //check if the message number is already being tracked in rxMessageArray
+              uint16_t loc = rxMessageArray.find(messageNumber >> 8, messageNumber & 0xFF);
+              if (loc != 65535) { //if the message number is already in the rx message array
+                LDebug("Message is already in RX Message Array");
+                //message number was found in rxMessageArray already, check if this sequence is needed stil
+                const uint8_t sequenceBitmask = rxMessageArray.get(loc)[7];
+                if (sequenceBitmask & (1 << sequenceNumber)) { //if this sequence's bit has already been set...
+                  //message already received, so no need to reprocess
+                  LDebug("Message sequence was already received, ignoring");
+                } else {
+                  LDebug("Storing sequence in buffer");
+                  //message not received yet, so mark it in the bitmask and then add the data to the buffer allocation
+                  rxMessageArray.get(loc)[7] = sequenceBitmask | (1 << sequenceNumber);
+                  const uint16_t bufferStart = rxMessageArray.get(loc)[2] * 256 + rxMessageArray.get(loc)[3];
+                  const uint8_t sequenceBaseSize = rxMessageArray.get(loc)[8];
+                  const uint8_t sequenceCount = rxMessageArray.get(loc)[6];
+                  if (sequenceSize > sequenceBaseSize) {
+                    LError("Received packet with data size bigger than maximum sequence size!");
+                    HALT();
+                  }
+                  memcpy(&(rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber]), &(tempBuf[10]), sequenceSize);
+
+                  //update the rx timeout
+                  rxMessageArray.get(loc)[9] = (millis() / 1000) % 255;
+
+                  //If we are filling the final sequence packet, then change the message size to be accurate 
+                  if (sequenceNumber == sequenceCount-1) {
+                    LDebug("Last sequence message received, updating total rx message buffer size");
+                    uint16_t newBufferSize = sequenceBaseSize * sequenceCount - (sequenceBaseSize - sequenceSize);
+                    rxMessageArray.get(loc)[4] = newBufferSize >> 8;
+                    rxMessageArray.get(loc)[5] = newBufferSize & 0xFF;
+                  }
+                  
+                }
+              } else { //if the received message is not in the rx message array...
+                LDebug("Message is not in RX Message Array, adding...");
+                //message was not found, so we need to add it
+
+                
+                //Unfortunately, if the last packet is received first, its not possible to tell the total size of the data. 
+                //For now, we will just drop the packet and wait for an earlier sequence number packet to arrive first
+                //UNLESS its just a one packet message. Then we're good.
+                if (sequenceNumber != 0 && sequenceNumber == sequenceCount - 1) {
+                  LWarn("Last message of the sequence was received first! dropping");
+                  continue; //skip processing and hope an earlier packet number will be seen
+                }
+
+                //Check if the message ID is in the previouslyProcessedIds list. If it is, its possible we have already processed this message
+                if (previouslyProcessedIds.contains(messageNumber)) {
+                  LWarn("Received Message has a previously seen ID, ignoring");
+                  continue;
+                }
+
+                //if it wasnt, then add it for future use
+                previouslyProcessedIds.pushBack(&messageNumber, 1);
+                if (previouslyProcessedIds.size() >= 128) {
+                  previouslyProcessedIds.dropFront(1);
+                }
+
+                const uint32_t totalSequenceSize = sequenceSize * sequenceCount;
+
+                //try to allocate space in the rx message buffer
+                const uint16_t bufferLocation = rxMessageBuffer.malloc(totalSequenceSize);
+                if (bufferLocation == 0xFFFF) {
+                  LError("No space for new message found in rx message buffer, dropping!");
+                  continue;
+                }
+
+                LDebug("Allocated space in buffer for new message");
+
+                //Now that we successfully got an allocation in the rxMessageBuffer, construct a message in the rxMessageArray
+                uint8_t headerBuf[10];
+                headerBuf[0] = messageNumber >> 8;
+                headerBuf[1] = messageNumber & 0xFF;
+                headerBuf[2] = bufferLocation >> 8;
+                headerBuf[3] = bufferLocation & 0xFF;
+                headerBuf[4] = totalSequenceSize >> 8;
+                headerBuf[5] = totalSequenceSize & 0xFF;
+                headerBuf[6] = sequenceCount;
+                headerBuf[7] = 1 << sequenceNumber;
+                headerBuf[8] = sequenceSize;
+                headerBuf[9] = (millis() / 1000) % 255;
+
+                //try to add the message to the rxMessageArray
+                if (rxMessageArray.add(headerBuf)) {
+                  //Adding message to rx message array succeeded, so copy the data into the rxMessageBuffer
+                  LDebug("Added new rx message to buffer");
+                  memcpy(&(rxMessageBuffer[bufferLocation + sequenceSize * sequenceNumber]), &(tempBuf[10]), sequenceSize);
+                } else {
+                  //Adding message to rx message array failed, so release rx message buffer allocation and drop the message
+                  LError("Failed to add new rx message to array, rxMessageArray is full! Removing allocation in buffer");
+                  if (!rxMessageBuffer.free(bufferLocation)) {
+                    LError("Buffer Free Failed!");
+                    HALT();
+                  }
+                  continue;
+                }
+
+              }
+
+              //Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
+              LDebug("Requesting ACK Send: Adding send to ack buffer");
+              uint8_t uBuf[9]; //this is the data that will eventually be encrypted
+              uBuf[0] = deviceID;
+              uBuf[1] = tempBuf[0];
+              uBuf[2] = messageNumber >> 8;
+              uBuf[3] = messageNumber & 0xFF;
+              uBuf[4] = sequenceNumber;
+              const uint32_t timestamp = (millis() / 1000) + epochAtBoot;
+              uBuf[5] = timestamp >> 24;
+              uBuf[6] = (timestamp >> 16) & 0xFF;
+              uBuf[7] = (timestamp >> 8) & 0xFF;
+              uBuf[8] = timestamp & 0xFF;
+
+              //construct actual message
+              uint8_t vBuf[14 + AES_GCM_OVERHEAD];
+              vBuf[0] = START_BYTE;
+              vBuf[1] = 1;
+              size_t ciphertextLen;
+              if (!encryptD2DMessage(&(uBuf[0]), 9, &(vBuf[2]), 14 + AES_GCM_OVERHEAD, &ciphertextLen)) {
+                LError("Failed to encrypt ACK message");
+                HALT();
+              }
+
+              //assert the encrypted string is the expected length
+              if (ciphertextLen != 9 + AES_GCM_OVERHEAD) {
+                LError("Encrypted ACK has unexpected length!");
+                HALT();
+              }
+
+              //Add CRC and construct rest of ACK
+              uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(vBuf[1])), 10 + AES_GCM_OVERHEAD))^0xffffffff; //note - this is one byte longer because it includes the start byte
+              vBuf[11 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
+              vBuf[12 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
+              vBuf[13 + AES_GCM_OVERHEAD] = END_BYTE;
+
+              //Push the ACK to the ack buffer
+              ackToSendBuffer.pushBack(&(vBuf[0]), 14 + AES_GCM_OVERHEAD);
+              
+            } else {
+              LDebug("Beginning ACK Message Processing");
+              //Ack Message - we need to process the ack
+
+              //First, search for the relevant message in the txMessageArray by its message number and sequence number
+              //TODO this might have to be a critical section
+              for (int i = 0; i < txMessageArray.size(); i++) {
+                if ((txMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1] == messageNumber && txMessageArray.get(i)[2] == sequenceNumber) {
+                  LDebug("Found Message - Indicated ACK has been received");
+                  //we found the right message, so indicate the ack has been received
+                  txMessageArray.get(i)[8] |= 0b10000000;
+                }
+              }
+            }
+            
+            //If we've gotten this far, then a message was successfully processed, so break out of the loop checking this specific start byte
+            break;
+          }
+        }
+        //end of end byte for loop. If we got this far with a message detection, we continue the breaks
+        if (messageFound) break;
       }
     }
-    if (startIndex != 65535) {
-      LDebug("Start Index Found");
-      //Where the start index was found, the preceding data is malformed/garbage, so it can be dropped
-      rxBuffer.dropFront(startIndex);
-      startIndex = 0;
 
-      bool messageFound = false;
-      
-      //TODO we should add some optimization here so that, when new data comes in and we are still scanning off the same start byte, we should automatically start scanning at the point
-      //of the new data since we know the old data doesn't contain a message
-      //This problem is most prevalent when an invalid message with a valid end byte is in the buffer and the buffer is under 256 bytes.
-      //Every time new data gets added to the buffer, the message will attempt to be processed again 
-      
-      //iterate over the rxBuffer until we reach its end, or we reach the max size of a LoRa message (256 bytes)
-      for (int i = 1; i < min((int)rxBuffer.size(), 256); i++) {
-        if (rxBuffer[i] == END_BYTE) { //if we find the end byte... i+1 is now the total message length
-          LDebug("Found End Byte in rxBuffer");
-          LDebug("Message Identified...");
-          Debug(dumpArrayToSerial(&(rxBuffer[0]), i+1));
-
-          //First, Calculate the CRC and check if its correct 
-          uint32_t crc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(rxBuffer[1])), i - 3))^0xffffffff;
-          uint16_t msgCrc = (rxBuffer[i-2] << 8) + rxBuffer[i-1]; 
-          if ((crc & 0xFFFF) != msgCrc) {
-            LDebug("Received RX message does not have matching CRC, skipping");
-            continue;
-          } 
-
-          //Since CRC passed, its time to decrypt the message, so lets decrypt it into a temp buffer
-          uint8_t tempBuf[256];
-          size_t plaintextLen;
-          if (!decryptD2DMessage(&(rxBuffer[2]), i - 4, &(tempBuf[0]), 256, &plaintextLen)) {
-            LDebug("Decryption Failed, assuming message has been tampered with since CRC still passed");
-            //TODO tamper detection OR different key detection
-            continue;
-          }
-
-          //Verify the plaintextLen is what is expected
-          if (plaintextLen != (i+1) - 5 - AES_GCM_OVERHEAD) {
-            LError("Received plaintext message from rx is unexpected size!");
-            HALT();
-          }
-
-          //Now, the message should be fully contained in tempBuf with length plainTextLen, which excludes the start/stop bytes, the encryption overhead, and the CRC
-
-          //check if its a data packet or ack packet
-          if (rxBuffer[1] != 0 && rxBuffer[1] != 1) {
-            LDebug("Received RX message does have proper type byte, skipping");
-            continue;
-          }
-
-          //check if the receiver is correct
-          if (tempBuf[1] != deviceID) {
-            LDebug("Received RX message is not intended for sender, skipping");
-            continue;
-          }
-
-          //check if the message was intended to be sent in the last 20 seconds based on the timestamp
-          //Dirty hack since the timestamp is at different placements in each buffer
-          const uint32_t timestamp = (tempBuf[5 + (1 - rxBuffer[1])] << 24) + (tempBuf[6 + (1 - rxBuffer[1])] << 16) + (tempBuf[7 + (1 - rxBuffer[1])] << 8) + tempBuf[8 + (1 - rxBuffer[1])];
-          if ((millis() / 1000) + epochAtBoot - timestamp > 20) {
-            LWarn("received RX Message is very old, possible replay attack attempt");
-            //TODO logic to log replay attack attempt
-            continue;
-          }
-          
-          //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
-          const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3];
-          const uint8_t sequenceNumber = tempBuf[4];
-          if (sequenceNumber > 7) {
-            LError("Incalid sequence number! dropping");
-            continue;
-          }
-
-          if (rxBuffer[1] == 0) {
-            LDebug("Beginning Normal Message Processing");
-            //Normal message
-            const uint8_t sequenceCount = tempBuf[5];
-            const uint8_t sequenceSize = plaintextLen - 10; //subtracting header size
-
-            //check if the message number is already being tracked in rxMessageArray
-            uint16_t loc = rxMessageArray.find(messageNumber >> 8, messageNumber & 0xFF);
-            if (loc != 65535) { //if the message number is already in the rx message array
-              LDebug("Message is already in RX Message Array");
-              //message number was found in rxMessageArray already, check if this sequence is needed stil
-              const uint8_t sequenceBitmask = rxMessageArray.get(loc)[7];
-              if (sequenceBitmask & (1 << sequenceNumber)) { //if this sequence's bit has already been set...
-                //message already received, so no need to reprocess
-                LDebug("Message sequence was already received, ignoring");
-              } else {
-                LDebug("Storing sequence in buffer");
-                //message not received yet, so mark it in the bitmask and then add the data to the buffer allocation
-                rxMessageArray.get(loc)[7] = sequenceBitmask | (1 << sequenceNumber);
-                const uint16_t bufferStart = rxMessageArray.get(loc)[2] * 256 + rxMessageArray.get(loc)[3];
-                const uint8_t sequenceBaseSize = rxMessageArray.get(loc)[8];
-                const uint8_t sequenceCount = rxMessageArray.get(loc)[6];
-                if (sequenceSize > sequenceBaseSize) {
-                  LError("Received packet with data size bigger than maximum sequence size!");
-                  HALT();
-                }
-                memcpy(&(rxMessageBuffer[bufferStart + sequenceBaseSize * sequenceNumber]), &(tempBuf[10]), sequenceSize);
-
-                //update the rx timeout
-                rxMessageArray.get(loc)[9] = (millis() / 1000) % 255;
-
-                //If we are filling the final sequence packet, then change the message size to be accurate 
-                if (sequenceNumber == sequenceCount-1) {
-                  LDebug("Last sequence message received, updating total rx message buffer size");
-                  uint16_t newBufferSize = sequenceBaseSize * sequenceCount - (sequenceBaseSize - sequenceSize);
-                  rxMessageArray.get(loc)[4] = newBufferSize >> 8;
-                  rxMessageArray.get(loc)[5] = newBufferSize & 0xFF;
-                }
-                
-              }
-            } else { //if the received message is not in the rx message array...
-              LDebug("Message is not in RX Message Array, adding...");
-              //message was not found, so we need to add it
-              
-              //Unfortunately, if the last packet is received first, its not possible to tell the total size of the data. 
-              //For now, we will just drop the packet and wait for an earlier sequence number packet to arrive first
-              //UNLESS its just a one packet message. Then we're good.
-              if (sequenceNumber != 0 && sequenceNumber == sequenceCount - 1) {
-                LWarn("Last message of the sequence was received first! dropping");
-                continue; //skip processing and hope an earlier packet number will be seen
-              }
-
-              const uint32_t totalSequenceSize = sequenceSize * sequenceCount;
-
-              //try to allocate space in the rx message buffer
-              const uint16_t bufferLocation = rxMessageBuffer.malloc(totalSequenceSize);
-              if (bufferLocation == 0xFFFF) {
-                LError("No space for new message found in rx message buffer, dropping!");
-                continue;
-              }
-
-              LDebug("Allocated space in buffer for new message");
-
-              //Now that we successfully got an allocation in the rxMessageBuffer, construct a message in the rxMessageArray
-              uint8_t headerBuf[10];
-              headerBuf[0] = messageNumber >> 8;
-              headerBuf[1] = messageNumber & 0xFF;
-              headerBuf[2] = bufferLocation >> 8;
-              headerBuf[3] = bufferLocation & 0xFF;
-              headerBuf[4] = totalSequenceSize >> 8;
-              headerBuf[5] = totalSequenceSize & 0xFF;
-              headerBuf[6] = sequenceCount;
-              headerBuf[7] = 1 << sequenceNumber;
-              headerBuf[8] = sequenceSize;
-              headerBuf[9] = (millis() / 1000) % 255;
-
-              //try to add the message to the rxMessageArray
-              if (rxMessageArray.add(headerBuf)) {
-                //Adding message to rx message array succeeded, so copy the data into the rxMessageBuffer
-                LDebug("Added new rx message to buffer");
-                memcpy(&(rxMessageBuffer[bufferLocation + sequenceSize * sequenceNumber]), &(tempBuf[10]), sequenceSize);
-              } else {
-                //Adding message to rx message array failed, so release rx message buffer allocation and drop the message
-                LError("Failed to add new rx message to array, rxMessageArray is full! Removing allocation in buffer");
-                if (!rxMessageBuffer.free(bufferLocation)) {
-                  LError("Buffer Free Failed!");
-                  HALT();
-                }
-                continue;
-              }
-
-            }
-
-            //Send an ACK. Since the readyToSendBuffer only references data in other buffers, we will have a seperate ACK buffer
-            LDebug("Requesting ACK Send: Adding send to ack buffer");
-            uint8_t uBuf[9]; //this is the data that will eventually be encrypted
-            uBuf[0] = deviceID;
-            uBuf[1] = tempBuf[0];
-            uBuf[2] = messageNumber >> 8;
-            uBuf[3] = messageNumber & 0xFF;
-            uBuf[4] = sequenceNumber;
-            const uint32_t timestamp = (millis() / 1000) + epochAtBoot;
-            uBuf[5] = timestamp >> 24;
-            uBuf[6] = (timestamp >> 16) & 0xFF;
-            uBuf[7] = (timestamp >> 8) & 0xFF;
-            uBuf[8] = timestamp & 0xFF;
-
-            //construct actual message
-            uint8_t vBuf[14 + AES_GCM_OVERHEAD];
-            vBuf[0] = START_BYTE;
-            vBuf[1] = 1;
-            size_t ciphertextLen;
-            if (!encryptD2DMessage(&(uBuf[0]), 9, &(vBuf[2]), 14 + AES_GCM_OVERHEAD, &ciphertextLen)) {
-              LError("Failed to encrypt ACK message");
-              HALT();
-            }
-
-            //assert the encrypted string is the expected length
-            if (ciphertextLen != 9 + AES_GCM_OVERHEAD) {
-              LError("Encrypted ACK has unexpected length!");
-              HALT();
-            }
-
-            //Add CRC and construct rest of ACK
-            uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(vBuf[1])), 10 + AES_GCM_OVERHEAD))^0xffffffff; //note - this is one byte longer because it includes the start byte
-            vBuf[11 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
-            vBuf[12 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
-            vBuf[13 + AES_GCM_OVERHEAD] = END_BYTE;
-
-            //Push the ACK to the ack buffer
-            ackToSendBuffer.pushBack(&(vBuf[0]), 14 + AES_GCM_OVERHEAD);
-            
-          } else {
-            LDebug("Beginning ACK Message Processing");
-            //Ack Message - we need to process the ack
-
-            //First, search for the relevant message in the txMessageArray by its message number and sequence number
-            //TODO this might have to be a critical section
-            for (int i = 0; i < txMessageArray.size(); i++) {
-              if ((txMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1] == messageNumber && txMessageArray.get(i)[2] == sequenceNumber) {
-                LDebug("Found Message - Indicated ACK has been received");
-                //we found the right message, so indicate the ack has been received
-                txMessageArray.get(i)[8] |= 0b10000000;
-              }
-            }
-          }
-          
-          //If we've gotten this far, then a message was successfully processed, so break out of the loop checking this specific start byte
-          messageFound = true;
-          break;
-        }
+    //end of start and stop byte loops. if we got this far with no message detected, then we need to do some buffer cleaning.
+    //first, we should drop the front of the buffer until it is 256 bytes max
+    //then, we should update the rxBufferLastSize variable appropriately
+    if (!messageFound) {
+      if (rxBuffer.size() > 256) {
+        shouldScanRxBuffer = true; //there more data that didn't get scanned potentially, so rescan
+        rxBuffer.dropFront(rxBuffer.size() - 256);
       }
-      //if we found a message or we've searched over 256 bytes, then the current start byte (at position zero) cannot be associated with any other messages. Thus, we can drop the start byte
-      if (messageFound || rxBuffer.size() >= 256) {
-        LDebug("A message was found or the buffer is larger than a single message's length, so dropping the current start byte and rescanning");
-        rxBuffer.dropFront(1);
-        shouldScanRxBuffer = true;
-      }
-    } else { //Start byte wasn't found at all in the buffer
-      LDebug("Start Index Not Found, Clearing Buffer");
-      //Clear the buffer
-      rxBuffer.clearBuffer();
+      rxBufferLastSize = rxBuffer.size();
     }
   }
 
@@ -622,6 +663,11 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
     messageNumber = esp_random();
     foundNumber = true;
     
+    if (attemptCount >= 80) {
+      LError("Reached 10 attempts to find a new message number");
+      HALT();
+    }
+    
     for (int i = 0; i < txMessageArray.size(); i++) {
       if (messageNumber == (txMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1]) {
         foundNumber = false;
@@ -629,15 +675,18 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
       }
     }
     if (!foundNumber) continue;
-    for (int i = 0; i < rxMessageArray.size(); i++) {
-      if (messageNumber == (rxMessageArray.get(i)[0] << 8) + txMessageArray.get(i)[1]) {
+    for (int i = 0; i < previouslySeenIds.size(); i++) {
+      if (messageNumber == previouslySeenIds[i]) {
         foundNumber = false;
         break;
       }
     }
-    if (attemptCount >= 10) {
-      LError("Reached 10 attempts to find a new message number");
-      HALT();
+    if (!foundNumber) continue;
+    for (int i = 0; i < previouslyProcessedIds.size(); i++) {
+      if (messageNumber == previouslyProcessedIds[i]) {
+        foundNumber = false;
+        break;
+      }
     }
   }
 

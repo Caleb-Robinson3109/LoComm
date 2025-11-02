@@ -2,12 +2,12 @@
 
 //TODO this could be optimized by actually tracking size instead of calculating it
 
-template <int SIZE>
+template <typename T, int SIZE>
 class CyclicArrayList {
   public:
     //CyclicArrayList();
 
-    const uint8_t& operator[](unsigned int index) {
+    const T& operator[](unsigned int index) {
       if (index >= SIZE) {
         return buffer[0]; //TODO this is not ideal, but there is no error handling
       } else {
@@ -15,6 +15,27 @@ class CyclicArrayList {
         if (index >= SIZE) index -= SIZE;
         return buffer[index];
       }
+    }
+
+    bool contains(T value) {
+      if (!bufferFull && bufferStart == bufferEnd) return false;
+      if (bufferStart < bufferEnd) {
+        for (int i = bufferStart; i < bufferEnd; i++) {
+          if (buffer[i] == value) return true;
+        }
+      } else if (bufferStart > bufferEnd) {
+        for (int i = bufferStart; i < SIZE; i++) {
+          if (buffer[i] == value) return true;
+        }
+        for (int i = 0; i < bufferEnd; i++) {
+          if (buffer[i] == value) return true;
+        }
+      } else {
+        for (int i = 0; i < SIZE; i++) {
+          if (buffer[i] == value) return true;
+        }
+      }
+      return false;
     }
 
     uint32_t spaceLeft() {
@@ -32,21 +53,28 @@ class CyclicArrayList {
       return SIZE - this->spaceLeft();
     }
 
-    bool pushBack(uint8_t* src, int size) { //TODO need to put a lock around this
+    bool pushBack(const T* src, int size) { //TODO need to put a lock around this
       if (size > this->spaceLeft()) return false;
       
       if (SIZE - bufferEnd < size) { //If adding to the buffer would wrap it around...
-        memcpy(&(buffer[bufferEnd]), src, sizeof(uint8_t) * (SIZE - bufferEnd));
-        memcpy(buffer, src, sizeof(uint8_t) * (size - (SIZE - bufferEnd)));
+        memcpy(&(buffer[bufferEnd]), src, sizeof(T) * (SIZE - bufferEnd));
+        memcpy(buffer, src, sizeof(T) * (size - (SIZE - bufferEnd)));
         bufferEnd = (size - (SIZE - bufferEnd));
       } else { 
-        memcpy(&(buffer[bufferEnd]), src, sizeof(uint8_t) * (size));
+        memcpy(&(buffer[bufferEnd]), src, sizeof(T) * (size));
         bufferEnd += size;
       }
       return true;
     }
 
-    bool peakFront(uint8_t* dst, int s) {
+    bool pushBackSingle(T value) {
+      if (this->spaceLeft() == 0) return false;
+      buffer[bufferEnd++] = value;
+      if (bufferEnd == SIZE) bufferEnd = 0;
+      return true;
+    }
+
+    bool peakFront(T* dst, int s) {
       if (s > this->size()) {
         return false;
       }
@@ -79,7 +107,7 @@ class CyclicArrayList {
     }
 
   private:
-    uint8_t buffer[SIZE];
+    T buffer[SIZE];
     bool bufferFull = false;
     uint32_t bufferEnd = 0; //location of the first open byte of data
     uint32_t bufferStart = 0; //location of the first byte of data
