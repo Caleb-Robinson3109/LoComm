@@ -172,6 +172,7 @@ void handle_DCON_packet(){
         password_hash[i] = 0x00;
     }
     set_password_flag = false;
+    password_entered_flag = false;
     //TODO eventuall the key with 0x00 
 
     build_DCAK_packet();
@@ -286,10 +287,18 @@ void handle_message_to_device(){
 }
 
 void handle_message_from_device(){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("handle mfd");
+    delay(2000);
     //if the password is not set then drop the packet
-    if(!set_password_flag){
-        //message_from_device_flag = false;
-        //device_in_size = 0;
+    if(!password_entered_flag){
+        lcd.setCursor(0,1);
+        lcd.print("no password!");
+        
+        //drop packet if there is no password
+        message_from_device_flag = false;
+        device_in_size = 0;
         return;
     }
 
@@ -304,13 +313,14 @@ void handle_message_from_device(){
     //try 10 or so times
     bool ack_recv = false;
     int times_tried = 0;
-    while(!ack_recv && times_tried < 10){
+    //TODO fix ack recv
+    //while(!ack_recv || times_tried < 10){
         Serial.write(computer_out_packet, computer_out_size);
         Serial.flush();
 
-        unsigned long start = millis();
-        while((millis() - start) < 500 && Serial.available() == 0){
-            delay(10);
+        /*unsigned long start = millis();
+        while((millis() - start) < 1000 && Serial.available() == 0){
+            delay(100);
         }
 
         if(Serial.available() == 0){
@@ -344,7 +354,7 @@ void handle_message_from_device(){
         Serial.flush();
         delay(500);
         while(Serial.available()) Serial.read();
-    }
+    }*/
 
     //complete and set the appropate flags
     message_from_device_flag = false;

@@ -40,6 +40,7 @@ def serial_read():
 
             elif(message_type == b"SEND"):
                 LoCommGlobals.context.SEND_packet = data
+                LoCommGlobals.context.SEND_flag = True
 
             else:
                 print("ERROR - NOT RECONICED PACKET TYPE")

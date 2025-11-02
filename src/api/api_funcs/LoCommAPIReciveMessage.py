@@ -33,8 +33,8 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         crc: int
         end_bytes: int
         
-        start_bytes, packet_size, packet_type, tag, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIHHBH", LoCommGlobals.context.SEND_packet)
-        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[18:])
+        start_bytes, packet_size, packet_type, tag, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIHHBH", LoCommGlobals.context.SEND_packet[:19])
+        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[19:])
 
         #check SEND packet
         if(start_bytes != 0x1234):
@@ -73,9 +73,10 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         sack_crc = binascii.crc_hqx(sack_payload, 0)
         SACK_packet: bytes = struct.pack(">HH4sIHHH", 0x1234, 18, b"SACK", tag, curr_packet, sack_crc, 0x5678)
 
+        #TODO fix the ack sending
         #send sack
-        LoCommGlobals.serial_conn.write(SACK_packet)
-        LoCommGlobals.serial_conn.flush()
+        #LoCommGlobals.serial_conn.write(SACK_packet)
+        #LoCommGlobals.serial_conn.flush()
 
         #if the message is complete then send if if not wait for more messages
     except Exception as e:
@@ -89,6 +90,10 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
 
     #return if needed
     if(LoCommGlobals.context != None and LoCommGlobals.context.SEND_return):
+        LoCommGlobals.context.SEND_flag = False
         return LoCommGlobals.context.SEND_name, LoCommGlobals.context.SEND_message
+    elif(LoCommGlobals.context != None):
+        LoCommGlobals.context.SEND_flag = False
+        return None, None
     else:
         return None, None
