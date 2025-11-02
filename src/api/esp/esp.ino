@@ -22,12 +22,16 @@ void setup() {
   lcd.print("LoComm");
 
   init_password();
-  debug_simulate_device_in_packet();
+  //debug_simulate_device_in_packet();
 }
 
 void loop() {
   //there is a message from the device and the next 2 if statmetns handle that
   if(message_from_device_flag){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("message_from_\ndevice_flag");
+    delay(2000);
     handle_message_from_device();
   }
 
