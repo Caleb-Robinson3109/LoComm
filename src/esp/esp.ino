@@ -1,7 +1,7 @@
 //Libraries for LoRa
 #include "functions.h"
 
-uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -114,7 +114,31 @@ void setup() {
 }
 
 void apiCode(void *pvParameters ) {
-  while (1);
+  while (1) {
+    /*
+    //if there is data in the serialReadyToSendBuffer, process it
+    const bool message_from_device_flag = serialReadyToSendArray.size() > 0;
+    if(message_from_device_flag){
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("message_from_\ndevice_flag");
+      delay(2000);
+      handle_message_from_device();
+    }
+
+    //there is a message from the device and the subsaquent funcs check and handle that
+    recive_packet_from_computer();
+    if(message_from_computer_flag){
+      handle_message_from_computer();
+    }
+    if(message_to_device_flag){
+      handle_message_to_device();
+    }
+    if(message_to_computer_flag){
+      handle_message_to_computer();
+    }
+    */
+  }
 }
 
 void loop() {
@@ -480,9 +504,11 @@ void loop() {
         tempBuf[1] = rxMessageArray.get(i)[3];
         tempBuf[2] = rxMessageArray.get(i)[4]; //Size in buffer
         tempBuf[3] = rxMessageArray.get(i)[5];
-
-        serialReadyToSendArray.add(&(tempBuf[0]));
-
+        
+        {
+          ScopeLock(serialLoraBridgeSpinLock, serialLoraBridgeLock);
+          serialReadyToSendArray.add(&(tempBuf[0]));
+        }
         //now remove it from rxMessageArray
         rxMessageArray.remove(i);
         i--;
@@ -635,6 +661,7 @@ void loop() {
 
   //NOTE this is temporary code
   //For now, we will just push the code straight to the serial buffer
+  /*
   if (serialReadyToSendArray.size() > 0) {
     LDebug("Detected messages ready to dump out to serial");
     for (int i = 0; i < serialReadyToSendArray.size(); i++) {
@@ -649,8 +676,10 @@ void loop() {
     //clear the serialReadyToSendArray
     serialReadyToSendArray.clearAll();
   }
+  */
 
   //TEST CODE
+  /*
   if (Serial.available()) {
     if (Serial.read() == 'w') {
       delay(10);
@@ -667,6 +696,7 @@ void loop() {
       addMessageToTxArray(&(temp[0]), numBytes, 1 - deviceID);
     } 
   }
+  */
 
   //check for data on the serial rx buffer
   
