@@ -38,6 +38,8 @@ portMUX_TYPE loraRxSpinLock = portMUX_INITIALIZER_UNLOCKED;
 bool loraRxLock = false;
 portMUX_TYPE loraTxSpinLock = portMUX_INITIALIZER_UNLOCKED;
 bool loraTxLock = false;
+portMUX_TYPE serialLoraBridgeSpinLock = portMUX_INITIALIZER_UNLOCKED;
+bool serialLoraBridgeLock = false;
 
 StackType_t apiStack[API_CODE_STACK_SIZE];
 StaticTask_t apiStackBuffer;
@@ -97,22 +99,22 @@ void setup() {
   display.display();
 
   //initialize api task
-  /*
+  
   xTaskCreateStaticPinnedToCore(
     apiCode,
     "APICODE",
     API_CODE_STACK_SIZE,
     (void*) 1,
-    1,
+    0,
     apiStack,
-    apiStackBuffer,
+    &apiStackBuffer,
     0
-  )
-  */
+  );
+  
 }
 
-void apiCode() {
-
+void apiCode(void *pvParameters ) {
+  while (1);
 }
 
 void loop() {
