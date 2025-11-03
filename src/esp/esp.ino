@@ -298,7 +298,12 @@ void loop() {
 
             const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3];
 
+            bool broadcast = false;
             //check if the receiver is correct
+            if (tempBuf[1] == 255) {
+              //This is a broadcast, so accept and dont ack
+              broadcast = true; 
+            } else
             if (tempBuf[1] != deviceID) {
               LDebug("Received RX message is not intended for sender, skipping");
               //if the message is a data message, then we will log the message ID
@@ -392,7 +397,7 @@ void loop() {
                   LWarn("Received Message has a previously seen ID, ignoring");
                   //since the ID was previously processed, its likely that the message was already received, but the ack failed
                   //Thus, we will still send an ack just in case, but we will otherwise silently drop the message
-                  sendAck(tempBuf[0], messageNumber, sequenceNumber);
+                  if (!broadcast) sendAck(tempBuf[0], messageNumber, sequenceNumber);
                   continue;
                 }
 
@@ -443,7 +448,7 @@ void loop() {
 
               }
 
-              sendAck(tempBuf[0], messageNumber, sequenceNumber);
+              if (!broadcast) sendAck(tempBuf[0], messageNumber, sequenceNumber);
               
             } else {
               ScopeLock(loraTxSpinLock, loraTxLock);

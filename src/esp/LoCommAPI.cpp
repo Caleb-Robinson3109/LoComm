@@ -280,7 +280,7 @@ void handle_message_to_device(){
     //lcd.print("handle message to device");
     //delay(1000);
     while(message_to_device_flag){
-        if (addMessageToTxArray(*(device_out_packet[0]), device_out_size)) {
+        if (addMessageToTxArray(*(device_out_packet[0]), device_out_size, 1 - deviceID)) {
 
         }
         //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
