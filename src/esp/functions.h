@@ -28,6 +28,7 @@
 #define Debug(x) if (CURRENT_LOG_LEVEL == LOG_LEVEL_DEBUG) x
 
 #define ScopeLock(spinLock, lock) ScopedLock aaaa = ScopedLock(&spinLock, &lock)
+#define ScopeLockName(spinLock, lock, lockName) ScopedLock lockName = ScopedLock(&spinLock, &lock)
 
 #define diff(new, old, size) (new >= old) ? new - old : size - old + new
 

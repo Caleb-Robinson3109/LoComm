@@ -1,4 +1,5 @@
 #include "LoCommAPI.h"
+#include "functions.h"
 
 uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
 uint8_t computer_out_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -14,6 +15,17 @@ size_t computer_out_size = 0;
 size_t device_out_size = 0;
 size_t computer_in_size = 0;
 size_t device_in_size = 0;
+
+extern uint8_t deviceID;
+extern SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray;
+extern DefraggingBuffer<2048, 8> rxMessageBuffer;
+extern bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID);
+extern portMUX_TYPE loraRxSpinLock;
+extern bool loraRxLock;
+extern portMUX_TYPE loraTxSpinLock;
+extern bool loraTxLock;
+extern portMUX_TYPE serialLoraBridgeSpinLock;
+extern bool serialLoraBridgeLock;
 
 const uint8_t default_password[32] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd',
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -256,7 +268,7 @@ void handle_SEND_packet(){
     device_out_size = packet_size;
 
     //build SACK
-    build_SACK_packet();
+    //build_SACK_packet();
     //lcd.clear();
     //lcd.setCursor(0,0);
     //lcd.print("device out packet");
@@ -279,14 +291,14 @@ void handle_message_to_device(){
     //lcd.setCursor(0,0);
     //lcd.print("handle message to device");
     //delay(1000);
-    while(message_to_device_flag){
-        if (addMessageToTxArray(*(device_out_packet[0]), device_out_size, 1 - deviceID)) {
-
-        }
-        //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
-        message_to_device_flag = false; // Completed transfer to Ethans code
-        device_out_size = 0;
+    //while(message_to_device_flag){
+    if (addMessageToTxArray(&(device_out_packet[0]), device_out_size, 1 - deviceID)) {
+      build_SACK_packet();
+      message_to_device_flag = false; // Completed transfer to Ethans code
+      device_out_size = 0;
     }
+        //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
+    //}
 }
 
 void handle_message_from_device(){
@@ -308,8 +320,8 @@ void handle_message_from_device(){
     */
 
     {
-      ScopeLock(serialLoraBridgeSpinLock, serialLoraBridgeLock);
-      ScopeLock(loraRxSpinLock, loraRxLock);
+      ScopeLockName(serialLoraBridgeSpinLock, serialLoraBridgeLock, n1);
+      ScopeLockName(loraRxSpinLock, loraRxLock, n2);
       const uint16_t addr = (serialReadyToSendArray.get(0)[0] << 8) + serialReadyToSendArray.get(0)[1];
       const uint16_t size = (serialReadyToSendArray.get(0)[2] << 8) + serialReadyToSendArray.get(0)[3];
 
