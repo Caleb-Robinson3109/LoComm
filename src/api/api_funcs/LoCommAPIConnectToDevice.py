@@ -36,13 +36,16 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
 
-            ser = serial.Serial(port=port.name, baudrate=9600, timeout=10) #Adjust timout if it is not connection on first try -> make longer
+            ser = serial.Serial(port=port.name, baudrate=115200, timeout=10) #Adjust timout if it is not connection on first try -> make longer
             #let ser init in device
             print_packet_debug(packet, True)
             ser.write(packet)
             ser.flush()
             #wait for responce timeout defined in ser def
             data: bytes = ser.read(16)
+            print("Meow 1")
+            print(data)
+            print(len(data))
             print_packet_debug(data, False)
             #check to make sure that SACK has been sent the SACK should be 14 bytes long
             if len(data) == 16:

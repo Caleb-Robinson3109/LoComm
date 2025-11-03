@@ -50,7 +50,7 @@ void recive_packet_from_computer(){
     if(Serial.available() == 0){
         return;
     }
-
+    delay(10);
     while(Serial.available() > 0 && serial_index < MAX_COMPUTER_PACKET_SIZE){
         computer_in_packet[serial_index++] = Serial.read();
     }

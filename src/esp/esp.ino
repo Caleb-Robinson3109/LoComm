@@ -5,7 +5,7 @@
 #include "LoCommAPI.h"
 #include "LoCommLib.h"
 
-uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -66,7 +66,7 @@ void setup() {
   previouslyProcessedIds = CyclicArrayList<uint16_t, 128>();
 
   //Initialize Serial Connection to Computer
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   //Initialize OLED Screen
   delay(1000);
@@ -120,20 +120,23 @@ void setup() {
 }
 
 void apiCode( void* params ) {
-  if(serialReadyToSendArray.size() > 0){
-    handle_message_from_device();
-  }
+  while (1) {
+    if(serialReadyToSendArray.size() > 0){
+      handle_message_from_device();
+    }
 
-  //there is a message from the device and the subsaquent funcs check and handle that
-  recive_packet_from_computer();
-  if(message_from_computer_flag){
-    handle_message_from_computer();
-  }
-  if(message_to_device_flag){
-    handle_message_to_device();
-  }
-  if(message_to_computer_flag){
-    handle_message_to_computer();
+    //there is a message from the device and the subsaquent funcs check and handle that
+    recive_packet_from_computer();
+    if(message_from_computer_flag){
+      //Serial.println("Received message from computer");
+      handle_message_from_computer();
+    }
+    if(message_to_device_flag){
+      handle_message_to_device();
+    }
+    if(message_to_computer_flag){
+      handle_message_to_computer();
+    }
   }
   
 }
