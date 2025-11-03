@@ -280,6 +280,9 @@ void handle_message_to_device(){
     //lcd.print("handle message to device");
     //delay(1000);
     while(message_to_device_flag){
+        if (addMessageToTxArray(*(device_out_packet[0]), device_out_size)) {
+
+        }
         //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
         message_to_device_flag = false; // Completed transfer to Ethans code
         device_out_size = 0;
@@ -292,6 +295,7 @@ void handle_message_from_device(){
     //lcd.print("handle mfd");
     //delay(2000);
     //if the password is not set then drop the packet
+    /*
     if(!password_entered_flag){
         //lcd.setCursor(0,1);
         //lcd.print("no password!");
@@ -301,11 +305,19 @@ void handle_message_from_device(){
         device_in_size = 0;
         return;
     }
+    */
 
-    //get the device packet in and cpy it to the computer packet out
-    memcpy(computer_out_packet, device_in_packet, device_in_size);
-    computer_out_size = device_in_size;
-    device_in_size = 0;
+    {
+      ScopeLock(serialLoraBridgeSpinLock, serialLoraBridgeLock);
+      ScopeLock(loraRxSpinLock, loraRxLock);
+      const uint16_t addr = (serialReadyToSendArray.get(0)[0] << 8) + serialReadyToSendArray.get(0)[1];
+      const uint16_t size = (serialReadyToSendArray.get(0)[2] << 8) + serialReadyToSendArray.get(0)[3];
+
+      Serial.write(&(rxMessageBuffer[addr]), size);
+      rxMessageBuffer.free(addr);
+    }
+
+    Serial.flush();
 
     //send the  computer packet out to the computer
     //wait for an ack
@@ -315,8 +327,6 @@ void handle_message_from_device(){
     int times_tried = 0;
     //TODO fix ack recv
     //while(!ack_recv || times_tried < 10){
-        Serial.write(computer_out_packet, computer_out_size);
-        Serial.flush();
 
         /*unsigned long start = millis();
         while((millis() - start) < 1000 && Serial.available() == 0){
@@ -357,6 +367,5 @@ void handle_message_from_device(){
     }*/
 
     //complete and set the appropate flags
-    message_from_device_flag = false;
     device_out_size = 0;
 }

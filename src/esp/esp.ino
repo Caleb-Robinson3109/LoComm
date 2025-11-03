@@ -17,7 +17,7 @@ uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at bo
 bool receiveReady = false;
 bool messageDispatched = false;
 bool ackDispatched = false;
-bool enableLora = true;
+bool enableLora = false;
 CyclicArrayList<uint16_t, 128> previouslySeenIds;
 CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 
@@ -35,7 +35,7 @@ CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE> ackToSendBuffer; //Queue for Acks
 
 //Serial TX Related Variables
 //TODO for sake of performance, this should probably be a CyclicArrayList
-SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Queue for sending data out to serial 
+SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Queue for sending data out to serial //(location in the rxMessageBuffer, size)
 
 //Since both the lora code and api code may need access to the lora rx and tx buffers, both need locks
 portMUX_TYPE loraRxSpinLock = portMUX_INITIALIZER_UNLOCKED;
@@ -120,7 +120,7 @@ void setup() {
 }
 
 void apiCode( void* params ) {
-  if(message_from_device_flag){
+  if(serialReadyToSendArray.size() > 0){
     handle_message_from_device();
   }
 
