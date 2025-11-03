@@ -1,6 +1,10 @@
 //Libraries for LoRa
 #include "functions.h"
 
+//api functions
+#include "LoCommAPI.h"
+#include "LoCommLib.h"
+
 uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
@@ -109,10 +113,27 @@ void setup() {
     0
   )
   */
+
+  //init the password and keys
+  init_password();
 }
 
 void apiCode() {
+    if(message_from_device_flag){
+    handle_message_from_device();
+  }
 
+  //there is a message from the device and the subsaquent funcs check and handle that
+  recive_packet_from_computer();
+  if(message_from_computer_flag){
+    handle_message_from_computer();
+  }
+  if(message_to_device_flag){
+    handle_message_to_device();
+  }
+  if(message_to_computer_flag){
+    handle_message_to_computer();
+  }
 }
 
 void loop() {

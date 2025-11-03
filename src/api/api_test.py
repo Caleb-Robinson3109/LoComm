@@ -15,12 +15,14 @@ enter_password("password")
 t =threading.Thread(target=recv_thread)
 t.start()
 
-print("press q to stop")
+print("enter message or press q to stop")
 while True:
-    cmd = input().strip().lower()
-    if cmd == 'q':
+    cmd = input()
+    if cmd.strip().lower() == 'q':
         recv = False
         disconnect_from_device()
         break
+    else:
+        send_message("test name", cmd)
 
 t.join()
