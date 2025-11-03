@@ -12,7 +12,6 @@ This file contianes the helper functions that the other functions will use e.g. 
 
 //for blinking debug stuff
 #include <Arduino.h>
-#include <LiquidCrystal_I2C.h>
 
 //for hashing
 #include "mbedtls/sha256.h"
@@ -20,8 +19,6 @@ This file contianes the helper functions that the other functions will use e.g. 
 //persistant storage (for password hash sotrage and keys)
 #include <Preferences.h>
 
-
-extern LiquidCrystal_I2C lcd;
 
 void blinky1();
 void blinky2();

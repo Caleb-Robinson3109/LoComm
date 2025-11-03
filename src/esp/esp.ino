@@ -113,16 +113,14 @@ void setup() {
     apiStack,
     &apiStackBuffer,
     0
-<<<<<<< HEAD
-  )
-  */
+  );
 
   //init the password and keys
   init_password();
 }
 
-void apiCode() {
-    if(message_from_device_flag){
+void apiCode( void* params ) {
+  if(message_from_device_flag){
     handle_message_from_device();
   }
 
@@ -136,38 +134,8 @@ void apiCode() {
   }
   if(message_to_computer_flag){
     handle_message_to_computer();
-=======
-  );
-  
-}
-
-void apiCode(void *pvParameters ) {
-  while (1) {
-    /*
-    //if there is data in the serialReadyToSendBuffer, process it
-    const bool message_from_device_flag = serialReadyToSendArray.size() > 0;
-    if(message_from_device_flag){
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("message_from_\ndevice_flag");
-      delay(2000);
-      handle_message_from_device();
-    }
-
-    //there is a message from the device and the subsaquent funcs check and handle that
-    recive_packet_from_computer();
-    if(message_from_computer_flag){
-      handle_message_from_computer();
-    }
-    if(message_to_device_flag){
-      handle_message_to_device();
-    }
-    if(message_to_computer_flag){
-      handle_message_to_computer();
-    }
-    */
->>>>>>> 66b4b392c1f978a93eba807610aeb565db69b7b3
   }
+  
 }
 
 void loop() {

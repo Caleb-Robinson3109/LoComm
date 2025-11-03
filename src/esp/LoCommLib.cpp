@@ -1,7 +1,5 @@
 #include "LoCommLib.h"
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
 void blinky1(){
   digitalWrite(2, HIGH);
   delay(500);
