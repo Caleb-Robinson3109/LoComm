@@ -20,6 +20,9 @@ class App(tk.Tk):
         self.transport.on_receive = self._on_receive
         self.transport.on_status = self._on_status
 
+        self._last_status: str = "Disconnected"
+        self._pending_messages: list[tuple[str, str, float]] = []
+
         self.current_frame = None
         self.show_login()
 
@@ -34,6 +37,15 @@ class App(tk.Tk):
             self.current_frame.destroy()
         self.current_frame = MainFrame(self, self.session, self.transport, self._handle_logout)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
+
+        if self._last_status:
+            self.current_frame.update_status(self._last_status)
+
+        if self._pending_messages:
+            for sender, msg, ts in self._pending_messages:
+                display_name = sender or "Peer"
+                self.current_frame.chat_tab.append_line(display_name, msg)
+            self._pending_messages.clear()
 
     def _handle_login(self, username: str, password_bytes: bytearray):
         self.session.username = username
@@ -59,14 +71,19 @@ class App(tk.Tk):
     def _handle_logout(self):
         self.transport.stop()
         self.session.clear()
+        self._pending_messages.clear()
+        self._last_status = "Disconnected"
         self.show_login()
 
     def _on_receive(self, sender: str, msg: str, ts: float):
         if isinstance(self.current_frame, MainFrame):
             display_name = sender or "Peer"
             self.current_frame.chat_tab.append_line(display_name, msg)
+        else:
+            self._pending_messages.append((sender, msg, ts))
 
     def _on_status(self, text: str):
+        self._last_status = text
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.update_status(text)
 
