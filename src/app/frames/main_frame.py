@@ -6,41 +6,51 @@ from frames.settings_tab import SettingsTab
 
 class MainFrame(ttk.Frame):
     def __init__(self, master, app, session, transport, on_logout):
-        super().__init__(master)
+        super().__init__(master, style="Surface.TFrame")
         self.app = app
         self.session = session
         self.transport = transport
         self.status_var = tk.StringVar(value="Disconnected")
 
+        self.container = ttk.Frame(self, style="Surface.TFrame")
+        self.container.pack(fill=tk.BOTH, expand=True, padx=32, pady=28)
+
         # ---------- Header ---------- #
-        header = ttk.Frame(self)
-        header.pack(fill=tk.X)
+        header = ttk.Frame(self.container, style="Surface.TFrame")
+        header.pack(fill=tk.X, pady=(0, 18))
 
-        info = ttk.Frame(header, style="TFrame")
-        info.pack(side=tk.LEFT, padx=12, pady=12)
-        self.info_frame = info
+        info = ttk.Frame(header, style="Surface.TFrame")
+        info.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        ttk.Label(info, text=f"Logged in as {session.username}", style="Section.TLabel").pack(anchor="w")
-        self.status_label = ttk.Label(info, textvariable=self.status_var, foreground="#5cb85c")
-        self.status_label.pack(anchor="w", pady=(4, 0))
+        ttk.Label(info, text=f"Welcome, {session.username}", style="Headline.TLabel").pack(anchor="w")
         self._peer_var = tk.StringVar(value="Paired with: Not connected")
-        ttk.Label(info, textvariable=self._peer_var).pack(anchor="w", pady=(4, 0))
+        ttk.Label(info, textvariable=self._peer_var, style="Body.TLabel").pack(anchor="w", pady=(4, 0))
 
-        # Use tk.Button for hover color effect
-        self.logout_btn = tk.Button(header, text="Logout", relief="flat", command=on_logout, cursor="hand2")
-        self.logout_btn.pack(side=tk.RIGHT, padx=12, pady=12)
+        self.status_chip = tk.Label(
+            info,
+            textvariable=self.status_var,
+            padx=14,
+            pady=4,
+            font=self.app.get_font("status"),
+            bd=0,
+            relief="flat"
+        )
+        self.status_chip.pack(anchor="w", pady=(10, 0))
 
-        # Hover effects
-        self.logout_btn.bind("<Enter>", lambda _e: self.logout_btn.config(bg="#c0392b", fg="white"))
-        self.logout_btn.bind("<Leave>", lambda _e: self.logout_btn.config(bg=self._logout_bg, fg="white"))
+        self.logout_btn = ttk.Button(header, text="Log out", style="Danger.TButton", command=on_logout)
+        self.logout_btn.pack(side=tk.RIGHT, padx=(12, 0))
 
         # ---------- Tabs ---------- #
-        notebook = ttk.Notebook(self)
+        card = ttk.Frame(self.container, style="Surface.TFrame")
+        card.pack(fill=tk.BOTH, expand=True)
+
+        notebook = ttk.Notebook(card)
+        notebook.pack(fill=tk.BOTH, expand=True)
+
         self.chat_tab = ChatTab(notebook, transport, session.username, app)
         self.settings_tab = SettingsTab(notebook, app, transport)
         notebook.add(self.chat_tab, text="Chat")
         notebook.add(self.settings_tab, text="Settings")
-        notebook.pack(fill=tk.BOTH, expand=True)
 
         self.app.register_theme_listener(self.apply_theme)
         self.apply_theme()
@@ -48,26 +58,19 @@ class MainFrame(ttk.Frame):
     def update_status(self, text: str):
         self.chat_tab.set_status(text)
         self.status_var.set(text)
+        colors = self.app.get_theme_colors()
         lowered = text.lower()
         if "ready" in lowered or "connected" in lowered:
-            self.status_label.config(foreground="#5cb85c")
-        elif "verifying" in lowered:
-            self.status_label.config(foreground="#f0ad4e")
+            bg, fg = colors["accent"], colors["accent_text"]
+        elif "verifying" in lowered or "waiting" in lowered:
+            bg, fg = colors["warning"], "#0f172a" if self.app.theme == "light" else colors["surface"]
         else:
-            self.status_label.config(foreground="#d9534f")
+            bg, fg = colors["danger"], "#ffffff"
+        self.status_chip.configure(bg=bg, fg=fg)
 
     def set_peer_name(self, name: str | None):
         display = name if name else "Not connected"
         self._peer_var.set(f"Paired with: {display}")
 
     def apply_theme(self):
-        colors = self.app.get_theme_colors()
-        self._logout_bg = colors["button_bg"]
-        self.logout_btn.config(
-            bg=self._logout_bg,
-            fg="white",
-            activebackground=self._logout_bg,
-            activeforeground="white",
-            font=self.app.get_font("bold"),
-        )
         self.update_status(self.status_var.get())
