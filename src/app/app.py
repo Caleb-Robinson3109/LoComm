@@ -22,6 +22,7 @@ class App(tk.Tk):
 
         self._last_status: str = "Disconnected"
         self._pending_messages: list[tuple[str, str, float]] = []
+        self._current_peer: str = ""
 
         self.current_frame = None
         self.show_login()
@@ -40,6 +41,7 @@ class App(tk.Tk):
 
         if self._last_status:
             self.current_frame.update_status(self._last_status)
+        self._refresh_peer_label()
 
         if self._pending_messages:
             for sender, msg, ts in self._pending_messages:
@@ -73,6 +75,7 @@ class App(tk.Tk):
         self.session.clear()
         self._pending_messages.clear()
         self._last_status = "Disconnected"
+        self._current_peer = ""
         self.show_login()
 
     def _on_receive(self, sender: str, msg: str, ts: float):
@@ -81,11 +84,26 @@ class App(tk.Tk):
             self.current_frame.chat_tab.append_line(display_name, msg)
         else:
             self._pending_messages.append((sender, msg, ts))
+        if sender:
+            self._current_peer = sender
+            self._refresh_peer_label()
 
     def _on_status(self, text: str):
         self._last_status = text
+        lowered = text.lower()
+        if any(keyword in lowered for keyword in ("disconnected", "connection failed", "invalid device password")):
+            self._current_peer = ""
+        elif any(keyword in lowered for keyword in ("authenticated and ready", "connected (mock)")):
+            if not self._current_peer:
+                self._current_peer = "Awaiting peer"
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.update_status(text)
+        self._refresh_peer_label()
+
+    def _refresh_peer_label(self):
+        if isinstance(self.current_frame, MainFrame):
+            name = self._current_peer if self._current_peer else ("Awaiting peer" if self.transport.running else "Not connected")
+            self.current_frame.set_peer_name(name if name else None)
 
 
 if __name__ == "__main__":
