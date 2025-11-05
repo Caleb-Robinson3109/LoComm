@@ -25,6 +25,10 @@ class ChatTab(ttk.Frame):
             insertbackground="white",  # caret color
         )
         self.history.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        # Align outgoing and incoming messages differently.
+        self.history.tag_configure("me", justify="right", lmargin1=0, lmargin2=0, rmargin=12, foreground="#90ee90")
+        self.history.tag_configure("other", justify="left", lmargin1=0, lmargin2=0, rmargin=12)
+        self.history.tag_configure("system", justify="left", foreground="#87cefa")
 
         # ---------------- Input row ---------------- #
         bottom = ttk.Frame(self)
@@ -48,7 +52,13 @@ class ChatTab(ttk.Frame):
     def append_line(self, who: str, msg: str):
         self.history.config(state="normal")
         t = time.strftime("%H:%M:%S")
-        self.history.insert("end", f"[{t}] {who}: {msg}\n")
+        line = f"[{t}] {who}: {msg}"
+        tag = "system"
+        if who == "Me":
+            tag = "me"
+        elif who != "System":
+            tag = "other"
+        self.history.insert("end", line + "\n", tag)
         self.history.see("end")
         self.history.config(state="disabled")
 
