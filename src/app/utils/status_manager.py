@@ -4,13 +4,11 @@ Provides consistent status categorization and UI updates.
 """
 from typing import Optional, Callable
 import tkinter as tk
+from utils.design_system import Colors
 from utils.config import (
     STATUS_DISCONNECTED_KEYWORDS,
     STATUS_CONNECTED_KEYWORDS,
-    STATUS_ERROR_KEYWORDS,
-    STATUS_DISCONNECTED_COLOR,
-    STATUS_CONNECTED_COLOR,
-    STATUS_WARNING_COLOR
+    STATUS_ERROR_KEYWORDS
 )
 
 
@@ -64,14 +62,15 @@ class StatusManager:
         """
         category = self.categorize_status(status_text)
 
+        # All status colors are white now
         color_map = {
-            "connected": STATUS_CONNECTED_COLOR,
-            "disconnected": STATUS_DISCONNECTED_COLOR,
-            "error": STATUS_DISCONNECTED_COLOR,  # Use danger color for errors
-            "warning": STATUS_WARNING_COLOR
+            "connected": "#FFFFFF",
+            "disconnected": "#FFFFFF",
+            "error": "#FFFFFF",
+            "warning": "#FFFFFF"
         }
 
-        return color_map.get(category, STATUS_WARNING_COLOR)
+        return color_map.get(category, "#FFFFFF")
 
     def update_status(self, status_text: str, peer_name: Optional[str] = None) -> tuple[str, str]:
         """

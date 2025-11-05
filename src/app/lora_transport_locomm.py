@@ -30,7 +30,7 @@ except Exception as e:
             self._connected = False
 
         def connect_to_device(self) -> bool:
-            # Simulate successful connection
+            # Simulate successful connection with minimal delay
             self._connected = True
             if DEBUG:
                 print("[MockLoCommAPI] connect_to_device -> True")
@@ -43,7 +43,7 @@ except Exception as e:
             return True
 
         def enter_password(self, password: str) -> bool:
-            # Accept any non-empty password in mock mode
+            # Accept any non-empty password in mock mode with minimal delay
             ok = bool(password)
             if DEBUG:
                 print(f"[MockLoCommAPI] enter_password('{password[:4]}...') -> {ok}")
@@ -56,7 +56,7 @@ except Exception as e:
 
         def reset_password(self, password: str) -> bool:
             if DEBUG:
-                print(f"[MockLoCommAPI] reset_passoword -> True")
+                print(f"[MockLoCommAPI] reset_password -> True")
             return True
 
         def send_message(self, name: str, message: str) -> bool:
@@ -69,7 +69,7 @@ except Exception as e:
             # Mock receives: block briefly then return nothing (simulate no incoming)
             # To simulate an incoming message periodically, sleep and return a message.
             time.sleep(0.2)
-            # By default no message — return empty strings
+            # By default no message - return empty strings
             return ("", "")
 
         def pair_devices(self) -> bool:
@@ -232,7 +232,7 @@ class LoCommTransport:
                 ok = LoCommAPI.reset_password(new_password)
             except Exception as e:
                 if DEBUG:
-                    print("[LoCommTransport] reset_passoword error:", repr(e))
+                    print("[LoCommTransport] reset_password error:", repr(e))
                 ok = False
         else:
             ok = False

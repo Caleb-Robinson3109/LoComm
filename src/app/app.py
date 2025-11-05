@@ -46,7 +46,6 @@ class App(tk.Tk):
 
         if self._last_status:
             self.current_frame.update_status(self._last_status)
-        self._refresh_peer_label()
 
         if self._pending_messages:
             for sender, msg, ts in self._pending_messages:
@@ -55,7 +54,6 @@ class App(tk.Tk):
                 if sender:
                     self._current_peer = sender
             self._pending_messages.clear()
-            self._refresh_peer_label()
 
     def _handle_login(self, username: str, password_bytes: bytearray):
         self.session.username = username
@@ -94,15 +92,11 @@ class App(tk.Tk):
             self._pending_messages.append((sender, msg, ts))
         if sender:
             self._current_peer = sender
-            self._refresh_peer_label()
         if sender and sender != self.session.username:
             self.notify_incoming_message(sender, msg)
 
     def _on_status(self, text: str):
-        """Handle status updates from transport (legacy method - replaced by _on_status_update)"""
-        # Use centralized status management
-        display_status, color = self.status_manager.update_status(text, self._current_peer)
-
+        """Handle status updates from transport"""
         # Update peer tracking based on status
         lowered = text.lower()
         if any(keyword in lowered for keyword in ("disconnected", "connection failed", "invalid device password")):
@@ -113,18 +107,11 @@ class App(tk.Tk):
 
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.update_status(text)
-        self._refresh_peer_label()
 
     def _on_status_update(self, status_text: str, color: str):
         """Handle status updates from the centralized status manager"""
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.update_status(status_text)
-        self._refresh_peer_label()
-
-    def _refresh_peer_label(self):
-        if isinstance(self.current_frame, MainFrame):
-            peer_text = self.status_manager.get_status_indicator_text(self._current_peer)
-            self.current_frame.set_peer_name(peer_text)
 
     def notify_incoming_message(self, sender: str, msg: str):
         self.bell()

@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import time
+from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from lora_transport_locomm import LoCommTransport
 
 
@@ -13,63 +14,109 @@ class ChatTab(ttk.Frame):
         self.username = username
         self.history_buffer: list[str] = []
 
-        # Status label
+        # Status label with enhanced styling
         self.status_var = tk.StringVar(value="Disconnected")
-        status_label = ttk.Label(self, textvariable=self.status_var)
-        status_label.pack(anchor="w", padx=8, pady=(8, 0))
+        status_label = ttk.Label(self, textvariable=self.status_var,
+                               font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM))
+        status_label.pack(anchor="w", padx=Spacing.TAB_PADDING, pady=(Spacing.MD, Spacing.SM))
 
         # ---------------- Top control area (right side) ---------------- #
         top_controls = ttk.Frame(self)
-        top_controls.pack(fill=tk.X, padx=8, pady=(0, 4))
+        top_controls.pack(fill=tk.X, padx=Spacing.TAB_PADDING, pady=(0, Spacing.SM))
 
         # Empty frame to push controls to the right
         ttk.Frame(top_controls).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Control buttons area (top right corner)
+        # Control buttons area (top right corner) with modern styling
         control_buttons = ttk.Frame(top_controls)
         control_buttons.pack(side=tk.RIGHT)
 
-        # Clear chat button
-        self.clear_btn = tk.Button(control_buttons, text="Clear Chat", bg="orange", fg="black", command=self._clear_chat)
-        self.clear_btn.pack(side=tk.TOP, padx=2, pady=2)
+        # Clear chat button with warning styling
+        self.clear_btn = tk.Button(control_buttons, text="Clear Chat",
+                                 bg=Colors.BTN_WARNING, fg=Colors.CHAT_TEXT_DARK,
+                                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM),
+                                 relief="flat", bd=0, command=self._clear_chat)
+        self.clear_btn.pack(side=tk.TOP, padx=Spacing.XS, pady=(0, Spacing.XS))
 
-        # Disconnect button
-        self.disconnect_btn = tk.Button(control_buttons, text="Disconnect", bg="red", fg="white", command=self._disconnect_device)
-        self.disconnect_btn.pack(side=tk.TOP, padx=2, pady=2)
+        # Disconnect button with warning styling (matching clear button)
+        self.disconnect_btn = tk.Button(control_buttons, text="Disconnect",
+                                      bg=Colors.BTN_WARNING, fg=Colors.CHAT_TEXT_DARK,
+                                      font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM),
+                                      relief="flat", bd=0, command=self._disconnect_device)
+        self.disconnect_btn.pack(side=tk.TOP, padx=Spacing.XS, pady=(0, Spacing.XS))
 
         # ---------------- Chat history area ---------------- #
+        # Create a frame for the chat area with border
+        chat_frame = ttk.Frame(self)
+        chat_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=(0, Spacing.MD))
+
+        # Add a border frame for the chat area
+        border_frame = tk.Frame(chat_frame, bg=Colors.BORDER_LIGHT, bd=1, relief="solid")
+        border_frame.pack(fill=tk.BOTH, expand=True)
+
         self.history = tk.Text(
-            self,
+            border_frame,
             state="disabled",
-            height=20,
+            height=18,
             wrap="word",
-            bg="black",          # background color
-            fg="white",          # text color
-            insertbackground="white",  # caret color
+            bg=Colors.CHAT_BG_DARK,
+            fg=Colors.CHAT_TEXT_LIGHT,
+            insertbackground=Colors.CHAT_TEXT_LIGHT,
+            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
+            relief="flat",
+            bd=0,
+            padx=Spacing.MD,
+            pady=Spacing.MD
         )
-        self.history.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
-        # Align outgoing and incoming messages differently.
-        self.history.tag_configure("me", justify="right", lmargin1=0, lmargin2=0, rmargin=12, foreground="#90ee90")
-        self.history.tag_configure("other", justify="left", lmargin1=0, lmargin2=0, rmargin=12)
-        self.history.tag_configure("system", justify="left", foreground="#87cefa")
+        self.history.pack(fill=tk.BOTH, expand=True)
 
-        # ---------------- Input row ---------------- #
+        # Configure enhanced message styling
+        self.history.tag_configure("me",
+                                 justify="right",
+                                 lmargin1=0,
+                                 lmargin2=0,
+                                 rmargin=Spacing.MD,
+                                 foreground=Colors.CHAT_ME,
+                                 font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_NORMAL))
+
+        self.history.tag_configure("other",
+                                 justify="left",
+                                 lmargin1=Spacing.MD,
+                                 lmargin2=Spacing.MD,
+                                 rmargin=0,
+                                 foreground=Colors.CHAT_OTHER,
+                                 font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_NORMAL))
+
+        self.history.tag_configure("system",
+                                 justify="left",
+                                 lmargin1=Spacing.SM,
+                                 lmargin2=Spacing.SM,
+                                 foreground=Colors.CHAT_SYSTEM,
+                                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM))
+
+        # ---------------- Enhanced Input row ---------------- #
         bottom = ttk.Frame(self)
-        bottom.pack(fill=tk.X, padx=8, pady=(5, 10))
+        bottom.pack(fill=tk.X, padx=Spacing.TAB_PADDING, pady=(Spacing.MD, Spacing.LG))
 
-        # Left side: Message entry area
-        entry_area = ttk.Frame(bottom)
-        entry_area.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Input area with modern styling
+        input_frame = tk.Frame(bottom, bg=Colors.BG_PRIMARY, relief="flat", bd=1)
+        input_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)
 
-        # Message entry (white background, black text)
+        # Message entry with modern styling
         self.msg_var = tk.StringVar()
-        self.entry = tk.Entry(entry_area, textvariable=self.msg_var, bg="white", fg="black")
-        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=12)
+        self.entry = tk.Entry(input_frame, textvariable=self.msg_var,
+                            bg=Colors.CHAT_INPUT_BG, fg=Colors.CHAT_INPUT_FG,
+                            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
+                            relief="flat", bd=0, highlightthickness=0)
+        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=Spacing.MD, padx=Spacing.SM)
         self.entry.bind("<Return>", lambda e: self._send())
 
-        # Send button — blue background with black text
-        self.send_btn = tk.Button(entry_area, text="Send", bg="light blue", fg="black", command=self._send)
-        self.send_btn.pack(side=tk.LEFT, padx=6)
+        # Send button with primary styling (blue background, light text)
+        self.send_btn = tk.Button(input_frame, text="Send",
+                                bg=Colors.PRIMARY_BLUE, fg=Colors.CHAT_TEXT_LIGHT,
+                                font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
+                                relief="flat", bd=0, command=self._send)
+        self.send_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0), pady=Spacing.XS)
 
         # Start in a disabled state until we know the transport is ready.
         self._connected = False

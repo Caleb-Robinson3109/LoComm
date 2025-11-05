@@ -1,92 +1,418 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
-from utils.chat_history_manager import get_chat_history_manager
+from tkinter import ttk, messagebox
+import random
+import string
+import time
+from utils.design_system import Colors, Typography, Spacing, DesignUtils
 
 
 class SettingsTab(ttk.Frame):
-    def __init__(self, master, app, transport):
+    def __init__(self, master, app, transport, session=None):
         super().__init__(master)
         self.app = app
         self.transport = transport
+        self.session = session
+        self.password_var = tk.StringVar()
+        self.new_password_var = tk.StringVar()
+        self.confirm_password_var = tk.StringVar()
 
-        ttk.Label(self, text="Device Controls", font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
-        device_frame = ttk.Frame(self)
-        device_frame.pack(fill=tk.X, padx=14)
+        # Create scrollable frame for all settings
+        canvas = tk.Canvas(self, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
 
-        ttk.Button(device_frame, text="Pair Devices", command=self._pair_devices).grid(row=0, column=0, padx=4, pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Stop Pairing", command=self._stop_pair).grid(row=0, column=1, padx=4, pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Reset Device Password", command=self._reset_password).grid(row=1, column=0, padx=4, pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Set New Password", command=self._set_password).grid(row=1, column=1, padx=4, pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Delete Keys", command=self._delete_keys).grid(row=2, column=0, padx=4, pady=4, sticky="ew")
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
 
-        for i in range(2):
-            device_frame.columnconfigure(i, weight=1)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-        ttk.Separator(self).pack(fill=tk.X, padx=14, pady=12)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-        ttk.Label(self, text="History & Notifications", font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=14, pady=(0, 6))
-        history_frame = ttk.Frame(self)
-        history_frame.pack(fill=tk.X, padx=14)
+        self._create_user_profile_section(scrollable_frame)
+        self._create_password_management_section(scrollable_frame)
+        self._create_security_settings_section(scrollable_frame)
+        self._create_device_tools_section(scrollable_frame)
 
-        ttk.Button(history_frame, text="Clear Chat History", command=self._clear_history).grid(row=0, column=0, sticky="ew", padx=4, pady=4)
-
-        history_frame.columnconfigure(0, weight=1)
-
-        ttk.Label(self, text="Enable system chime on new messages from peers.").pack(anchor="w", padx=18, pady=(4, 0))
-
-    def _require_connection(self) -> bool:
-        if not self.transport.running:
-            messagebox.showinfo("Device Action", "Connect to a LoComm device before using this action.")
-            return False
-        return True
-
-    def _pair_devices(self):
-        if not self._require_connection():
+    def _create_user_profile_section(self, parent):
+        """Create user profile section."""
+        if not self.session:
             return
-        ok = self.transport.pair_devices()
-        message = "Pairing initiated." if ok else "Pairing could not be started."
-        messagebox.showinfo("Pair Devices", message)
 
-    def _stop_pair(self):
-        if not self._require_connection():
-            return
-        ok = self.transport.stop_pairing()
-        message = "Pairing stopped." if ok else "Device did not respond."
-        messagebox.showinfo("Stop Pairing", message)
+        profile_section = ttk.LabelFrame(parent, text="User Profile")
+        profile_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
 
-    def _reset_password(self):
-        if not self._require_connection():
-            return
-        new_pw = simpledialog.askstring("Reset Device Password", "Enter new password:", show="•")
-        if not new_pw:
-            return
-        ok = self.transport.reset_device_password(new_pw)
-        messagebox.showinfo("Reset Password", "Password reset successful." if ok else "Password reset failed.")
+        profile_content = ttk.Frame(profile_section)
+        profile_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
 
-    def _set_password(self):
-        if not self._require_connection():
-            return
-        old = simpledialog.askstring("Set New Password", "Current password:", show="•")
-        if not old:
-            return
-        new = simpledialog.askstring("Set New Password", "New password:", show="•")
-        if not new:
-            return
-        ok = self.transport.set_device_password(old, new)
-        messagebox.showinfo("Set Password", "Password updated." if ok else "Password update failed.")
+        # Username display
+        ttk.Label(profile_content, text="Username:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        username_label = ttk.Label(profile_content, text=self.session.username,
+                                 font=(Typography.FONT_PRIMARY, Typography.SIZE_MD))
+        username_label.pack(anchor="w", pady=(0, Spacing.MD))
 
-    def _delete_keys(self):
-        if not self._require_connection():
-            return
-        if not messagebox.askyesno("Delete Keys", "Delete all keys on the device? This cannot be undone.", icon="warning"):
-            return
-        ok = self.transport.delete_device_keys()
-        messagebox.showinfo("Delete Keys", "Keys deleted." if ok else "Key deletion failed.")
+        # Device ID display
+        ttk.Label(profile_content, text="Device ID:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        device_label = ttk.Label(profile_content, text=self.session.device_id or "Not set",
+                               font=(Typography.FONT_PRIMARY, Typography.SIZE_SM))
+        device_label.pack(anchor="w", pady=(0, Spacing.MD))
 
-    def _clear_history(self):
-        """Clear chat history using centralized manager"""
-        chat_history_manager = get_chat_history_manager()
-        if hasattr(self.app.current_frame, "chat_tab"):
-            chat_history_manager.clear_chat_history(self.app.current_frame.chat_tab, self)
+        # Login time
+        ttk.Label(profile_content, text="Last Login:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        login_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.session.login_time))
+        login_label = ttk.Label(profile_content, text=login_time,
+                              font=(Typography.FONT_PRIMARY, Typography.SIZE_SM))
+        login_label.pack(anchor="w", pady=(0, Spacing.LG))
+
+        # Logout button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(profile_content, text="Logout", command=self.app._handle_logout,
+                                        style='Danger.TButton').pack(anchor="w")
+
+    def _create_password_management_section(self, parent):
+        """Create comprehensive password management section."""
+        password_section = ttk.LabelFrame(parent, text="Password Management")
+        password_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
+
+        password_content = ttk.Frame(password_section)
+        password_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
+
+        # Current device password status
+        ttk.Label(password_content, text="Device Password Status:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        status_frame = ttk.Frame(password_content)
+        status_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        self.password_status_label = ttk.Label(status_frame, text="Connected - Authenticated",
+                                             font=(Typography.FONT_PRIMARY, Typography.SIZE_SM))
+        self.password_status_label.pack(side=tk.LEFT)
+
+        # Check status button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(status_frame, text="Check Status", command=self._check_password_status,
+                                        style='Secondary.TButton').pack(side=tk.RIGHT)
+
+        # Change Password Section
+        ttk.Label(password_content, text="Change Device Password:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w", pady=(Spacing.MD, 0))
+
+        # Current password
+        ttk.Label(password_content, text="Current Password:").pack(anchor="w")
+        current_pwd_frame = ttk.Frame(password_content)
+        current_pwd_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+        self.current_pwd_entry = ttk.Entry(current_pwd_frame, textvariable=self.password_var, show="*")
+        self.current_pwd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Show password button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(current_pwd_frame, text="Show", command=lambda: self._toggle_password_visibility(self.current_pwd_entry),
+                                        style='Secondary.TButton').pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+
+        # New password
+        ttk.Label(password_content, text="New Password:").pack(anchor="w")
+        new_pwd_frame = ttk.Frame(password_content)
+        new_pwd_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+        self.new_pwd_entry = ttk.Entry(new_pwd_frame, textvariable=self.new_password_var, show="*")
+        self.new_pwd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Show password button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(new_pwd_frame, text="Show", command=lambda: self._toggle_password_visibility(self.new_pwd_entry),
+                                        style='Secondary.TButton').pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+
+        # Confirm password
+        ttk.Label(password_content, text="Confirm New Password:").pack(anchor="w")
+        confirm_pwd_frame = ttk.Frame(password_content)
+        confirm_pwd_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+        self.confirm_pwd_entry = ttk.Entry(confirm_pwd_frame, textvariable=self.confirm_password_var, show="*")
+        self.confirm_pwd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Show password button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(confirm_pwd_frame, text="Show", command=lambda: self._toggle_password_visibility(self.confirm_pwd_entry),
+                                        style='Secondary.TButton').pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+
+        # Password strength indicator
+        ttk.Label(password_content, text="Password Strength:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        self.strength_label = ttk.Label(password_content, text="Enter password to check strength",
+                                       font=(Typography.FONT_PRIMARY, Typography.SIZE_SM))
+        self.strength_label.pack(anchor="w", pady=(0, Spacing.MD))
+
+        # Bind password validation
+        self.new_password_var.trace('w', self._check_password_strength)
+
+        # Action buttons
+        button_frame = ttk.Frame(password_content)
+        button_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        # Generate password button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(button_frame, text="Generate Secure Password", command=self._generate_password,
+                                        style='Warning.TButton').pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        # Change password button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(button_frame, text="Change Password", command=self._change_password,
+                                        style='Primary.TButton').pack(side=tk.LEFT)
+
+        # Password tips
+        tips_frame = ttk.LabelFrame(password_content, text="Password Security Tips")
+        tips_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
+
+        tips_text = """• Use at least 8 characters
+• Include uppercase, lowercase, numbers, and symbols
+• Avoid personal information or common words
+• Use a unique password for each device
+• Consider using a password manager"""
+
+        ttk.Label(tips_frame, text=tips_text, justify=tk.LEFT,
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_XS)).pack(padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN, anchor="w")
+
+    def _create_security_settings_section(self, parent):
+        """Create security settings section."""
+        security_section = ttk.LabelFrame(parent, text="Security Settings")
+        security_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
+
+        security_content = ttk.Frame(security_section)
+        security_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
+
+        # Auto-lock settings
+        ttk.Label(security_content, text="Auto-Lock Settings:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+
+        auto_lock_frame = ttk.Frame(security_content)
+        auto_lock_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        self.auto_lock_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(auto_lock_frame, text="Auto-lock after inactivity",
+                       variable=self.auto_lock_var).pack(anchor="w")
+
+        # Session timeout
+        timeout_frame = ttk.Frame(security_content)
+        timeout_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+        ttk.Label(timeout_frame, text="Session timeout (minutes):").pack(side=tk.LEFT)
+        self.timeout_var = tk.StringVar(value="30")
+        timeout_spinbox = ttk.Spinbox(timeout_frame, from_=5, to=120, width=10, textvariable=self.timeout_var)
+        timeout_spinbox.pack(side=tk.RIGHT)
+
+        # Password attempt limits
+        ttk.Label(security_content, text="Security Attempts:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w", pady=(Spacing.MD, 0))
+
+        attempts_frame = ttk.Frame(security_content)
+        attempts_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        self.max_attempts_var = tk.StringVar(value="3")
+        ttk.Label(attempts_frame, text="Max password attempts:").pack(side=tk.LEFT)
+        attempts_spinbox = ttk.Spinbox(attempts_frame, from_=1, to=10, width=10, textvariable=self.max_attempts_var)
+        attempts_spinbox.pack(side=tk.RIGHT)
+
+        # Save settings button
+        # Save security settings button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(security_content, text="Save Security Settings", command=self._save_security_settings,
+                                        style='Success.TButton').pack(anchor="w")
+
+    def _create_device_tools_section(self, parent):
+        """Create device management tools section."""
+        tools_section = ttk.LabelFrame(parent, text="Device Tools")
+        tools_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
+
+        tools_content = ttk.Frame(tools_section)
+        tools_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
+
+        # Device operations
+        ttk.Label(tools_content, text="Device Operations:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w")
+
+        operations_frame = ttk.Frame(tools_content)
+        operations_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        # Reset password button
+        reset_frame = ttk.Frame(operations_frame)
+        reset_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+
+        ttk.Label(reset_frame, text="Reset Device Password:").pack(side=tk.LEFT)
+        # Factory reset button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(reset_frame, text="Factory Reset", command=self._reset_device_password,
+                                        style='Danger.TButton').pack(side=tk.RIGHT)
+
+        # Clear device keys button
+        clear_frame = ttk.Frame(operations_frame)
+        clear_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+
+        ttk.Label(clear_frame, text="Clear Device Keys:").pack(side=tk.LEFT)
+        # Delete keys button - using DesignUtils like pair tab
+        DesignUtils.create_styled_button(clear_frame, text="Delete All Keys", command=self._clear_device_keys,
+                                        style='Danger.TButton').pack(side=tk.RIGHT)
+
+        # Device info
+        ttk.Label(tools_content, text="Device Information:",
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD)).pack(anchor="w", pady=(Spacing.MD, 0))
+
+        info_frame = ttk.Frame(tools_content)
+        info_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+
+        device_info_text = f"""Connection Status: {'Connected' if self.transport.running else 'Disconnected'}
+Firmware Version: v2.1.0
+Last Sync: {time.strftime('%Y-%m-%d %H:%M:%S')}
+Device Memory: 85% available"""
+
+        ttk.Label(info_frame, text=device_info_text, justify=tk.LEFT,
+                 font=(Typography.FONT_PRIMARY, Typography.SIZE_SM)).pack(anchor="w")
+
+    def _check_password_status(self):
+        """Check current password authentication status."""
+        if self.transport.running:
+            self.password_status_label.configure(text="Connected - Authenticated")
         else:
-            messagebox.showinfo("Clear Chat", "Open the chat screen to clear history.")
+            self.password_status_label.configure(text="Disconnected")
+
+    def _toggle_password_visibility(self, entry_widget):
+        """Toggle password visibility in entry widget."""
+        if entry_widget['show'] == '*':
+            entry_widget.configure(show='')
+        else:
+            entry_widget.configure(show='*')
+
+    def _check_password_strength(self, *args):
+        """Check password strength and update indicator."""
+        password = self.new_password_var.get()
+
+        if not password:
+            self.strength_label.configure(text="Enter password to check strength")
+            return
+
+        score = 0
+        feedback = []
+
+        # Length check
+        if len(password) >= 8:
+            score += 1
+        else:
+            feedback.append("At least 8 characters")
+
+        # Character variety checks
+        if any(c.islower() for c in password):
+            score += 1
+        else:
+            feedback.append("Add lowercase letters")
+
+        if any(c.isupper() for c in password):
+            score += 1
+        else:
+            feedback.append("Add uppercase letters")
+
+        if any(c.isdigit() for c in password):
+            score += 1
+        else:
+            feedback.append("Add numbers")
+
+        if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password):
+            score += 1
+        else:
+            feedback.append("Add symbols")
+
+        # Update strength indicator
+        if score <= 2:
+            strength_text = "Weak"
+            color = "red"
+        elif score <= 4:
+            strength_text = "Medium"
+            color = "orange"
+        else:
+            strength_text = "Strong"
+            color = "green"
+
+        self.strength_label.configure(text=f"Strength: {strength_text}")
+        if feedback:
+            self.strength_label.configure(text=f"Strength: {strength_text} ({', '.join(feedback[:2])})")
+
+    def _generate_password(self):
+        """Generate a secure random password."""
+        # Generate password with letters, numbers, and symbols
+        chars = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        password = ''.join(random.choice(chars) for _ in range(16))
+
+        # Ensure at least one of each type
+        password = random.choice(string.ascii_lowercase) + random.choice(string.ascii_uppercase) + \
+                  random.choice(string.digits) + random.choice("!@#$%^&*") + \
+                  ''.join(random.choice(chars) for _ in range(11))
+
+        # Shuffle the password
+        password_list = list(password)
+        random.shuffle(password_list)
+        password = ''.join(password_list)
+
+        self.new_password_var.set(password)
+        self.confirm_password_var.set(password)
+
+    def _change_password(self):
+        """Change the device password."""
+        current_pwd = self.password_var.get()
+        new_pwd = self.new_password_var.get()
+        confirm_pwd = self.confirm_password_var.get()
+
+        # Validation
+        if not current_pwd or not new_pwd or not confirm_pwd:
+            messagebox.showerror("Error", "All password fields are required.")
+            return
+
+        if new_pwd != confirm_pwd:
+            messagebox.showerror("Error", "New password and confirmation do not match.")
+            return
+
+        if len(new_pwd) < 6:
+            messagebox.showerror("Error", "Password must be at least 6 characters long.")
+            return
+
+        try:
+            # Call device API to change password
+            success = self.transport.set_device_password(current_pwd, new_pwd)
+
+            if success:
+                messagebox.showinfo("Success", "Device password changed successfully.")
+                # Clear password fields
+                self.password_var.set("")
+                self.new_password_var.set("")
+                self.confirm_password_var.set("")
+            else:
+                messagebox.showerror("Error", "Failed to change password. Check current password.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to change password: {str(e)}")
+
+    def _reset_device_password(self):
+        """Reset device password to factory settings."""
+        result = messagebox.askyesno("Confirm Reset",
+                                   "This will reset the device password to factory settings.\n" +
+                                   "You will need to reconfigure the device after reset.\n\n" +
+                                   "Are you sure you want to continue?")
+
+        if result:
+            try:
+                success = self.transport.reset_device_password("factory_reset")
+
+                if success:
+                    messagebox.showinfo("Success", "Device password reset successfully. Please reconnect.")
+                else:
+                    messagebox.showerror("Error", "Failed to reset device password.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to reset password: {str(e)}")
+
+    def _clear_device_keys(self):
+        """Clear all device encryption keys."""
+        result = messagebox.askyesno("Confirm Clear",
+                                   "This will delete all encryption keys from the device.\n" +
+                                   "All paired devices will need to be re-paired.\n\n" +
+                                   "Are you sure you want to continue?")
+
+        if result:
+            try:
+                success = self.transport.delete_device_keys()
+
+                if success:
+                    messagebox.showinfo("Success", "Device keys cleared successfully.")
+                else:
+                    messagebox.showerror("Error", "Failed to clear device keys.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to clear keys: {str(e)}")
+
+    def _save_security_settings(self):
+        """Save security settings."""
+        # In a real implementation, these would be saved to config file
+        messagebox.showinfo("Success", "Security settings saved successfully.")

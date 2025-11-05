@@ -32,7 +32,7 @@ STATUS_WARNING_COLOR = COLOR_WARNING
 
 # Entry field configuration
 ENTRY_WIDTH = 30
-PASSWORD_CHAR = "•"
+PASSWORD_CHAR = "*"
 
 # Progress bar configuration
 PROGRESSBAR_LENGTH = 220
