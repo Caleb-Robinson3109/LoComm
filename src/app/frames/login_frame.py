@@ -31,14 +31,14 @@ class LoginFrame(ttk.Frame):
         frame_u = ttk.Frame(self)
         frame_u.pack(pady=5)
         ttk.Label(frame_u, text="Username:").pack(side=tk.LEFT, padx=5)
-        entry_u = ttk.Entry(frame_u, textvariable=self.username_var, width=30)
+        entry_u = tk.Entry(frame_u, textvariable=self.username_var, width=30)
         entry_u.pack(side=tk.LEFT)
         self.username_entry = entry_u
 
         frame_p = ttk.Frame(self)
         frame_p.pack(pady=5)
         ttk.Label(frame_p, text="Password:").pack(side=tk.LEFT, padx=5)
-        entry_p = ttk.Entry(frame_p, textvariable=self.password_var, show="•", width=30)
+        entry_p = tk.Entry(frame_p, textvariable=self.password_var, show="•", width=30)
         entry_p.pack(side=tk.LEFT)
         self.password_entry = entry_p
 
