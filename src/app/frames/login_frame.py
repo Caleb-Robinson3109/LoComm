@@ -32,12 +32,14 @@ class LoginFrame(ttk.Frame):
         ttk.Label(frame_u, text="Username:").pack(side=tk.LEFT, padx=5)
         entry_u = ttk.Entry(frame_u, textvariable=self.username_var, width=30)
         entry_u.pack(side=tk.LEFT)
+        self.username_entry = entry_u
 
         frame_p = ttk.Frame(self)
         frame_p.pack(pady=5)
         ttk.Label(frame_p, text="Password:").pack(side=tk.LEFT, padx=5)
         entry_p = ttk.Entry(frame_p, textvariable=self.password_var, show="•", width=30)
         entry_p.pack(side=tk.LEFT)
+        self.password_entry = entry_p
 
         entry_u.bind("<Return>", lambda e: self._try_login())
         entry_p.bind("<Return>", lambda e: self._try_login())
@@ -46,8 +48,10 @@ class LoginFrame(ttk.Frame):
         btns = ttk.Frame(self)
         btns.pack(pady=(15, 10))
 
-        ttk.Button(btns, text="Login", command=self._try_login).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btns, text="New User", command=self._new_user_dialog).pack(side=tk.LEFT, padx=5)
+        self.login_btn = ttk.Button(btns, text="Login", command=self._try_login)
+        self.login_btn.pack(side=tk.LEFT, padx=5)
+        self.new_user_btn = ttk.Button(btns, text="New User", command=self._new_user_dialog)
+        self.new_user_btn.pack(side=tk.LEFT, padx=5)
 
         # Enforce ASCII limit
         self.username_var.trace_add("write", lambda *_: enforce_ascii_and_limit(self.username_var))
@@ -68,6 +72,7 @@ class LoginFrame(ttk.Frame):
             messagebox.showerror("Login Failed", "Incorrect username or password.")
             return
 
+        self.set_waiting(True)
         self.on_login(username, bytearray(password, "utf-8"))
 
     def _new_user_dialog(self):
@@ -114,3 +119,10 @@ class LoginFrame(ttk.Frame):
                 messagebox.showerror("Error", msg, parent=dialog)
 
         tk.Button(dialog, text="Register", command=submit, bg="#66CCFF", fg="black").pack(pady=15)
+
+    def set_waiting(self, waiting: bool):
+        state = "disabled" if waiting else "normal"
+        self.login_btn.config(state=state)
+        self.new_user_btn.config(state=state)
+        self.username_entry.config(state=state)
+        self.password_entry.config(state=state)

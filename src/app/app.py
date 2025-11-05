@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import time
+import threading
 
 from lora_transport_locomm import LoCommTransport
 from utils.session import Session
@@ -40,21 +41,30 @@ class App(tk.Tk):
         self.session.login_time = time.time()
         pw = password_bytes.decode("utf-8")
 
-        ok = self.transport.start(pw)
-        if not ok:
-            messagebox.showerror("Login Failed", "Connection or password invalid.")
-            self.session.clear()
-            return
-        self.show_main()
+        def finish_login(success: bool):
+            if success:
+                self.show_main()
+            else:
+                messagebox.showerror("Login Failed", "Connection or password invalid.")
+                self.session.clear()
+                if isinstance(self.current_frame, LoginFrame):
+                    self.current_frame.set_waiting(False)
+
+        def worker():
+            ok = self.transport.start(pw)
+            self.after(0, lambda: finish_login(ok))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _handle_logout(self):
         self.transport.stop()
         self.session.clear()
         self.show_login()
 
-    def _on_receive(self, msg: str, ts: float):
+    def _on_receive(self, sender: str, msg: str, ts: float):
         if isinstance(self.current_frame, MainFrame):
-            self.current_frame.chat_tab.append_line("Peer", msg)
+            display_name = sender or "Peer"
+            self.current_frame.chat_tab.append_line(display_name, msg)
 
     def _on_status(self, text: str):
         if isinstance(self.current_frame, MainFrame):

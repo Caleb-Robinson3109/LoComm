@@ -88,7 +88,7 @@ class LoCommTransport:
     """
     def __init__(self, ui_root: tk.Misc):
         self.root = ui_root
-        self.on_receive: Optional[Callable[[str, float], None]] = None
+        self.on_receive: Optional[Callable[[str, str, float], None]] = None
         self.on_status: Optional[Callable[[str], None]] = None
         self.running = False
         self._rx_thread: Optional[threading.Thread] = None
@@ -215,8 +215,9 @@ class LoCommTransport:
                 sender, msg = ("", "")
             if sender and msg:
                 if self.on_receive:
-                    # schedule on UI thread
-                    self.root.after(0, lambda s=sender, m=msg: self.on_receive(f"{s}: {m}", time.time()))
+                    ts = time.time()
+                    # Schedule on UI thread to keep thread-safe interaction with Tk
+                    self.root.after(0, lambda s=sender, m=msg, t=ts: self.on_receive(s, m, t))
             # keep loop responsive
             time.sleep(0.2)
         if DEBUG:

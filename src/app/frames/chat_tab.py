@@ -71,11 +71,18 @@ class ChatTab(ttk.Frame):
                 self.append_line("System", "Connected to LoComm device.")
             self._connected = True
             self._set_input_state(True)
-        elif any(keyword in lowered for keyword in ("disconnected", "failed", "invalid", "not connected")):
-            if self._connected:
+        elif "connected (mock)" in lowered:
+            if not self._connected:
+                self.append_line("System", "Connected (mock mode).")
+            self._connected = True
+            self._set_input_state(True)
+        elif any(keyword in lowered for keyword in ("disconnected", "connection failed", "invalid device password", "not connected")):
+            if self._connected or "connection failed" in lowered or "invalid device password" in lowered:
                 self.append_line("System", text)
             self._connected = False
             self._set_input_state(False)
+        elif "send failed" in lowered:
+            self.append_line("System", text)
         elif "verifying" in lowered:
             self._set_input_state(False)
 
