@@ -54,7 +54,7 @@ except Exception as e:
                 print(f"[MockLoCommAPI] set_password -> True")
             return True
 
-        def reset_passoword(self, password: str) -> bool:
+        def reset_password(self, password: str) -> bool:
             if DEBUG:
                 print(f"[MockLoCommAPI] reset_passoword -> True")
             return True
@@ -71,7 +71,7 @@ except Exception as e:
             time.sleep(0.2)
             # By default no message — return empty strings
             return ("", "")
-        
+
         def pair_devices(self) -> bool:
             return True
         def stop_pair(self) -> bool:
@@ -227,9 +227,9 @@ class LoCommTransport:
         return ok
 
     def reset_device_password(self, new_password: str) -> bool:
-        if hasattr(LoCommAPI, "reset_passoword"):
+        if hasattr(LoCommAPI, "reset_password"):
             try:
-                ok = LoCommAPI.reset_passoword(new_password)
+                ok = LoCommAPI.reset_password(new_password)
             except Exception as e:
                 if DEBUG:
                     print("[LoCommTransport] reset_passoword error:", repr(e))

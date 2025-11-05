@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
+from utils.chat_history_manager import get_chat_history_manager
 
 
 class SettingsTab(ttk.Frame):
@@ -27,11 +28,9 @@ class SettingsTab(ttk.Frame):
         history_frame = ttk.Frame(self)
         history_frame.pack(fill=tk.X, padx=14)
 
-        ttk.Button(history_frame, text="Export Chat History...", command=self.app.export_chat_history).grid(row=0, column=0, sticky="ew", padx=4, pady=4)
-        ttk.Button(history_frame, text="Clear Chat History", command=self._clear_history).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
+        ttk.Button(history_frame, text="Clear Chat History", command=self._clear_history).grid(row=0, column=0, sticky="ew", padx=4, pady=4)
 
         history_frame.columnconfigure(0, weight=1)
-        history_frame.columnconfigure(1, weight=1)
 
         ttk.Label(self, text="Enable system chime on new messages from peers.").pack(anchor="w", padx=18, pady=(4, 0))
 
@@ -85,8 +84,9 @@ class SettingsTab(ttk.Frame):
         messagebox.showinfo("Delete Keys", "Keys deleted." if ok else "Key deletion failed.")
 
     def _clear_history(self):
-        if not messagebox.askyesno("Clear Chat History", "Clear the current chat log?"):
-            return
+        """Clear chat history using centralized manager"""
+        chat_history_manager = get_chat_history_manager()
         if hasattr(self.app.current_frame, "chat_tab"):
-            self.app.current_frame.chat_tab.clear_history()
-        messagebox.showinfo("Chat History", "Chat history cleared.")
+            chat_history_manager.clear_chat_history(self.app.current_frame.chat_tab, self)
+        else:
+            messagebox.showinfo("Clear Chat", "Open the chat screen to clear history.")

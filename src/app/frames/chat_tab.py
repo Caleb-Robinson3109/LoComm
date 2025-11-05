@@ -5,15 +5,37 @@ from lora_transport_locomm import LoCommTransport
 
 
 class ChatTab(ttk.Frame):
-    def __init__(self, master, transport: LoCommTransport, username: str):
+    def __init__(self, master, transport: LoCommTransport, username: str, on_disconnect=None):
         super().__init__(master)
+        self.master = master  # Reference to parent for communication
+        self.on_disconnect = on_disconnect  # Callback for disconnect action
         self.transport = transport
         self.username = username
         self.history_buffer: list[str] = []
 
         # Status label
         self.status_var = tk.StringVar(value="Disconnected")
-        ttk.Label(self, textvariable=self.status_var).pack(anchor="w", padx=8, pady=(8, 0))
+        status_label = ttk.Label(self, textvariable=self.status_var)
+        status_label.pack(anchor="w", padx=8, pady=(8, 0))
+
+        # ---------------- Top control area (right side) ---------------- #
+        top_controls = ttk.Frame(self)
+        top_controls.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        # Empty frame to push controls to the right
+        ttk.Frame(top_controls).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Control buttons area (top right corner)
+        control_buttons = ttk.Frame(top_controls)
+        control_buttons.pack(side=tk.RIGHT)
+
+        # Clear chat button
+        self.clear_btn = tk.Button(control_buttons, text="Clear Chat", bg="orange", fg="black", command=self._clear_chat)
+        self.clear_btn.pack(side=tk.TOP, padx=2, pady=2)
+
+        # Disconnect button
+        self.disconnect_btn = tk.Button(control_buttons, text="Disconnect", bg="red", fg="white", command=self._disconnect_device)
+        self.disconnect_btn.pack(side=tk.TOP, padx=2, pady=2)
 
         # ---------------- Chat history area ---------------- #
         self.history = tk.Text(
@@ -25,7 +47,7 @@ class ChatTab(ttk.Frame):
             fg="white",          # text color
             insertbackground="white",  # caret color
         )
-        self.history.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self.history.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
         # Align outgoing and incoming messages differently.
         self.history.tag_configure("me", justify="right", lmargin1=0, lmargin2=0, rmargin=12, foreground="#90ee90")
         self.history.tag_configure("other", justify="left", lmargin1=0, lmargin2=0, rmargin=12)
@@ -35,14 +57,18 @@ class ChatTab(ttk.Frame):
         bottom = ttk.Frame(self)
         bottom.pack(fill=tk.X, padx=8, pady=(5, 10))
 
+        # Left side: Message entry area
+        entry_area = ttk.Frame(bottom)
+        entry_area.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
         # Message entry (white background, black text)
         self.msg_var = tk.StringVar()
-        self.entry = tk.Entry(bottom, textvariable=self.msg_var, bg="white", fg="black")
+        self.entry = tk.Entry(entry_area, textvariable=self.msg_var, bg="white", fg="black")
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=12)
         self.entry.bind("<Return>", lambda e: self._send())
 
         # Send button — blue background with black text
-        self.send_btn = tk.Button(bottom, text="Send", bg="light blue", fg="black", command=self._send)
+        self.send_btn = tk.Button(entry_area, text="Send", bg="light blue", fg="black", command=self._send)
         self.send_btn.pack(side=tk.LEFT, padx=6)
 
         # Start in a disabled state until we know the transport is ready.
@@ -113,3 +139,18 @@ class ChatTab(ttk.Frame):
         self.history.config(state="normal")
         self.history.delete("1.0", "end")
         self.history.config(state="disabled")
+
+    def _clear_chat(self):
+        """Clear the chat history."""
+        self.clear_history()
+        self.append_line("System", "Chat history cleared.")
+
+    def _disconnect_device(self):
+        """Handle disconnect button click - only disconnect from device, not logout."""
+        # Stop the transport connection only
+        self.transport.stop()
+        self.append_line("System", "Disconnected from device.")
+
+        # Update connection status
+        self._connected = False
+        self._set_input_state(False)

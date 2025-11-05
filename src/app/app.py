@@ -5,6 +5,7 @@ import threading
 
 from lora_transport_locomm import LoCommTransport
 from utils.session import Session
+from utils.status_manager import get_status_manager
 from frames.login_frame import LoginFrame
 from frames.main_frame import MainFrame
 
@@ -20,9 +21,13 @@ class App(tk.Tk):
         self.transport.on_receive = self._on_receive
         self.transport.on_status = self._on_status
 
-        self._last_status: str = "Disconnected"
         self._pending_messages: list[tuple[str, str, float]] = []
         self._current_peer: str = ""
+        self._last_status: str = "Disconnected"
+
+        # Initialize centralized status manager
+        self.status_manager = get_status_manager()
+        self.status_manager.register_status_callback(self._on_status_update)
 
         self.current_frame = None
         self.show_login()
@@ -94,51 +99,45 @@ class App(tk.Tk):
             self.notify_incoming_message(sender, msg)
 
     def _on_status(self, text: str):
-        self._last_status = text
+        """Handle status updates from transport (legacy method - replaced by _on_status_update)"""
+        # Use centralized status management
+        display_status, color = self.status_manager.update_status(text, self._current_peer)
+
+        # Update peer tracking based on status
         lowered = text.lower()
         if any(keyword in lowered for keyword in ("disconnected", "connection failed", "invalid device password")):
             self._current_peer = ""
         elif any(keyword in lowered for keyword in ("authenticated and ready", "connected (mock)")):
             if not self._current_peer:
                 self._current_peer = "Awaiting peer"
+
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.update_status(text)
         self._refresh_peer_label()
 
+    def _on_status_update(self, status_text: str, color: str):
+        """Handle status updates from the centralized status manager"""
+        if isinstance(self.current_frame, MainFrame):
+            self.current_frame.update_status(status_text)
+        self._refresh_peer_label()
+
     def _refresh_peer_label(self):
         if isinstance(self.current_frame, MainFrame):
-            name = self._current_peer if self._current_peer else ("Awaiting peer" if self.transport.running else "Not connected")
-            self.current_frame.set_peer_name(name if name else None)
+            peer_text = self.status_manager.get_status_indicator_text(self._current_peer)
+            self.current_frame.set_peer_name(peer_text)
 
     def notify_incoming_message(self, sender: str, msg: str):
         self.bell()
         if isinstance(self.current_frame, MainFrame):
             self.current_frame.chat_tab.status_var.set(f"Message from {sender}")
-            self.after(2000, lambda: self.current_frame.update_status(self._last_status))
+            # Use centralized status manager for updating status
+            self.after(2000, lambda: self._on_status(self.status_manager.get_current_status()))
 
-    def export_chat_history(self):
-        if not isinstance(self.current_frame, MainFrame):
-            messagebox.showinfo("Export History", "Open the chat screen to export history.")
-            return
-        lines = self.current_frame.chat_tab.get_history_lines()
-        if not lines:
-            messagebox.showinfo("Export History", "No messages to export yet.")
-            return
-        default_name = f"locomm_chat_{self.session.username or 'session'}.txt"
-        path = filedialog.asksaveasfilename(
-            title="Save chat history",
-            defaultextension=".txt",
-            initialfile=default_name,
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-        )
-        if not path:
-            return
-        try:
-            with open(path, "w", encoding="utf-8") as fh:
-                fh.write("\n".join(lines))
-            messagebox.showinfo("Export History", f"Saved chat history to {path}")
-        except OSError as exc:
-            messagebox.showerror("Export Failed", f"Could not save chat history:\n{exc}")
+    def clear_chat_history(self):
+        """Clear chat history"""
+        if isinstance(self.current_frame, MainFrame):
+            if messagebox.askyesno("Clear Chat", "Are you sure you want to clear the current chat log?"):
+                self.current_frame.chat_tab.clear_history()
 
 
 if __name__ == "__main__":

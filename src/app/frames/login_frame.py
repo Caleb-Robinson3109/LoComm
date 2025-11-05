@@ -1,18 +1,21 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from utils.user_store import register_user, validate_login
+from utils.validation import validate_credentials, enforce_ascii_and_limit
 
 MAX_CRED_LEN = 32
 ASCII_RANGE = set(range(0x20, 0x7F))
 
 
 def is_printable_ascii(s: str) -> bool:
-    return all(ord(c) in ASCII_RANGE for c in s)
+    from utils.validation import is_printable_ascii
+    return is_printable_ascii(s)
 
 
 def enforce_ascii_and_limit(var: tk.StringVar):
     val = var.get()
-    filtered = ''.join(c for c in val if ord(c) in ASCII_RANGE)[:MAX_CRED_LEN]
+    from utils.validation import enforce_ascii_and_limit
+    filtered = enforce_ascii_and_limit(val)
     if filtered != val:
         var.set(filtered)
 
@@ -63,11 +66,11 @@ class LoginFrame(ttk.Frame):
     def _try_login(self):
         username = self.username_var.get().strip()
         password = self.password_var.get().strip()
-        if not username or not password:
-            messagebox.showerror("Error", "Username and password required.")
-            return
-        if not (is_printable_ascii(username) and is_printable_ascii(password)):
-            messagebox.showerror("Error", "Only printable ASCII allowed.")
+
+        # Use centralized validation
+        is_valid, error_msg = validate_credentials(username, password)
+        if not is_valid:
+            messagebox.showerror("Error", error_msg)
             return
 
         # ✅ Validate from user store
@@ -107,9 +110,13 @@ class LoginFrame(ttk.Frame):
             if not u or not p or not c:
                 messagebox.showerror("Error", "All fields are required.", parent=dialog)
                 return
-            if not (is_printable_ascii(u) and is_printable_ascii(p)):
-                messagebox.showerror("Error", "Only printable ASCII allowed.", parent=dialog)
+
+            # Use centralized validation for username and password
+            is_valid, error_msg = validate_credentials(u, p)
+            if not is_valid:
+                messagebox.showerror("Error", error_msg, parent=dialog)
                 return
+
             if p != c:
                 messagebox.showerror("Error", "Passwords do not match.", parent=dialog)
                 return
