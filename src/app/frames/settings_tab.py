@@ -8,7 +8,7 @@ class SettingsTab(ttk.Frame):
         self.app = app
         self.transport = transport
 
-        ttk.Label(self, text="Device Controls", style="Section.TLabel").pack(anchor="w", padx=14, pady=(14, 6))
+        ttk.Label(self, text="Device Controls", font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=14, pady=(14, 6))
         device_frame = ttk.Frame(self)
         device_frame.pack(fill=tk.X, padx=14)
 
@@ -23,30 +23,7 @@ class SettingsTab(ttk.Frame):
 
         ttk.Separator(self).pack(fill=tk.X, padx=14, pady=12)
 
-        ttk.Label(self, text="Appearance", style="Section.TLabel").pack(anchor="w", padx=14, pady=(0, 6))
-        appearance = ttk.Frame(self)
-        appearance.pack(fill=tk.X, padx=14)
-
-        ttk.Label(appearance, text="Theme").grid(row=0, column=0, sticky="w")
-        self.theme_var = tk.StringVar(value=self.app.theme)
-        theme_combo = ttk.Combobox(appearance, textvariable=self.theme_var, values=("dark", "light"), state="readonly")
-        theme_combo.grid(row=0, column=1, sticky="ew", padx=(8, 0))
-        theme_combo.bind("<<ComboboxSelected>>", lambda _e: self.app.set_theme(self.theme_var.get()))
-
-        ttk.Label(appearance, text="Font size").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        self.font_var = tk.DoubleVar(value=self.app.font_size)
-        self._updating_font = False
-        font_slider = ttk.Scale(appearance, from_=10, to=18, variable=self.font_var, command=self._font_changed)
-        font_slider.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
-        self.font_value = ttk.Label(appearance, text=f"{int(self.font_var.get())} pt")
-        self.font_value.grid(row=1, column=2, sticky="w", padx=(8, 0), pady=(8, 0))
-
-        for i in range(3):
-            appearance.columnconfigure(i, weight=1)
-
-        ttk.Separator(self).pack(fill=tk.X, padx=14, pady=12)
-
-        ttk.Label(self, text="History & Notifications", style="Section.TLabel").pack(anchor="w", padx=14, pady=(0, 6))
+        ttk.Label(self, text="History & Notifications", font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=14, pady=(0, 6))
         history_frame = ttk.Frame(self)
         history_frame.pack(fill=tk.X, padx=14)
 
@@ -57,8 +34,6 @@ class SettingsTab(ttk.Frame):
         history_frame.columnconfigure(1, weight=1)
 
         ttk.Label(self, text="Enable system chime on new messages from peers.").pack(anchor="w", padx=18, pady=(4, 0))
-
-        self.app.register_theme_listener(self.apply_theme)
 
     def _require_connection(self) -> bool:
         if not self.transport.running:
@@ -115,19 +90,3 @@ class SettingsTab(ttk.Frame):
         if hasattr(self.app.current_frame, "chat_tab"):
             self.app.current_frame.chat_tab.clear_history()
         messagebox.showinfo("Chat History", "Chat history cleared.")
-
-    def _font_changed(self, value: str):
-        if self._updating_font:
-            return
-        size = int(float(value))
-        self.font_value.config(text=f"{size} pt")
-        self.app.set_font_size(size)
-
-    def apply_theme(self):
-        colors = self.app.get_theme_colors()
-        self.configure(style="TFrame")
-        self.theme_var.set(self.app.theme)
-        self._updating_font = True
-        self.font_var.set(self.app.font_size)
-        self.font_value.config(text=f"{self.app.font_size} pt")
-        self._updating_font = False
