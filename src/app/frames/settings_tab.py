@@ -4,47 +4,59 @@ from tkinter import ttk, messagebox, simpledialog
 
 class SettingsTab(ttk.Frame):
     def __init__(self, master, app, transport):
-        super().__init__(master, style="Surface.TFrame")
+        super().__init__(master)
         self.app = app
         self.transport = transport
-        self.columnconfigure(0, weight=1)
 
-        self.sections: list[ttk.Frame] = []
+        ttk.Label(self, text="Device Controls", style="Section.TLabel").pack(anchor="w", padx=14, pady=(14, 6))
+        device_frame = ttk.Frame(self)
+        device_frame.pack(fill=tk.X, padx=14)
 
-        device_frame = self._section_frame("Device Controls", row=0, pady=(24, 16))
-        ttk.Button(device_frame, text="Pair devices", style="Accent.TButton", command=self._pair_devices).grid(row=1, column=0, padx=(0, 8), pady=(12, 8), sticky="ew")
-        ttk.Button(device_frame, text="Stop pairing", style="Secondary.TButton", command=self._stop_pair).grid(row=1, column=1, pady=(12, 8), sticky="ew")
-        ttk.Button(device_frame, text="Reset device password", style="Secondary.TButton", command=self._reset_password).grid(row=2, column=0, padx=(0, 8), pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Set new password", style="Secondary.TButton", command=self._set_password).grid(row=2, column=1, pady=4, sticky="ew")
-        ttk.Button(device_frame, text="Delete keys", style="Danger.TButton", command=self._delete_keys).grid(row=3, column=0, columnspan=2, pady=(12, 0), sticky="ew")
-        device_frame.columnconfigure(0, weight=1)
-        device_frame.columnconfigure(1, weight=1)
+        ttk.Button(device_frame, text="Pair Devices", command=self._pair_devices).grid(row=0, column=0, padx=4, pady=4, sticky="ew")
+        ttk.Button(device_frame, text="Stop Pairing", command=self._stop_pair).grid(row=0, column=1, padx=4, pady=4, sticky="ew")
+        ttk.Button(device_frame, text="Reset Device Password", command=self._reset_password).grid(row=1, column=0, padx=4, pady=4, sticky="ew")
+        ttk.Button(device_frame, text="Set New Password", command=self._set_password).grid(row=1, column=1, padx=4, pady=4, sticky="ew")
+        ttk.Button(device_frame, text="Delete Keys", command=self._delete_keys).grid(row=2, column=0, padx=4, pady=4, sticky="ew")
 
-        appearance = self._section_frame("Appearance", row=1, pady=(0, 16))
-        ttk.Label(appearance, text="Theme", style="BodyAlt.TLabel").grid(row=1, column=0, sticky="w", pady=(12, 6))
+        for i in range(2):
+            device_frame.columnconfigure(i, weight=1)
+
+        ttk.Separator(self).pack(fill=tk.X, padx=14, pady=12)
+
+        ttk.Label(self, text="Appearance", style="Section.TLabel").pack(anchor="w", padx=14, pady=(0, 6))
+        appearance = ttk.Frame(self)
+        appearance.pack(fill=tk.X, padx=14)
+
+        ttk.Label(appearance, text="Theme").grid(row=0, column=0, sticky="w")
         self.theme_var = tk.StringVar(value=self.app.theme)
         theme_combo = ttk.Combobox(appearance, textvariable=self.theme_var, values=("dark", "light"), state="readonly")
-        theme_combo.grid(row=1, column=1, sticky="ew", pady=(12, 6))
+        theme_combo.grid(row=0, column=1, sticky="ew", padx=(8, 0))
         theme_combo.bind("<<ComboboxSelected>>", lambda _e: self.app.set_theme(self.theme_var.get()))
 
-        ttk.Label(appearance, text="Font size", style="BodyAlt.TLabel").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(appearance, text="Font size").grid(row=1, column=0, sticky="w", pady=(8, 0))
         self.font_var = tk.DoubleVar(value=self.app.font_size)
         self._updating_font = False
         font_slider = ttk.Scale(appearance, from_=10, to=18, variable=self.font_var, command=self._font_changed)
-        font_slider.grid(row=2, column=1, sticky="ew", pady=(6, 0))
-        self.font_value = ttk.Label(appearance, text=f"{int(self.font_var.get())} pt", style="BodyAlt.TLabel")
-        self.font_value.grid(row=2, column=2, sticky="w", padx=(12, 0), pady=(6, 0))
+        font_slider.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
+        self.font_value = ttk.Label(appearance, text=f"{int(self.font_var.get())} pt")
+        self.font_value.grid(row=1, column=2, sticky="w", padx=(8, 0), pady=(8, 0))
 
-        appearance.columnconfigure(0, weight=0)
-        appearance.columnconfigure(1, weight=1)
-        appearance.columnconfigure(2, weight=0)
+        for i in range(3):
+            appearance.columnconfigure(i, weight=1)
 
-        history_frame = self._section_frame("History & Notifications", row=2, pady=(0, 24))
-        ttk.Button(history_frame, text="Export chat history...", style="Secondary.TButton", command=self.app.export_chat_history).grid(row=1, column=0, sticky="ew", pady=(12, 6))
-        ttk.Button(history_frame, text="Clear chat history", style="Secondary.TButton", command=self._clear_history).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=(12, 6))
+        ttk.Separator(self).pack(fill=tk.X, padx=14, pady=12)
+
+        ttk.Label(self, text="History & Notifications", style="Section.TLabel").pack(anchor="w", padx=14, pady=(0, 6))
+        history_frame = ttk.Frame(self)
+        history_frame.pack(fill=tk.X, padx=14)
+
+        ttk.Button(history_frame, text="Export Chat History...", command=self.app.export_chat_history).grid(row=0, column=0, sticky="ew", padx=4, pady=4)
+        ttk.Button(history_frame, text="Clear Chat History", command=self._clear_history).grid(row=0, column=1, sticky="ew", padx=4, pady=4)
+
         history_frame.columnconfigure(0, weight=1)
         history_frame.columnconfigure(1, weight=1)
-        ttk.Label(history_frame, text="Desktop will chime when new messages arrive from peers.", style="BodyAlt.TLabel").grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 0))
+
+        ttk.Label(self, text="Enable system chime on new messages from peers.").pack(anchor="w", padx=18, pady=(4, 0))
 
         self.app.register_theme_listener(self.apply_theme)
 
@@ -113,18 +125,9 @@ class SettingsTab(ttk.Frame):
 
     def apply_theme(self):
         colors = self.app.get_theme_colors()
-        self.configure(style="Surface.TFrame")
-        for section in self.sections:
-            section.configure(style="SurfaceAlt.TFrame")
+        self.configure(style="TFrame")
         self.theme_var.set(self.app.theme)
         self._updating_font = True
         self.font_var.set(self.app.font_size)
         self.font_value.config(text=f"{self.app.font_size} pt")
         self._updating_font = False
-
-    def _section_frame(self, title: str, row: int, pady=(16, 12)) -> ttk.Frame:
-        frame = ttk.Frame(self, style="SurfaceAlt.TFrame", padding=(20, 18, 20, 20))
-        frame.grid(row=row, column=0, sticky="ew", padx=24, pady=pady)
-        ttk.Label(frame, text=title, style="SectionAlt.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
-        self.sections.append(frame)
-        return frame

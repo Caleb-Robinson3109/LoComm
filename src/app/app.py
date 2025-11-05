@@ -15,8 +15,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("LoRa Chat Desktop")
-        self.geometry("720x580")
-        self.minsize(720, 560)
+        self.geometry("700x560")
 
         self.session = Session()
         self.transport = LoCommTransport(self)
@@ -36,7 +35,6 @@ class App(tk.Tk):
 
         self.current_frame = None
         self.show_login()
-        self.after(100, lambda: self.eval("tk::PlaceWindow . center"))
 
     def show_login(self):
         if self.current_frame:
@@ -146,58 +144,36 @@ class App(tk.Tk):
     def get_theme_colors(self) -> dict[str, str]:
         if self.theme == "light":
             return {
-                "background": "#f3f4f6",
+                "background": "#f5f5f5",
                 "surface": "#ffffff",
-                "surface_alt": "#eef2ff",
-                "surface_alt_hover": "#e0e7ff",
-                "text": "#0f172a",
-                "muted_text": "#475569",
-                "chat_bg": "#f8fafc",
-                "chat_fg": "#0f172a",
+                "text": "#1f1f1f",
+                "chat_bg": "#ffffff",
+                "chat_fg": "#111111",
                 "input_bg": "#ffffff",
-                "input_fg": "#0f172a",
-                "placeholder_fg": "#94a3b8",
-                "bubble_me_bg": "#2563eb",
-                "bubble_me_fg": "#ffffff",
-                "bubble_other_bg": "#e2e8f0",
-                "bubble_other_fg": "#1f2937",
-                "system_fg": "#2563eb",
-                "timestamp_fg": "#64748b",
-                "border": "#d0d7e2",
-                "accent": "#2563eb",
-                "accent_hover": "#1d4ed8",
-                "accent_text": "#ffffff",
-                "danger": "#dc2626",
-                "danger_hover": "#b91c1c",
-                "warning": "#f59e0b",
-                "button_bg": "#2563eb",
+                "input_fg": "#111111",
+                "placeholder_fg": "#7f7f7f",
+                "bubble_me_bg": "#d1f5d3",
+                "bubble_me_fg": "#1f441e",
+                "bubble_other_bg": "#e4e7ff",
+                "bubble_other_fg": "#1e255b",
+                "system_fg": "#3a7bd5",
+                "button_bg": "#3a7bd5",
             }
         return {
-            "background": "#0f172a",
-            "surface": "#111c2f",
-            "surface_alt": "#152238",
-            "surface_alt_hover": "#1b2d49",
-            "text": "#e2e8f0",
-            "muted_text": "#94a3b8",
-            "chat_bg": "#0b1220",
-            "chat_fg": "#e2e8f0",
-            "input_bg": "#152238",
-            "input_fg": "#e2e8f0",
-            "placeholder_fg": "#6b728c",
-            "bubble_me_bg": "#2563eb",
-            "bubble_me_fg": "#ffffff",
-            "bubble_other_bg": "#1f2937",
-            "bubble_other_fg": "#e2e8f0",
-            "system_fg": "#38bdf8",
-            "timestamp_fg": "#7c8aa8",
-            "border": "#24344f",
-            "accent": "#38bdf8",
-            "accent_hover": "#0ea5e9",
-            "accent_text": "#041026",
-            "danger": "#f87171",
-            "danger_hover": "#ef4444",
-            "warning": "#fbbf24",
-            "button_bg": "#38bdf8",
+            "background": "#161b22",
+            "surface": "#1f2530",
+            "text": "#e6edf3",
+            "chat_bg": "#0d1117",
+            "chat_fg": "#e6edf3",
+            "input_bg": "#1f2530",
+            "input_fg": "#e6edf3",
+            "placeholder_fg": "#6c7683",
+            "bubble_me_bg": "#214d2e",
+            "bubble_me_fg": "#b9f2c0",
+            "bubble_other_bg": "#2b3a67",
+            "bubble_other_fg": "#d0dcff",
+            "system_fg": "#62b0ff",
+            "button_bg": "#238636",
         }
 
     def _init_fonts(self):
@@ -207,8 +183,6 @@ class App(tk.Tk):
             "heading": tkfont.Font(family="Segoe UI", size=self.font_size + 4, weight="bold"),
             "status": tkfont.Font(family="Segoe UI", size=self.font_size + 1, weight="bold"),
             "system": tkfont.Font(family="Segoe UI", size=max(self.font_size - 1, 8), slant="italic"),
-            "headline": tkfont.Font(family="Segoe UI Semibold", size=self.font_size + 6),
-            "timestamp": tkfont.Font(family="Segoe UI", size=max(self.font_size - 2, 8)),
         }
 
     def _update_fonts(self):
@@ -218,82 +192,21 @@ class App(tk.Tk):
         self._fonts["heading"].configure(size=base + 4, weight="bold")
         self._fonts["status"].configure(size=base + 1, weight="bold")
         self._fonts["system"].configure(size=max(base - 1, 8), slant="italic")
-        self._fonts["headline"].configure(size=base + 6)
-        self._fonts["timestamp"].configure(size=max(base - 2, 8))
 
     def _apply_theme(self):
         colors = self.get_theme_colors()
         self.configure(bg=colors["background"])
         self.style.theme_use("clam")
         self.style.configure("TFrame", background=colors["surface"])
-        self.style.configure("Surface.TFrame", background=colors["surface"])
-        self.style.configure("SurfaceAlt.TFrame", background=colors["surface_alt"])
         self.style.configure("ChatFrame.TFrame", background=colors["surface"])
         self.style.configure("TLabel", background=colors["surface"], foreground=colors["text"], font=self.get_font("base"))
-        self.style.configure("Body.TLabel", background=colors["surface"], foreground=colors["muted_text"], font=self.get_font("base"))
-        self.style.configure("Header.TLabel", background=colors["surface_alt"], foreground=colors["text"], font=self.get_font("heading"))
-        self.style.configure("Headline.TLabel", background=colors["surface"], foreground=colors["text"], font=self.get_font("headline"))
-        self.style.configure("Status.TLabel", background=colors["surface_alt"], foreground=colors["text"], font=self.get_font("status"))
+        self.style.configure("TButton", font=self.get_font("base"))
+        self.style.configure("Header.TLabel", background=colors["surface"], foreground=colors["text"], font=self.get_font("heading"))
+        self.style.configure("Status.TLabel", background=colors["surface"], foreground=colors["text"], font=self.get_font("status"))
         self.style.configure("Section.TLabel", background=colors["surface"], foreground=colors["text"], font=self.get_font("bold"))
-        self.style.configure("HeadlineAlt.TLabel", background=colors["surface_alt"], foreground=colors["text"], font=self.get_font("headline"))
-        self.style.configure("BodyAlt.TLabel", background=colors["surface_alt"], foreground=colors["muted_text"], font=self.get_font("base"))
-        self.style.configure("SectionAlt.TLabel", background=colors["surface_alt"], foreground=colors["text"], font=self.get_font("bold"))
-        self.style.configure("Accent.TButton",
-                             background=colors["accent"],
-                             foreground=colors["accent_text"],
-                             padding=(16, 8),
-                             relief="flat",
-                             borderwidth=0,
-                             focusthickness=0)
-        self.style.map("Accent.TButton",
-                       background=[("pressed", colors["accent_hover"]), ("active", colors["accent_hover"])],
-                       foreground=[("disabled", colors["placeholder_fg"])])
-        self.style.configure("Secondary.TButton",
-                             background=colors["surface_alt"],
-                             foreground=colors["text"],
-                             padding=(14, 8),
-                             relief="flat",
-                             borderwidth=0)
-        self.style.map("Secondary.TButton",
-                       background=[("active", colors["surface_alt_hover"]), ("pressed", colors["surface_alt_hover"])],
-                       foreground=[("disabled", colors["placeholder_fg"])])
-        self.style.configure("Danger.TButton",
-                             background=colors["danger"],
-                             foreground="#ffffff",
-                             padding=(16, 8),
-                             relief="flat",
-                             borderwidth=0)
-        self.style.map("Danger.TButton",
-                       background=[("active", colors["danger_hover"]), ("pressed", colors["danger_hover"])],
-                       foreground=[("disabled", colors["placeholder_fg"])])
-        self.style.configure("StatusBar.TFrame", background=colors["surface_alt"])
-        self.style.configure("TNotebook", background=colors["surface"], borderwidth=0, padding=0)
-        self.style.layout("TNotebook", [("Notebook.client", {"sticky": "nswe"})])
-        self.style.configure("TNotebook.Tab",
-                             padding=(16, 8),
-                             background=colors["surface_alt"],
-                             foreground=colors["muted_text"],
-                             borderwidth=0)
-        self.style.map("TNotebook.Tab",
-                       background=[("selected", colors["surface"]), ("active", colors["surface_alt_hover"])],
-                       foreground=[("selected", colors["text"])])
-        self.style.configure("TCombobox",
-                             fieldbackground=colors["input_bg"],
-                             background=colors["input_bg"],
-                             foreground=colors["text"])
-        self.style.map("TCombobox",
-                       fieldbackground=[("readonly", colors["input_bg"])])
-        self.style.configure("Horizontal.TScale",
-                             troughcolor=colors["surface_alt"],
-                             background=colors["surface"])
-        self.style.configure("TProgressbar",
-                             troughcolor=colors["surface_alt"],
-                             background=colors["accent"],
-                             bordercolor=colors["surface_alt"])
-        self.style.configure("Accent.Horizontal.TProgressbar",
-                             troughcolor=colors["surface_alt"],
-                             background=colors["accent"],
-                             bordercolor=colors["surface_alt"])
+        self.style.configure("TNotebook", background=colors["surface"])
+        self.style.configure("TNotebook.Tab", padding=(12, 6))
+        self.style.map("TNotebook.Tab", background=[("selected", colors["background"])])
         stale: list[Callable[[], None]] = []
         for callback in self._theme_listeners:
             try:

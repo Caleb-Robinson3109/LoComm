@@ -20,58 +20,41 @@ def enforce_ascii_and_limit(var: tk.StringVar):
 class LoginFrame(ttk.Frame):
     def __init__(self, master, on_login, app):
         super().__init__(master)
-        self.configure(style="Surface.TFrame")
         self.on_login = on_login
         self.app = app
 
         self.username_var = tk.StringVar()
         self.password_var = tk.StringVar()
 
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        ttk.Label(self, text="LoRa Chat Login", style="Header.TLabel").pack(pady=(20, 10))
 
-        self.card = ttk.Frame(self, style="SurfaceAlt.TFrame", padding=(32, 28, 32, 32))
-        self.card.grid(row=0, column=0, sticky="nsew", padx=48, pady=48)
-
-        ttk.Label(self.card, text="LoComm Desktop", style="HeadlineAlt.TLabel").pack(anchor="w")
-        ttk.Label(
-            self.card,
-            text="Sign in to secure your LoRa chat session.",
-            style="BodyAlt.TLabel"
-        ).pack(anchor="w", pady=(6, 18))
-
-        username_block = ttk.Frame(self.card, style="SurfaceAlt.TFrame")
-        username_block.pack(fill=tk.X, pady=(0, 14))
-        ttk.Label(username_block, text="Username", style="SectionAlt.TLabel").pack(anchor="w")
-        entry_u = tk.Entry(username_block, textvariable=self.username_var)
-        entry_u.pack(fill=tk.X, pady=(6, 0))
+        frame_u = ttk.Frame(self)
+        frame_u.pack(pady=5)
+        ttk.Label(frame_u, text="Username:").pack(side=tk.LEFT, padx=5)
+        entry_u = tk.Entry(frame_u, textvariable=self.username_var, width=30)
+        entry_u.pack(side=tk.LEFT)
         self.username_entry = entry_u
 
-        password_block = ttk.Frame(self.card, style="SurfaceAlt.TFrame")
-        password_block.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(password_block, text="Password", style="SectionAlt.TLabel").pack(anchor="w")
-        entry_p = tk.Entry(password_block, textvariable=self.password_var, show="•")
-        entry_p.pack(fill=tk.X, pady=(6, 0))
+        frame_p = ttk.Frame(self)
+        frame_p.pack(pady=5)
+        ttk.Label(frame_p, text="Password:").pack(side=tk.LEFT, padx=5)
+        entry_p = tk.Entry(frame_p, textvariable=self.password_var, show="•", width=30)
+        entry_p.pack(side=tk.LEFT)
         self.password_entry = entry_p
 
         entry_u.bind("<Return>", lambda e: self._try_login())
         entry_p.bind("<Return>", lambda e: self._try_login())
 
-        btns = ttk.Frame(self.card, style="SurfaceAlt.TFrame")
-        btns.pack(fill=tk.X, pady=(16, 4))
+        # Buttons frame
+        btns = ttk.Frame(self)
+        btns.pack(pady=(15, 10))
 
-        self.login_btn = ttk.Button(btns, text="Log In", style="Accent.TButton", command=self._try_login)
-        self.login_btn.pack(fill=tk.X)
+        self.login_btn = ttk.Button(btns, text="Login", command=self._try_login)
+        self.login_btn.pack(side=tk.LEFT, padx=5)
+        self.new_user_btn = ttk.Button(btns, text="New User", command=self._new_user_dialog)
+        self.new_user_btn.pack(side=tk.LEFT, padx=5)
 
-        self.new_user_btn = ttk.Button(
-            self.card,
-            text="Create new account",
-            style="Secondary.TButton",
-            command=self._new_user_dialog,
-        )
-        self.new_user_btn.pack(fill=tk.X, pady=(8, 0))
-
-        self.progress = ttk.Progressbar(self.card, mode="indeterminate", length=220, style="Accent.Horizontal.TProgressbar")
+        self.progress = ttk.Progressbar(self, mode="indeterminate", length=220)
         self.progress_shown = False
 
         # Enforce ASCII limit
@@ -162,20 +145,6 @@ class LoginFrame(ttk.Frame):
 
     def apply_theme(self):
         colors = self.app.get_theme_colors()
-        self.configure(style="Surface.TFrame")
-        self.card.configure(style="SurfaceAlt.TFrame")
-        self.login_btn.configure(style="Accent.TButton")
-        self.new_user_btn.configure(style="Secondary.TButton")
-        self.progress.configure(style="Accent.Horizontal.TProgressbar")
+        self.configure(style="TFrame")
         for entry in (self.username_entry, self.password_entry):
-            entry.configure(
-                bg=colors["input_bg"],
-                fg=colors["input_fg"],
-                insertbackground=colors["input_fg"],
-                font=self.app.get_font("base"),
-                highlightthickness=1,
-                highlightbackground=colors["border"],
-                highlightcolor=colors["accent"],
-                relief="flat",
-                bd=0,
-            )
+            entry.configure(background=colors["input_bg"], foreground=colors["input_fg"], insertbackground=colors["input_fg"], font=self.app.get_font("base"))
