@@ -28,17 +28,21 @@ class ChatTab(ttk.Frame):
 
         # ---------------- Input row ---------------- #
         bottom = ttk.Frame(self)
-        bottom.pack(fill=tk.X, padx=8, pady=(5,10))
+        bottom.pack(fill=tk.X, padx=8, pady=(5, 10))
 
         # Message entry (white background, black text)
         self.msg_var = tk.StringVar()
-        entry = tk.Entry(bottom, textvariable=self.msg_var, bg="white", fg="black")
-        entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=12)
-        entry.bind("<Return>", lambda e: self._send())
+        self.entry = tk.Entry(bottom, textvariable=self.msg_var, bg="white", fg="black")
+        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=12)
+        self.entry.bind("<Return>", lambda e: self._send())
 
         # Send button — blue background with black text
-        send_btn = tk.Button(bottom, text="Send", bg="light blue", fg="black", command=self._send)
-        send_btn.pack(side=tk.LEFT, padx=6)
+        self.send_btn = tk.Button(bottom, text="Send", bg="light blue", fg="black", command=self._send)
+        self.send_btn.pack(side=tk.LEFT, padx=6)
+
+        # Start in a disabled state until we know the transport is ready.
+        self._connected = False
+        self._set_input_state(False)
 
     # ------------------------------------------------------ #
     def append_line(self, who: str, msg: str):
@@ -50,6 +54,8 @@ class ChatTab(ttk.Frame):
 
     def _send(self):
         msg = self.msg_var.get().strip()
+        if not self._connected:
+            return
         if not msg:
             return
         self.append_line("Me", msg)
@@ -58,3 +64,24 @@ class ChatTab(ttk.Frame):
 
     def set_status(self, text: str):
         self.status_var.set(text)
+
+        lowered = text.lower()
+        if "authenticated" in lowered or "ready" in lowered:
+            if not self._connected:
+                self.append_line("System", "Connected to LoComm device.")
+            self._connected = True
+            self._set_input_state(True)
+        elif any(keyword in lowered for keyword in ("disconnected", "failed", "invalid", "not connected")):
+            if self._connected:
+                self.append_line("System", text)
+            self._connected = False
+            self._set_input_state(False)
+        elif "verifying" in lowered:
+            self._set_input_state(False)
+
+    def _set_input_state(self, enabled: bool):
+        state = "normal" if enabled else "disabled"
+        self.entry.config(state=state)
+        self.send_btn.config(state=state)
+        if not enabled:
+            self.msg_var.set("")
