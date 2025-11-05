@@ -18,14 +18,15 @@ def enforce_ascii_and_limit(var: tk.StringVar):
 
 
 class LoginFrame(ttk.Frame):
-    def __init__(self, master, on_login):
+    def __init__(self, master, on_login, app):
         super().__init__(master)
         self.on_login = on_login
+        self.app = app
 
         self.username_var = tk.StringVar()
         self.password_var = tk.StringVar()
 
-        ttk.Label(self, text="LoRa Chat Login", font=("Segoe UI", 16, "bold")).pack(pady=(20, 10))
+        ttk.Label(self, text="LoRa Chat Login", style="Header.TLabel").pack(pady=(20, 10))
 
         frame_u = ttk.Frame(self)
         frame_u.pack(pady=5)
@@ -53,9 +54,15 @@ class LoginFrame(ttk.Frame):
         self.new_user_btn = ttk.Button(btns, text="New User", command=self._new_user_dialog)
         self.new_user_btn.pack(side=tk.LEFT, padx=5)
 
+        self.progress = ttk.Progressbar(self, mode="indeterminate", length=220)
+        self.progress_shown = False
+
         # Enforce ASCII limit
         self.username_var.trace_add("write", lambda *_: enforce_ascii_and_limit(self.username_var))
         self.password_var.trace_add("write", lambda *_: enforce_ascii_and_limit(self.password_var))
+
+        self.app.register_theme_listener(self.apply_theme)
+        self.apply_theme()
 
     def _try_login(self):
         username = self.username_var.get().strip()
@@ -126,3 +133,18 @@ class LoginFrame(ttk.Frame):
         self.new_user_btn.config(state=state)
         self.username_entry.config(state=state)
         self.password_entry.config(state=state)
+        if waiting and not self.progress_shown:
+            self.progress.pack(pady=(10, 0))
+            self.progress.start(10)
+            self.progress_shown = True
+        elif not waiting and self.progress_shown:
+            self.progress.stop()
+            self.progress.pack_forget()
+            self.progress_shown = False
+            self.username_entry.focus_set()
+
+    def apply_theme(self):
+        colors = self.app.get_theme_colors()
+        self.configure(style="TFrame")
+        for entry in (self.username_entry, self.password_entry):
+            entry.configure(background=colors["input_bg"], foreground=colors["input_fg"], insertbackground=colors["input_fg"], font=self.app.get_font("base"))

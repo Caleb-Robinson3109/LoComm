@@ -76,6 +76,8 @@ except Exception as e:
             return True
         def stop_pair(self) -> bool:
             return True
+        def delete_keys(self) -> bool:
+            return True
 
     LoCommAPI = _MockLoCommAPI()
 
@@ -194,6 +196,77 @@ class LoCommTransport:
         if not success:
             if self.on_status:
                 self.on_status("Send failed")
+
+    # ---------------- Device utilities ---------------- #
+    def pair_devices(self) -> bool:
+        if hasattr(LoCommAPI, "pair_devices"):
+            try:
+                ok = LoCommAPI.pair_devices()
+            except Exception as e:
+                if DEBUG:
+                    print("[LoCommTransport] pair_devices error:", repr(e))
+                ok = False
+        else:
+            ok = False
+        if not ok and self.on_status:
+            self.on_status("Pairing request failed")
+        return ok
+
+    def stop_pairing(self) -> bool:
+        if hasattr(LoCommAPI, "stop_pair"):
+            try:
+                ok = LoCommAPI.stop_pair()
+            except Exception as e:
+                if DEBUG:
+                    print("[LoCommTransport] stop_pair error:", repr(e))
+                ok = False
+        else:
+            ok = False
+        if not ok and self.on_status:
+            self.on_status("Stop pairing failed")
+        return ok
+
+    def reset_device_password(self, new_password: str) -> bool:
+        if hasattr(LoCommAPI, "reset_passoword"):
+            try:
+                ok = LoCommAPI.reset_passoword(new_password)
+            except Exception as e:
+                if DEBUG:
+                    print("[LoCommTransport] reset_passoword error:", repr(e))
+                ok = False
+        else:
+            ok = False
+        if not ok and self.on_status:
+            self.on_status("Reset password failed")
+        return ok
+
+    def set_device_password(self, old: str, new: str) -> bool:
+        if hasattr(LoCommAPI, "set_password"):
+            try:
+                ok = LoCommAPI.set_password(old, new)
+            except Exception as e:
+                if DEBUG:
+                    print("[LoCommTransport] set_password error:", repr(e))
+                ok = False
+        else:
+            ok = False
+        if not ok and self.on_status:
+            self.on_status("Set password failed")
+        return ok
+
+    def delete_device_keys(self) -> bool:
+        if hasattr(LoCommAPI, "delete_keys"):
+            try:
+                ok = LoCommAPI.delete_keys()
+            except Exception as e:
+                if DEBUG:
+                    print("[LoCommTransport] delete_keys error:", repr(e))
+                ok = False
+        else:
+            ok = False
+        if not ok and self.on_status:
+            self.on_status("Delete keys failed")
+        return ok
 
     # ---------------- Background receive loop ---------------- #
     def _rx_loop(self):
