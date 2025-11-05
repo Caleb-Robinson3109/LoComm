@@ -2,6 +2,8 @@ import serial
 import threading
 import sys
 
+tString = b'\x124\x00\x10CONN\xee\xafH\x0e\xdc\x9bVx'
+
 def read_from_port(ser):
     """Continuously read from serial port and print incoming data."""
     try:
@@ -20,7 +22,7 @@ def main():
         sys.exit(1)
 
     port = sys.argv[1]
-    baud = int(sys.argv[2]) if len(sys.argv) > 2 else 9600
+    baud = int(sys.argv[2]) if len(sys.argv) > 2 else 115200
 
     try:
         ser = serial.Serial(port, baud, timeout=1)
@@ -35,7 +37,11 @@ def main():
         while True:
             msg = input(">> ")
             if msg:
-                ser.write((msg + "\n").encode())
+                print(msg)
+                if msg == 'test':
+                    ser.write(tString)
+                else:
+                    ser.write((msg + "\n").encode())
     except KeyboardInterrupt:
         print("\nClosing connection...")
     except serial.SerialException as e:

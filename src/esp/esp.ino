@@ -103,6 +103,9 @@ void setup() {
   display.display();
 
   //initialize api task
+  delay(1000);
+  Serial.println("Booting");
+  Serial.flush();
   
   xTaskCreateStaticPinnedToCore(
     apiCode,
