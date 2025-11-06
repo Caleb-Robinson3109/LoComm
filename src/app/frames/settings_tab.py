@@ -1,14 +1,14 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, simpledialog, ttk
 import random
 import string
 import time
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 
 
-class SettingsTab(ttk.Frame):
+class SettingsTab(tk.Frame):
     def __init__(self, master, app, transport, session=None):
-        super().__init__(master)
+        super().__init__(master, bg=Colors.BG_PRIMARY)
         self.app = app
         self.transport = transport
         self.session = session
@@ -16,10 +16,13 @@ class SettingsTab(ttk.Frame):
         self.new_password_var = tk.StringVar()
         self.confirm_password_var = tk.StringVar()
 
+        # Configure frame styling
+        self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
+
         # Create scrollable frame for all settings
-        canvas = tk.Canvas(self, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        canvas = tk.Canvas(self, bg=Colors.BG_PRIMARY, highlightthickness=0)
+        scrollbar = tk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=Colors.BG_PRIMARY)
 
         scrollable_frame.bind(
             "<Configure>",

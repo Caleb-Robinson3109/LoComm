@@ -37,6 +37,7 @@ class MessageComposer(ttk.Frame):
             wrap="word",
             font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
             fg="#FFFFFF",  # White text
+            bg="#2D2D2D",  # Dark background
             relief="flat",
             bd=1
         )

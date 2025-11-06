@@ -1,0 +1,98 @@
+"""View management system for proper lifecycle handling of application views."""
+import tkinter as tk
+from typing import Dict, Any, Optional
+
+
+class ViewManager:
+    """
+    Manages view lifecycle and switching between different application views.
+    Provides proper memory management and state handling.
+    """
+
+    def __init__(self, parent_frame: tk.Misc):
+        self.parent_frame = parent_frame
+        self.active_view: Optional[str] = None
+        self.view_containers: Dict[str, tk.Frame] = {}
+        self.view_components: Dict[str, Any] = {}
+
+    def register_view(self, view_name: str, container: tk.Frame, component: Any = None):
+        """
+        Register a view with the view manager.
+
+        Args:
+            view_name: Unique identifier for the view
+            container: Frame that contains the view
+            component: Main component for the view (optional)
+        """
+        self.view_containers[view_name] = container
+        if component:
+            self.view_components[view_name] = component
+
+    def show_view(self, view_name: str):
+        """
+        Show the specified view and hide all others.
+
+        Args:
+            view_name: Name of the view to show
+        """
+        if view_name not in self.view_containers:
+            raise ValueError(f"View '{view_name}' not registered")
+
+        # Hide all views first
+        for container in self.view_containers.values():
+            container.pack_forget()
+
+        # Show the requested view
+        container = self.view_containers[view_name]
+        container.pack(fill=tk.BOTH, expand=True)
+
+        # Update active view
+        self.active_view = view_name
+
+    def get_active_view(self) -> Optional[str]:
+        """Get the currently active view name."""
+        return self.active_view
+
+    def get_view_component(self, view_name: str) -> Any:
+        """
+        Get the component for a specific view.
+
+        Args:
+            view_name: Name of the view
+
+        Returns:
+            Component instance or None if not found
+        """
+        return self.view_components.get(view_name)
+
+    def cleanup_view(self, view_name: str):
+        """
+        Clean up resources for a specific view.
+
+        Args:
+            view_name: Name of the view to clean up
+        """
+        if view_name in self.view_components:
+            component = self.view_components[view_name]
+            # Call cleanup method if available
+            if hasattr(component, 'cleanup'):
+                try:
+                    component.cleanup()
+                except Exception:
+                    pass  # Ignore cleanup errors
+            del self.view_components[view_name]
+
+        if view_name in self.view_containers:
+            container = self.view_containers[view_name]
+            # Destroy the container to free resources
+            try:
+                container.destroy()
+            except Exception:
+                pass  # Ignore destroy errors
+            del self.view_containers[view_name]
+
+    def cleanup_all(self):
+        """Clean up all registered views."""
+        for view_name in list(self.view_containers.keys()):
+            self.cleanup_view(view_name)
+        self.active_view = None

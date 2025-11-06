@@ -38,6 +38,13 @@ class ChatTab(ttk.Frame):
                                  relief="flat", bd=0, command=self._clear_chat)
         self.clear_btn.pack(side=tk.TOP, padx=Spacing.XS, pady=(0, Spacing.XS))
 
+        # Export chat button
+        self.export_btn = tk.Button(control_buttons, text="Export Chat",
+                                  bg=Colors.BTN_INFO, fg=Colors.CHAT_TEXT_DARK,
+                                  font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM),
+                                  relief="flat", bd=0, command=self._export_chat)
+        self.export_btn.pack(side=tk.TOP, padx=Spacing.XS, pady=(0, Spacing.XS))
+
         # Disconnect button with warning styling (matching clear button)
         self.disconnect_btn = tk.Button(control_buttons, text="Disconnect",
                                       bg=Colors.BTN_WARNING, fg=Colors.CHAT_TEXT_DARK,
@@ -59,7 +66,7 @@ class ChatTab(ttk.Frame):
             state="disabled",
             height=18,
             wrap="word",
-            bg=Colors.CHAT_BG_DARK,
+            bg="#2D2D2D",  # Dark background
             fg=Colors.CHAT_TEXT_LIGHT,
             insertbackground=Colors.CHAT_TEXT_LIGHT,
             font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
@@ -191,6 +198,21 @@ class ChatTab(ttk.Frame):
         """Clear the chat history."""
         self.clear_history()
         self.append_line("System", "Chat history cleared.")
+
+    def _export_chat(self):
+        """Export chat history to file."""
+        from utils.chat_history_manager import export_chat_history
+        from utils.session import Session
+
+        # Create a temporary session for export
+        temp_session = Session()
+        temp_session.username = getattr(self, 'username', 'user')
+
+        success = export_chat_history(self, temp_session, self)
+        if success:
+            self.append_line("System", "Chat history exported successfully.")
+        else:
+            self.append_line("System", "Failed to export chat history.")
 
     def _disconnect_device(self):
         """Handle disconnect button click - only disconnect from device, not logout."""

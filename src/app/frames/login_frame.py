@@ -40,8 +40,9 @@ class LoginFrame(ttk.Frame):
 
         self.username_entry = tk.Entry(username_section, textvariable=self.username_var,
                                      fg="#FFFFFF",  # White text
+                                     bg="#2D2D2D",  # Dark background for visibility
                                      font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                                     relief="flat", bd=0)
+                                     relief="sunken", bd=2)
         self.username_entry.pack(fill=tk.X, pady=Spacing.XS, ipady=Spacing.SM)
 
         # Password section
@@ -52,8 +53,9 @@ class LoginFrame(ttk.Frame):
 
         self.password_entry = tk.Entry(password_section, textvariable=self.password_var, show="*",
                                      fg="#FFFFFF",  # White text
+                                     bg="#2D2D2D",  # Dark background for visibility
                                      font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                                     relief="flat", bd=0)
+                                     relief="sunken", bd=2)
         self.password_entry.pack(fill=tk.X, pady=Spacing.XS, ipady=Spacing.SM)
 
         self.username_entry.bind("<Return>", lambda e: self._try_login())
@@ -88,40 +90,30 @@ class LoginFrame(ttk.Frame):
         username = self.username_var.get().strip()
         password = self.password_var.get().strip()
 
-        # Debug output to see what's happening
-        print(f"DEBUG: Username: '{username}', Length: {len(username)}")
-        print(f"DEBUG: Password: '{password}', Length: {len(password)}")
-
         if not username:
-            print("DEBUG: Username is empty!")
             messagebox.showerror("Error", "Username is required.")
             return
 
         if not password:
-            print("DEBUG: Password is empty!")
             messagebox.showerror("Error", "Password is required.")
             return
 
         # Use centralized validation
         is_valid, error_msg = validate_credentials(username, password)
         if not is_valid:
-            print(f"DEBUG: Validation failed: {error_msg}")
             messagebox.showerror("Error", error_msg)
             return
 
         # Validate from user store
         if not validate_login(username, password):
-            print("DEBUG: Login validation failed!")
             messagebox.showerror("Login Failed", "Incorrect username or password.")
             return
 
-        print("DEBUG: Login successful, proceeding...")
         self.set_waiting(True)
         self.on_login(username, bytearray(password, "utf-8"))
 
     def _demo_login(self):
         """Demo login that bypasses user store validation for testing."""
-        print("DEBUG: Demo login activated")
         # Clear any existing values
         self.username_var.set("")
         self.password_var.set("")
@@ -131,7 +123,6 @@ class LoginFrame(ttk.Frame):
         self.password_var.set("admin")
 
         # Force the login
-        print("DEBUG: Setting demo credentials and attempting login...")
         self.set_waiting(True)
         self.on_login("admin", bytearray("admin", "utf-8"))
 

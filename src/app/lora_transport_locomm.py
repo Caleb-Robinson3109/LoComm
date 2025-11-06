@@ -290,7 +290,14 @@ class LoCommTransport:
                 if self.on_receive:
                     ts = time.time()
                     # Schedule on UI thread to keep thread-safe interaction with Tk
-                    self.root.after(0, lambda s=sender, m=msg, t=ts: self.on_receive(s, m, t))
+                    def safe_callback():
+                        try:
+                            self.on_receive(sender, msg, ts)
+                        except Exception as e:
+                            if DEBUG:
+                                print("[LoCommTransport] Callback error:", repr(e))
+
+                    self.root.after(0, safe_callback)
             # keep loop responsive
             time.sleep(0.2)
         if DEBUG:
