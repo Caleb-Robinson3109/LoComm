@@ -173,6 +173,13 @@ class MainFrame(ttk.Frame):
         """Show the pair page."""
         self._show_pair_view()
 
+    # ------------------------------------------------------------------ #
+    # Header actions
+    def _on_pair_click(self):
+        self._show_pair_view()
+        if hasattr(self.sidebar, "_update_active_button"):
+            self.sidebar._update_active_button("pair")
+
     def update_status(self, text: str):
         """Update status in both chat tab and sidebar."""
         # Only update if components exist
