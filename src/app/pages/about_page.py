@@ -1,186 +1,64 @@
-"""
-About Page - Redesigned to match ChatPage's design excellence.
-Contains application information and device details with ChatPage's scrollable layout and styling.
-"""
+"""About page with refreshed design."""
+from __future__ import annotations
+
+import sys
 import tkinter as tk
-from tkinter import messagebox, ttk
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+
+from utils.design_system import Colors, DesignUtils, Typography, Spacing
+from utils.ui_helpers import create_scroll_container
 
 
 class AboutPage(tk.Frame):
-    """About page for application information (redesigned with ChatPage excellence)."""
+    """About and support information."""
 
     def __init__(self, master, app, controller, session=None):
-        super().__init__(master, bg=Colors.BG_PRIMARY)
+        super().__init__(master, bg=Colors.SURFACE)
         self.app = app
         self.controller = controller
         self.session = session
 
-        # Configure frame styling (matching ChatPage)
-        self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
+        self.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
+        body = scroll.frame
 
-        # Create scrollable frame for all content (matching ChatPage)
-        canvas = tk.Canvas(self, bg=Colors.BG_PRIMARY, highlightthickness=0)
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=Colors.BG_PRIMARY)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        DesignUtils.hero_header(
+            body,
+            title="About Locomm",
+            subtitle="Build 3.0 • Python {}".format(sys.version.split()[0])
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self._build_version_card(body)
+        self._build_specs(body)
+        self._build_support(body)
 
-        # Bind mouse wheel scrolling (matching ChatPage)
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    def _build_version_card(self, parent):
+        card, content = DesignUtils.card(parent, "Version", "Internal preview build")
+        card.pack(fill=tk.X, pady=(0, Spacing.SM))
+        info = [
+            ("Desktop build", "v2.1 redesign"),
+            ("Transport backend", "Mock LoComm API"),
+            ("UI theme", "Locomm Aurora"),
+        ]
+        for label, value in info:
+            DesignUtils.create_message_row(content, label, value)
 
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
-
-        canvas.bind("<Enter>", _bind_to_mousewheel)
-        canvas.bind("<Leave>", _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # ---------- Title Section (matching ChatPage) ---------- #
-        title_section = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        title_section.pack(fill=tk.X, pady=(0, Spacing.XL))
-
-        title_frame = tk.Frame(title_section, bg=Colors.BG_PRIMARY)
-        title_frame.pack(anchor="center")
-
-        title_label = tk.Label(
-            title_frame,
-            text="About Locomm",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_XXL, Typography.WEIGHT_BOLD),
-            fg="#FFFFFF",
-            bg=Colors.BG_PRIMARY
-        )
-        title_label.pack()
-
-        subtitle_label = tk.Label(
-            title_frame,
-            text="Professional LoRa Communication Platform",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_LG),
-            fg="#CCCCCC",
-            bg=Colors.BG_PRIMARY
-        )
-        subtitle_label.pack(pady=(Spacing.SM, 0))
-
-        # ---------- Welcome Section with Box Border (Version Information) ---------- #
-        welcome_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        welcome_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
-
-        # Welcome section header (matching ChatPage style)
-        welcome_header = tk.Label(welcome_section, text="Application Version", bg=Colors.BG_SECONDARY,
-                                fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        welcome_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        welcome_content = tk.Frame(welcome_section, bg=Colors.BG_SECONDARY)
-        welcome_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Version info frame with ChatPage styling
-        version_frame = tk.Frame(welcome_content, bg=Colors.BG_SECONDARY)
-        version_frame.pack(fill=tk.X)
-
-        # App version
-        app_version_label = tk.Label(
-            version_frame,
-            text="Application Version: 2.0.0",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD),
-            fg="#FFFFFF",
-            bg=Colors.BG_SECONDARY
-        )
-        app_version_label.pack(anchor="w")
-
-        # Architecture version
-        arch_version_label = tk.Label(
-            version_frame,
-            text="Architecture: Unified Device Management",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-            fg="#FFFFFF",
-            bg=Colors.BG_SECONDARY
-        )
-        arch_version_label.pack(anchor="w", pady=(Spacing.SM, 0))
-
-        # Python version
-        import sys
-        python_version = f"Python {sys.version.split()[0]}"
-        python_label = tk.Label(
-            version_frame,
-            text=f"Runtime Environment: {python_version}",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-            fg="#FFFFFF",
-            bg=Colors.BG_SECONDARY
-        )
-        python_label.pack(anchor="w", pady=(Spacing.SM, 0))
-
-        # ---------- Application Features Section with Box Border (Technical Details) ---------- #
-        features_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        features_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.MD, Spacing.LG))
-
-        # Features section header (matching ChatPage style)
-        features_header = tk.Label(features_section, text="Technical Specifications", bg=Colors.BG_SECONDARY,
-                                 fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        features_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        features_content = tk.Frame(features_section, bg=Colors.BG_SECONDARY)
-        features_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Technical specifications with ChatPage styling
-        tech_specs = {
-            'Communication Protocol': 'LoRa Radio',
-            'Authentication System': '5-digit PIN',
-            'Session Management': 'In-memory',
-            'Transport Layer': 'Asynchronous',
-            'UI Framework': 'Tkinter',
-            'Architecture Pattern': 'Unified Device Management'
+    def _build_specs(self, parent):
+        section, body = DesignUtils.section(parent, "Technical specifications", "Stack overview", icon="🧱")
+        specs = {
+            "Transport": "LoCommTransport abstraction + mock backend",
+            "UI": "Tkinter + Locomm Design System v3",
+            "Authentication": "5-digit PIN pairing",
+            "Session storage": "Local session.json cache",
         }
+        for key, value in specs.items():
+            row = tk.Frame(body, bg=Colors.SURFACE_ALT)
+            row.pack(fill=tk.X, pady=(0, Spacing.SM))
+            tk.Label(row, text=key, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+            tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
 
-        for key, value in tech_specs.items():
-            frame = tk.Frame(features_content, bg=Colors.BG_SECONDARY)
-            frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
-
-            key_label = tk.Label(
-                frame,
-                text=f"{key}:",
-                font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD),
-                fg="#FFFFFF",
-                bg=Colors.BG_SECONDARY
-            )
-            key_label.pack(side=tk.LEFT)
-
-            value_label = tk.Label(
-                frame,
-                text=str(value),
-                font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-                fg="#FFFFFF",
-                bg=Colors.BG_SECONDARY
-            )
-            value_label.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
-
-        # ---------- Footer (matching ChatPage) ---------- #
-        footer_frame = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        footer_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
-
-        footer_label = tk.Label(
-            footer_frame,
-            text="For technical support, refer to the application documentation",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg="#888888",
-            bg=Colors.BG_PRIMARY,
-            justify='center',
-            wraplength=400
-        )
-        footer_label.pack()
-
-    def update_connection_status(self, status_text: str):
-        """Update the connection status display (delegated to persistent header)."""
-        # This method is kept for backward compatibility but status is now handled by persistent header
-        pass
+    def _build_support(self, parent):
+        section, body = DesignUtils.section(parent, "Support", "How to reach the team", icon="📬")
+        DesignUtils.button(body, text="View documentation", variant="secondary").pack(anchor="w", pady=(0, Spacing.SM))
+        DesignUtils.button(body, text="Open diagnostics", variant="ghost").pack(anchor="w")

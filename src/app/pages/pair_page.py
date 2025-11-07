@@ -1,12 +1,14 @@
-"""Pair page component for managing paired devices and scanning for new devices."""
+"""Pair page component for managing paired devices with modern layout."""
+from __future__ import annotations
+
 import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Callable
+
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.ui_helpers import create_scroll_container
 
-# MOCK: replace this with real device data once the API team delivers their integration.
 MOCK_DEVICE_ENTRIES = [
     ("DEV001", "Device Alpha", "Available", "Just now"),
     ("DEV002", "Device Beta", "Available", "5 min ago"),
@@ -15,453 +17,140 @@ MOCK_DEVICE_ENTRIES = [
 
 
 class PairPage(tk.Frame):
-    """Pair page for managing device connections and scanning (redesigned with ChatPage excellence)."""
+    """Pair page for managing device connections and scanning."""
 
     def __init__(self, master, app, controller, session, on_device_paired: Optional[Callable] = None):
-        super().__init__(master, bg=Colors.BG_PRIMARY)
+        super().__init__(master, bg=Colors.SURFACE)
         self.app = app
         self.controller = controller
         self.session = session
         self.on_device_paired = on_device_paired
 
-        # Use centralized connection manager
         self.connection_manager = get_connection_manager()
-
-        # Track if PIN pairing is currently showing
-        self.showing_pin_pairing = False
-
-        # Register for connection state updates
-        self.connection_manager.register_connection_callback(self._on_connection_state_change)
-        self.connection_manager.register_device_info_callback(self._on_device_info_change)
-
-        # Mock paired devices list (in real implementation, this would come from transport/API)
-        self.paired_devices = []
         self.is_scanning = False
 
-        # Initialize connection state from centralized manager
-        device_info = self.connection_manager.get_connected_device_info()
-        if device_info:
-            self.is_connected = True
-            self.current_device_id = device_info['id']
-            self.current_device_name = device_info['name']
-        else:
-            self.is_connected = False
-            self.current_device_id = None
-            self.current_device_name = None
-        self.current_device_status = None
-        self.current_device_last_seen = None
+        self.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
+        self.main_body = scroll.frame
 
-        # Configure frame styling (matching ChatPage)
-        self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
-
-        # Create scrollable frame for all content (matching ChatPage)
-        scroll = create_scroll_container(self, bg=Colors.BG_PRIMARY)
-        self.list_container = scroll.wrapper
-        scrollable_frame = scroll.frame
-
-        # ---------- Title Section (matching ChatPage) ---------- #
-        title_section = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        title_section.pack(fill=tk.X, pady=(0, Spacing.XL))
-
-        title_frame = tk.Frame(title_section, bg=Colors.BG_PRIMARY)
-        title_frame.pack(anchor="center")
-
-        title_label = tk.Label(
-            title_frame,
-            text="Device Management",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_XXL, Typography.WEIGHT_BOLD),
-            fg="#FFFFFF",
-            bg=Colors.BG_PRIMARY
+        DesignUtils.hero_header(
+            self.main_body,
+            title="Device management",
+            subtitle="Scan for LoRa hardware, enter the 5-digit PIN, and monitor connection state.",
+            actions=[{"text": "Scan now", "command": self._scan_for_devices}]
         )
-        title_label.pack()
 
-        subtitle_label = tk.Label(
-            title_frame,
-            text="Secure Device-to-Device Communication",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_LG),
-            fg="#CCCCCC",
-            bg=Colors.BG_PRIMARY
-        )
-        subtitle_label.pack(pady=(Spacing.SM, 0))
+        self._build_device_section()
+        self._build_controls_section()
 
-        # Status label with enhanced styling (matching ChatPage style)
-        self.status_var = tk.StringVar(value="Ready to scan")
-        status_label = tk.Label(title_section, textvariable=self.status_var,
-                               font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM),
-                               fg="#CCCCCC", bg=Colors.BG_PRIMARY)
-        status_label.pack(anchor="center", pady=(Spacing.MD, 0))
-
-        # ---------- Available Devices Section with Box Border ---------- #
-        devices_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        devices_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
-
-        # Devices section header (matching ChatPage style)
-        devices_header = tk.Label(devices_section, text="Available Devices", bg=Colors.BG_SECONDARY,
-                                 fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        devices_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        devices_content = tk.Frame(devices_section, bg=Colors.BG_SECONDARY)
-        devices_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Device list container with enhanced styling (matching ChatPage layout)
-        device_frame = tk.Frame(devices_content, bg=Colors.BG_SECONDARY)
-        device_frame.pack(fill=tk.BOTH, expand=True)
-
-        # Set fixed size for device frame (matching ChatPage proportions)
-        device_frame.configure(height=250)  # Appropriate height for device list
-        device_frame.pack_propagate(False)  # Prevent expansion
-
-        # Add a border frame for the device list (matching ChatPage style)
-        border_frame = tk.Frame(device_frame, bg=Colors.BORDER_LIGHT, bd=1, relief="solid")
-        border_frame.pack(fill=tk.BOTH, expand=True)
-
-        # Create Treeview for device list (enhanced with ChatPage styling)
+    # ------------------------------------------------------------------ #
+    def _build_device_section(self):
+        section, body = DesignUtils.section(self.main_body, "Available devices", "Select a device to begin pairing", icon="🛰️")
         columns = ("Device ID", "Name", "Status", "Last Seen")
-        self.device_tree = ttk.Treeview(border_frame, columns=columns, show="headings", height=10)
-
-        # Configure columns
-        self.device_tree.heading("Device ID", text="Device ID")
-        self.device_tree.heading("Name", text="Name")
-        self.device_tree.heading("Status", text="Status")
-        self.device_tree.heading("Last Seen", text="Last Seen")
-
-        self.device_tree.column("Device ID", width=120)
-        self.device_tree.column("Name", width=120)
-        self.device_tree.column("Status", width=100)
-        self.device_tree.column("Last Seen", width=150)
-
-        # Add scrollbar (matching ChatPage style)
-        device_scrollbar = tk.Scrollbar(border_frame, orient=tk.VERTICAL, command=self.device_tree.yview)
-        self.device_tree.configure(yscrollcommand=device_scrollbar.set)
-
-        self.device_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        device_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
+        self.device_tree = ttk.Treeview(body, columns=columns, show="headings", height=8)
+        for col in columns:
+            self.device_tree.heading(col, text=col)
+            self.device_tree.column(col, anchor="w", width=150)
+        self.device_tree.pack(fill=tk.BOTH, expand=True)
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
 
-        # Bind mouse wheel scrolling to device tree (matching ChatPage)
-        def _device_on_mousewheel(event):
-            self.device_tree.yview_scroll(int(-1*(event.delta/120)), "units")
-            return "break"
+        for row in MOCK_DEVICE_ENTRIES:
+            self.device_tree.insert("", tk.END, values=row)
 
-        def _bind_device_to_mousewheel(event):
-            self.device_tree.bind_all("<MouseWheel>", _device_on_mousewheel)
+        scrollbar = ttk.Scrollbar(body, orient=tk.VERTICAL, command=self.device_tree.yview)
+        self.device_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        def _unbind_device_from_mousewheel(event):
-            self.device_tree.unbind_all("<MouseWheel>")
+    def _build_controls_section(self):
+        section, body = DesignUtils.section(self.main_body, "Actions", "Pairing controls and PIN entry", icon="⚡")
+        action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
+        action_row.pack(fill=tk.X, pady=(0, Spacing.SM))
+        DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices).pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        self.connect_btn = DesignUtils.button(action_row, text="Connect", command=self._connect_selected_device, variant="secondary")
+        self.connect_btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        self.connect_btn.configure(state="disabled")
 
-        self.device_tree.bind("<Enter>", _bind_device_to_mousewheel)
-        self.device_tree.bind("<Leave>", _unbind_device_from_mousewheel)
+        self.disconnect_btn = DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost")
+        self.disconnect_btn.pack(side=tk.LEFT)
+        self.disconnect_btn.configure(state="disabled")
 
-        # ---------- Device Controls Section with Box Border ---------- #
-        controls_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        controls_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.MD, Spacing.LG))
+        self.status_var = tk.StringVar(value="Ready to pair")
+        tk.Label(body, textvariable=self.status_var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
-        # Controls section header (matching ChatPage style)
-        controls_header = tk.Label(controls_section, text="Device Controls", bg=Colors.BG_SECONDARY,
-                                fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        controls_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        controls_content = tk.Frame(controls_section, bg=Colors.BG_SECONDARY)
-        controls_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Control buttons with ChatPage styling
-        button_row = tk.Frame(controls_content, bg=Colors.BG_SECONDARY)
-        button_row.pack(fill=tk.X)
-
-        # Scan button (matching ChatPage button style)
-        self.scan_btn = DesignUtils.create_styled_button(
-            button_row,
-            "Scan for Devices",
-            self._scan_for_devices,
-            style='Primary.TButton'
-        )
-        self.scan_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
-
-        # Action buttons row (matching ChatPage layout)
-        action_buttons_frame = tk.Frame(controls_content, bg=Colors.BG_SECONDARY)
-        action_buttons_frame.pack(fill=tk.X)
-
-        # Connect button (matching ChatPage button style)
-        self.connect_btn = DesignUtils.create_styled_button(
-            action_buttons_frame,
-            "Connect to Device",
-            self._connect_selected_device,
-            style='Success.TButton'
-        )
-        self.connect_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, Spacing.SM))
-
-        # Disconnect button (matching ChatPage button style)
-        self.disconnect_btn = DesignUtils.create_styled_button(
-            action_buttons_frame,
-            "Disconnect Device",
-            self._disconnect_device,
-            style='Danger.TButton'
-        )
-        self.disconnect_btn.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
-
-        # Update button states based on connection status
-        self._update_button_states()
-
-        # ---------- Footer (matching ChatPage) ---------- #
-        footer_frame = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        footer_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
-
-        footer_label = tk.Label(
-            footer_frame,
-            text="Use the sidebar to navigate between Home, Chat, Settings, and About",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg="#888888",
-            bg=Colors.BG_PRIMARY,
-            justify='center',
-            wraplength=400
-        )
-        footer_label.pack()
-
-        # Load initial data
-        self._load_paired_devices()
-
-    def _load_paired_devices(self):
-        """Load paired devices into the list."""
-        # Clear existing items
-        for item in self.device_tree.get_children():
-            self.device_tree.delete(item)
-
-        # Add mock devices (in real implementation, load from transport)
-        for device_id, name, status, last_seen in MOCK_DEVICE_ENTRIES:
-            self.device_tree.insert("", tk.END, values=(device_id, name, status, last_seen))
-
+    # ------------------------------------------------------------------ #
     def _scan_for_devices(self):
-        """Start scanning for available devices."""
         if self.is_scanning:
             return
-
         self.is_scanning = True
-        self.status_var.set("Scanning for devices...")
-        self.scan_btn.configure(state="disabled")
+        self.status_var.set("Scanning for devices…")
+        self.after(2000, self._finish_scan)
 
-        # In real implementation, this would call transport.pair_devices()
-        # For demo, we'll simulate scanning
-        self._simulate_scan()
-
-    def _simulate_scan(self):
-        """Simulate device scanning (demo mode)."""
-
-        def finish_scan():
-            mock_discovered = [
-                ("DEV004", "New Device Delta", "Available", "Just found"),
-                ("DEV005", "New Device Epsilon", "Available", "Just found"),
-            ]
-            self._add_discovered_devices(mock_discovered)
-
-        self.after(2000, finish_scan)
-
-    def _add_discovered_devices(self, discovered_devices):
-        """Add discovered devices to the list."""
-        for device_id, name, status, last_seen in discovered_devices:
-            self.device_tree.insert("", tk.END, values=(device_id, name, status, last_seen))
-
-        self.status_var.set(f"Found {len(discovered_devices)} new devices")
-        self.scan_btn.configure(state="normal")
+    def _finish_scan(self):
+        mock_discovered = [
+            ("DEV004", "New Device Delta", "Available", "Just found"),
+            ("DEV005", "New Device Epsilon", "Available", "Just found"),
+        ]
+        for row in mock_discovered:
+            self.device_tree.insert("", tk.END, values=row)
+        self.status_var.set(f"Found {len(mock_discovered)} new devices")
         self.is_scanning = False
 
     def _connect_selected_device(self):
-        """Show PIN pairing interface instead of directly connecting."""
         selected = self.device_tree.selection()
         if not selected:
-            self.status_var.set("Please select a device to connect")
+            self.status_var.set("Select a device to pair")
             return
-
-        item = self.device_tree.item(selected[0])
-        device_id, name, status, _ = item['values']
-
-        self.status_var.set(f"Preparing to pair with {name}...")
-
-        # Show PIN pairing interface instead of directly connecting
+        device_id, name, *_ = self.device_tree.item(selected[0])["values"]
         self._show_pin_pairing_interface(device_id, name)
 
     def _show_pin_pairing_interface(self, device_id, device_name):
-        """Show PIN pairing interface for the selected device."""
         from pages import PINPairingFrame
 
-        # Initialize attributes for PIN pairing
-        self.showing_pin_pairing = True
-        self.pending_device_id = device_id
-        self.pending_device_name = device_name
+        self.main_body.pack_forget()
+        self.pairing_container = tk.Frame(self, bg=Colors.SURFACE)
+        self.pairing_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=Spacing.LG)
 
-        # Hide the device list and show the pairing UI
-        self.list_container.pack_forget()
-        self.pairing_container = tk.Frame(self, bg=Colors.BG_PRIMARY)
-        self.pairing_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
+        back = DesignUtils.button(self.pairing_container, text="← Back to devices", command=self._return_to_device_list, variant="ghost")
+        back.pack(anchor="w")
 
-        # Add back button
-        back_button_frame = tk.Frame(self.pairing_container, bg=Colors.BG_PRIMARY)
-        back_button_frame.pack(anchor="w", pady=(0, Spacing.MD))
-
-        back_btn = DesignUtils.create_styled_button(
-            back_button_frame,
-            "← Back to Device List",
-            self._return_to_device_list,
-            style='Secondary.TButton'
-        )
-        back_btn.pack()
-
-        # Show PIN pairing frame
         self.pin_pairing_frame = PINPairingFrame(
             self.pairing_container,
-            lambda device_id, device_name: self._handle_pin_pair_success(device_id, device_name),
+            lambda d_id, d_name: self._handle_pin_pair_success(d_id, d_name),
             self._handle_demo_login
         )
         self.pin_pairing_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Update status
-        self.status_var.set(f"Enter PIN to pair with {device_name}")
+        self.status_var.set(f"Enter PIN for {device_name}")
 
     def _return_to_device_list(self):
-        """Return to the device list from PIN pairing."""
-        # Clear the pairing interface
-        if getattr(self, 'pin_pairing_frame', None):
-            self.pin_pairing_frame.destroy()
-            self.pin_pairing_frame = None
-
-        if getattr(self, 'pairing_container', None):
+        if hasattr(self, 'pairing_container') and self.pairing_container:
             self.pairing_container.destroy()
-            self.pairing_container = None
-
-        # Restore device list
-        self.list_container.pack(fill=tk.BOTH, expand=True)
-
-        self.showing_pin_pairing = False
-        self.pending_device_id = None
-        self.pending_device_name = None
-
-        # Update status
-        self.status_var.set("Ready to pair devices")
+        self.main_body.pack(fill=tk.BOTH, expand=True)
+        self.status_var.set("Ready to pair")
 
     def _handle_pin_pair_success(self, device_id, device_name):
-        """Handle successful PIN pairing from the pair tab."""
-        self.status_var.set(f"Connecting to {device_name}...")
+        self.status_var.set("Connecting…")
         self.app.start_transport_session(device_id, device_name)
         self._return_to_device_list()
 
+    def _disconnect_device(self):
+        if not self.connection_manager.is_connected():
+            self.status_var.set("No device connected")
+            return
+        self.controller.stop_session()
+        self.connection_manager.disconnect_device()
+        self.status_var.set("Device disconnected")
+        self.disconnect_btn.configure(state="disabled")
+
     def _handle_demo_login(self):
-        """Handle demo login from the pair tab."""
-        self.status_var.set("Connecting to Demo Device...")
-        self.app.start_transport_session(
-            "demo-device",
-            "Demo Device",
-            mode="demo",
-            failure_title="Demo Failed",
-            failure_message="Demo connection failed."
-        )
+        self.status_var.set("Connecting to Demo Device…")
+        self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
         self._return_to_device_list()
 
-    def _disconnect_device(self):
-        """Disconnect from current device using centralized connection manager."""
-        if not self.is_connected:
-            self.status_var.set("No device is currently connected")
-            return
-
-        self.status_var.set("Disconnecting...")
-
-        # Stop transport via controller to ensure UI and backend stay in sync
-        try:
-            self.controller.stop_session()
-        except Exception:
-            pass
-
-        success = self.connection_manager.disconnect_device()
-
-        if success:
-            self.status_var.set("Device disconnected")
+    def _on_device_select(self, _event):
+        self.connect_btn.configure(state="normal")
+        if self.connection_manager.is_connected():
+            self.disconnect_btn.configure(state="normal")
         else:
-            self.status_var.set("Failed to disconnect device")
-
-    def _update_button_states(self):
-        """Update button states using centralized connection manager."""
-        # Use connection manager to determine button states
-        self.connection_manager.update_button_states(self.connect_btn, self.disconnect_btn)
-
-    def _on_device_select(self, event):
-        """Handle device selection change."""
-        selected = self.device_tree.selection()
-        if selected:
-            item = self.device_tree.item(selected[0])
-            device_id, name, status, last_seen = item['values']
-
-            # Update button states based on selection and connection status
-            if self.is_connected and device_id == self.current_device_id:
-                # Currently connected to this device
-                self.connect_btn.configure(state="disabled", text="Connected")
-                self.disconnect_btn.configure(state="normal", text="Disconnect")
-            elif status == "Connected":
-                # Device is connected but not to this one
-                self.connect_btn.configure(state="disabled", text="Connected to Another")
-                self.disconnect_btn.configure(state="disabled", text="Disconnect")
-            else:
-                # Device is available to connect
-                self._update_button_states()
-
-    def get_connected_device_info(self):
-        """Get information about currently connected device."""
-        if self.is_connected and self.current_device_name:
-            return {
-                'id': self.current_device_id,
-                'name': self.current_device_name,
-                'status': self.current_device_status,
-                'last_seen': self.current_device_last_seen
-            }
-        return None
-
-    def refresh_devices(self):
-        """Refresh the device list."""
-        self._load_paired_devices()
-        self._update_button_states()
-
-    # ========== CONNECTION MANAGER CALLBACKS ==========
-
-    def _on_connection_state_change(self, is_connected: bool, device_id: Optional[str], device_name: Optional[str]):
-        """Handle connection state changes from centralized manager."""
-        self.is_connected = is_connected
-        self.current_device_id = device_id
-        self.current_device_name = device_name
-
-        # Update UI elements on main thread
-        self.app.after(0, lambda: self._update_ui_after_connection_change())
-
-    def _on_device_info_change(self, device_info: Optional[dict]):
-        """Handle device info changes from centralized manager."""
-        if device_info:
-            self.current_device_id = device_info['id']
-            self.current_device_name = device_info['name']
-        else:
-            self.current_device_id = None
-            self.current_device_name = None
-
-        # Update UI elements on main thread
-        self.app.after(0, lambda: self._update_ui_after_connection_change())
-
-    def _update_ui_after_connection_change(self):
-        """Update UI elements after connection state change (called on main thread)."""
-        # Update device list to reflect current connection status
-        self._update_device_list_connection_status()
-
-        # Update button states
-        self._update_button_states()
-
-        # Update status label
-        status_text = self.connection_manager.get_connection_status_text()
-        self.status_var.set(status_text)
-
-    def _update_device_list_connection_status(self):
-        """Update connection status in the device list."""
-        for item in self.device_tree.get_children():
-            item_values = self.device_tree.item(item)['values']
-            device_id = item_values[0]
-
-            if self.is_connected and device_id == self.current_device_id:
-                # This device is currently connected
-                self.device_tree.item(item, values=(device_id, item_values[1], "Connected", "Just now"))
-            else:
-                # Reset to available if not connected
-                self.device_tree.item(item, values=(device_id, item_values[1], "Available", "Just now"))
+            self.disconnect_btn.configure(state="disabled")
