@@ -257,7 +257,7 @@ class PINPairingFrame(tk.Frame):
             self.pair_btn.configure(state="disabled", text="Pairing...")
             self.pin_entry.configure(state="disabled")
         else:
-            self.pair_btn.configure(state="normal", text="🔗 Pair Device")
+            self.pair_btn.configure(state="normal", text="Pair Device")
             self.pin_entry.configure(state="normal")
 
     def generate_new_pin(self):

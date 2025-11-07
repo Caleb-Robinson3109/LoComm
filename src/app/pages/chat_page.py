@@ -64,7 +64,7 @@ class ChatPage(tk.Frame):
         self.message_count_label.pack(anchor="w")
 
     def _build_messages_section(self, parent):
-        section, body = DesignUtils.section(parent, "Conversation", "Messages are retained locally for this session.", icon="💬")
+        section, body = DesignUtils.section(parent, "Conversation", "Messages are retained locally for this session.")
         # History frame
         messages_frame = tk.Frame(body, bg=Colors.BG_CHAT_AREA)
         messages_frame.pack(fill=tk.BOTH, expand=True)

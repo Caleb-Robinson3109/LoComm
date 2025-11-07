@@ -51,9 +51,9 @@ class HomePage(tk.Frame):
     def _build_quick_actions(self, parent):
         section, body = DesignUtils.section(parent, "Quick actions", "Launch common workflows in one click")
         actions = [
-            ("🔗 Pair devices", "Connect using a 5-digit PIN", self.host.show_pair_page),
-            ("💬 Open conversations", "Jump straight into the chat interface", self.host.show_chat_page),
-            ("🧪 Demo mode", "Explore the UI using mock data", self.app._handle_demo_login),
+            ("Pair devices", "Connect using a 5-digit PIN", self.host.show_pair_page),
+            ("Open conversations", "Jump straight into the chat interface", self.host.show_chat_page),
+            ("Demo mode", "Explore the UI using mock data", self.app._handle_demo_login),
         ]
         for text, desc, handler in actions:
             row = tk.Frame(body, bg=Colors.SURFACE_ALT)

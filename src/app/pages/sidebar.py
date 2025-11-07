@@ -48,11 +48,11 @@ class Sidebar(tk.Frame):
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
         nav_items = [
-            ("home", "🏠  Home", self._on_home_click),
-            ("chat", "💬  Conversations", self._on_chat_click),
-            ("pair", "🔗  Pair Devices", self._on_pair_click),
-            ("settings", "⚙️  Settings", self._on_settings_click),
-            ("about", "ℹ️  About", self._on_about_click),
+            ("home", "Home", self._on_home_click),
+            ("chat", "Conversations", self._on_chat_click),
+            ("pair", "Pair Devices", self._on_pair_click),
+            ("settings", "Settings", self._on_settings_click),
+            ("about", "About", self._on_about_click),
         ]
 
         for key, label, handler in nav_items:

@@ -239,7 +239,7 @@ class MainFrame(ttk.Frame):
         right = tk.Frame(self.header_frame, bg=Colors.SURFACE_HEADER)
         right.pack(side=tk.RIGHT)
 
-        self.primary_action = DesignUtils.button(right, text="🔗 Pair Device", command=self._on_pair_click, variant="primary")
+        self.primary_action = DesignUtils.button(right, text="Pair Device", command=self._on_pair_click, variant="primary")
         self.primary_action.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
         self.logout_btn = DesignUtils.button(right, text="Disconnect", command=self._handle_logout, variant="ghost")
         self.logout_btn.pack(side=tk.RIGHT)

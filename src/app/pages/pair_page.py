@@ -45,7 +45,7 @@ class PairPage(tk.Frame):
 
     # ------------------------------------------------------------------ #
     def _build_device_section(self):
-        section, body = DesignUtils.section(self.main_body, "Available devices", "Select a device to begin pairing", icon="🛰️")
+        section, body = DesignUtils.section(self.main_body, "Available devices", "Select a device to begin pairing")
         columns = ("Device ID", "Name", "Status", "Last Seen")
         self.device_tree = ttk.Treeview(body, columns=columns, show="headings", height=8)
         for col in columns:
@@ -62,7 +62,7 @@ class PairPage(tk.Frame):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def _build_controls_section(self):
-        section, body = DesignUtils.section(self.main_body, "Actions", "Pairing controls and PIN entry", icon="⚡")
+        section, body = DesignUtils.section(self.main_body, "Actions", "Pairing controls and PIN entry")
         action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         action_row.pack(fill=tk.X, pady=(0, Spacing.SM))
         DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices).pack(side=tk.LEFT, padx=(0, Spacing.SM))

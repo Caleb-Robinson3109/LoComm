@@ -43,7 +43,7 @@ class AboutPage(tk.Frame):
             DesignUtils.create_message_row(content, label, value)
 
     def _build_specs(self, parent):
-        section, body = DesignUtils.section(parent, "Technical specifications", "Stack overview", icon="🧱")
+        section, body = DesignUtils.section(parent, "Technical specifications", "Stack overview")
         specs = {
             "Transport": "LoCommTransport abstraction + mock backend",
             "UI": "Tkinter + Locomm Design System v3",
@@ -59,6 +59,6 @@ class AboutPage(tk.Frame):
                      font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
 
     def _build_support(self, parent):
-        section, body = DesignUtils.section(parent, "Support", "How to reach the team", icon="📬")
+        section, body = DesignUtils.section(parent, "Support", "How to reach the team")
         DesignUtils.button(body, text="View documentation", variant="secondary").pack(anchor="w", pady=(0, Spacing.SM))
         DesignUtils.button(body, text="Open diagnostics", variant="ghost").pack(anchor="w")

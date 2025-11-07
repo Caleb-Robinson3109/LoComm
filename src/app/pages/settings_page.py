@@ -42,13 +42,13 @@ class SettingsPage(tk.Frame):
         ttk.Checkbutton(body, text="Restore last paired device on launch", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
 
     def _build_notifications_section(self, parent):
-        section, body = DesignUtils.section(parent, "Notifications", "Control desktop and sound alerts", icon="🔔")
+        section, body = DesignUtils.section(parent, "Notifications", "Control desktop and sound alerts")
         ttk.Checkbutton(body, text="Desktop banner for new messages", variable=self.desktop_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
         ttk.Checkbutton(body, text="Sound cue on incoming chat", variable=self.sound_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
         ttk.Checkbutton(body, text="Toast when transport connects or disconnects", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
 
     def _build_advanced_section(self, parent):
-        section, body = DesignUtils.section(parent, "Advanced", "Developer toggles and troubleshooting", icon="🧪")
+        section, body = DesignUtils.section(parent, "Advanced", "Developer toggles and troubleshooting")
         DesignUtils.button(body, text="Save preferences", command=self._save_preferences).pack(anchor="w", pady=(0, Spacing.SM))
         DesignUtils.button(body, text="Reset to defaults", command=self._reset_defaults, variant="secondary").pack(anchor="w")
         DesignUtils.button(body, text="Export logs", command=self._export_logs, variant="ghost").pack(anchor="w", pady=(Spacing.SM, 0))
