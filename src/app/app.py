@@ -9,7 +9,7 @@ from services import AppController
 from utils.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
-from utils.design_system import AppConfig, ensure_styles_initialized
+from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager
 
 
 class App(tk.Tk):
@@ -55,7 +55,7 @@ class App(tk.Tk):
             self.session.paired_at = time.time()
 
         # Create main frame
-        self.current_frame = MainFrame(self, self, self.session, self.controller, self._handle_logout)
+        self.current_frame = MainFrame(self, self, self.session, self.controller, self._handle_logout, self.toggle_theme)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
 
         if hasattr(self.current_frame, "chat_page"):
@@ -171,6 +171,10 @@ class App(tk.Tk):
         if isinstance(self.current_frame, MainFrame):
             if messagebox.askyesno("Clear Chat", "Are you sure you want to clear the current chat log?"):
                 self.current_frame.chat_page.clear_history()
+
+    def toggle_theme(self, use_dark: bool):
+        ThemeManager.toggle_mode(use_dark)
+        self.show_main(self.session.device_id or None, self.session.device_name or None)
 
 
 if __name__ == "__main__":

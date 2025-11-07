@@ -16,12 +16,13 @@ from .view_manager import ViewManager
 
 
 class MainFrame(ttk.Frame):
-    def __init__(self, master, app, session, controller, on_logout):
+    def __init__(self, master, app, session, controller, on_logout, on_theme_toggle):
         super().__init__(master)
         self.app = app
         self.session = session
         self.controller = controller
         self.on_logout = on_logout
+        self.on_theme_toggle = on_theme_toggle
 
         # Header attributes
         self._current_device_id = None
@@ -62,7 +63,8 @@ class MainFrame(ttk.Frame):
             on_chat_click=self._show_chat_view,
             on_pair_click=self._show_pair_view,
             on_settings_click=self._show_settings_view,
-            on_about_click=self._show_about_view
+            on_about_click=self._show_about_view,
+            on_theme_toggle=self.on_theme_toggle
         )
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
 

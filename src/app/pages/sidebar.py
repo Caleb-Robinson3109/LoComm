@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from utils.design_system import Colors, Typography, Spacing, DesignUtils, ThemeManager
 from utils.connection_manager import get_connection_manager
 from utils.status_manager import get_status_manager
 
@@ -17,17 +17,21 @@ class Sidebar(tk.Frame):
                  on_chat_click: Optional[Callable] = None,
                  on_pair_click: Optional[Callable] = None,
                  on_settings_click: Optional[Callable] = None,
-                 on_about_click: Optional[Callable] = None):
+                 on_about_click: Optional[Callable] = None,
+                 on_theme_toggle: Optional[Callable[[bool], None]] = None):
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.SURFACE_SIDEBAR)
         self.on_home_click = on_home_click
         self.on_chat_click = on_chat_click
         self.on_pair_click = on_pair_click
         self.on_settings_click = on_settings_click
         self.on_about_click = on_about_click
+        self.on_theme_toggle = on_theme_toggle
         self.current_view = "home"
 
         self.connection_manager = get_connection_manager()
         self.status_manager = get_status_manager()
+        from utils.design_system import ThemeManager
+        self._dark_mode = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
         self.connection_manager.register_connection_callback(self._on_connection_state_change)
         self.connection_manager.register_device_info_callback(self._on_device_info_change)
         self.status_manager.register_status_callback(self._on_status_change)
@@ -49,8 +53,8 @@ class Sidebar(tk.Frame):
 
         nav_items = [
             ("home", "Home", self._on_home_click),
-            ("chat", "Conversations", self._on_chat_click),
-            ("pair", "Pair Devices", self._on_pair_click),
+            ("chat", "Chat", self._on_chat_click),
+            ("pair", "Devices", self._on_pair_click),
             ("settings", "Settings", self._on_settings_click),
             ("about", "About", self._on_about_click),
         ]
@@ -73,10 +77,14 @@ class Sidebar(tk.Frame):
         self.device_caption = tk.Label(card, text="No device paired", bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
                                        font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR))
         self.device_caption.pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.SM))
-        DesignUtils.button(card, text="View Devices", command=self._on_pair_click, variant="secondary").pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.MD))
-
         footer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.LG, 0))
+        ttk.Checkbutton(
+            footer,
+            text="Dark mode",
+            variable=self._dark_mode,
+            command=self._toggle_theme
+        ).pack(anchor="w")
         tk.Label(footer, text="v2.1 Preview", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
 
@@ -135,6 +143,10 @@ class Sidebar(tk.Frame):
     def _on_status_change(self, status_text: str, status_color: str):
         # Sidebar mirrors connection events already handled above
         self.status_value.configure(text=status_text, fg=status_color)
+
+    def _toggle_theme(self):
+        if self.on_theme_toggle:
+            self.on_theme_toggle(self._dark_mode.get())
 
     # Public helpers ------------------------------------------------------
     def show_chat(self):

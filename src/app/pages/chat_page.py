@@ -4,7 +4,6 @@ import time
 from utils.design_system import Colors, Typography, DesignUtils, Space
 from services import AppController
 from utils.session import Session
-from utils.ui_helpers import create_scroll_container
 
 
 class ChatPage(tk.Frame):
@@ -23,8 +22,8 @@ class ChatPage(tk.Frame):
         self.msg_var = tk.StringVar()
         self.pack(fill=tk.BOTH, expand=True)
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Space.LG, Space.LG))
-        body = scroll.frame
+        body = tk.Frame(self, bg=Colors.SURFACE, padx=Space.XL, pady=Space.XL)
+        body.pack(fill=tk.BOTH, expand=True)
 
         DesignUtils.hero_header(
             body,
@@ -65,11 +64,22 @@ class ChatPage(tk.Frame):
 
     def _build_messages_section(self, parent):
         section, body = DesignUtils.section(parent, "Conversation", "Messages are retained locally for this session.")
-        # History frame
-        messages_frame = tk.Frame(body, bg=Colors.SURFACE)
-        messages_frame.pack(fill=tk.BOTH, expand=True)
-        self.history_frame = tk.Frame(messages_frame, bg=Colors.SURFACE)
-        self.history_frame.pack(fill=tk.BOTH, expand=True, padx=Space.MD, pady=(Space.SM, Space.MD))
+        section.pack(fill=tk.BOTH, expand=True)
+
+        history_container = tk.Frame(body, bg=Colors.SURFACE, height=420)
+        history_container.pack(fill=tk.BOTH, expand=True)
+        history_container.pack_propagate(False)
+
+        canvas = tk.Canvas(history_container, bg=Colors.SURFACE, highlightthickness=0)
+        scrollbar = tk.Scrollbar(history_container, orient="vertical", command=canvas.yview)
+        self.history_frame = tk.Frame(canvas, bg=Colors.SURFACE)
+        self.history_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=self.history_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         controls = tk.Frame(body, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Space.SM, 0))

@@ -35,7 +35,7 @@ class PairPage(tk.Frame):
 
         DesignUtils.hero_header(
             self.main_body,
-            title="Device management",
+            title="Devices",
             subtitle="Scan for LoRa hardware, enter the 5-digit PIN, and monitor connection state.",
             actions=[{"text": "Scan now", "command": self._scan_for_devices}]
         )

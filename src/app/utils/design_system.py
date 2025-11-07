@@ -34,53 +34,97 @@ class Palette:
 
 
 class Colors:
-    """Semantic color mapping used throughout the UI."""
+    """Runtime theme values (populated at runtime)."""
+    pass
 
-    SURFACE = Palette.WHITE
-    SURFACE_ALT = Palette.CLOUD_050
-    SURFACE_RAISED = Palette.CLOUD_100
-    SURFACE_HEADER = Palette.WHITE
-    SURFACE_SIDEBAR = Palette.CLOUD_050
-    SURFACE_SELECTED = Palette.CLOUD_200
 
-    BORDER = Palette.CLOUD_200
-    DIVIDER = Palette.CLOUD_200
+_THEME_DEFINITIONS = {
+    "dark": {
+        "SURFACE": Palette.SLATE_900,
+        "SURFACE_ALT": Palette.SLATE_800,
+        "SURFACE_RAISED": Palette.SLATE_700,
+        "SURFACE_HEADER": Palette.SLATE_900,
+        "SURFACE_SIDEBAR": Palette.SLATE_900,
+        "SURFACE_SELECTED": "#2F3642",
+        "BORDER": Palette.SLATE_700,
+        "DIVIDER": Palette.SLATE_700,
+        "TEXT_PRIMARY": Palette.CLOUD_050,
+        "TEXT_SECONDARY": Palette.CLOUD_300,
+        "TEXT_MUTED": Palette.CLOUD_500,
+        "TEXT_ACCENT": Palette.SIGNAL_BLUE,
+        "STATE_SUCCESS": Palette.SIGNAL_TEAL,
+        "STATE_WARNING": "#F2A93B",
+        "STATE_ERROR": Palette.SIGNAL_RED,
+        "STATE_INFO": Palette.SIGNAL_BLUE,
+        "BUTTON_PRIMARY_BG": Palette.SIGNAL_BLUE,
+        "BUTTON_PRIMARY_HOVER": Palette.SIGNAL_BLUE_DARK,
+        "BUTTON_SECONDARY_BG": "#3B4453",
+        "BUTTON_GHOST_BG": "#00000000",
+        "BG_PRIMARY": Palette.SLATE_900,
+        "BG_SECONDARY": Palette.SLATE_800,
+        "BG_TERTIARY": Palette.SLATE_700,
+        "BG_CHAT_AREA": Palette.SLATE_900,
+        "BG_MESSAGE_OWN": Palette.SIGNAL_BLUE,
+        "BG_MESSAGE_OTHER": Palette.SLATE_800,
+        "BG_MESSAGE_SYSTEM": Palette.SLATE_800,
+        "BG_INPUT_AREA": Palette.SLATE_800,
+        "TEXT_PLACEHOLDER": Palette.CLOUD_500,
+        "TEXT_TIMESTAMP": Palette.CLOUD_500,
+        "MESSAGE_SYSTEM_TEXT": Palette.CLOUD_500,
+        "MESSAGE_BUBBLE_OWN_BG": Palette.SIGNAL_BLUE,
+        "MESSAGE_BUBBLE_OTHER_BG": Palette.SLATE_800,
+        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.SLATE_800
+    },
+    "light": {
+        "SURFACE": Palette.WHITE,
+        "SURFACE_ALT": Palette.CLOUD_050,
+        "SURFACE_RAISED": Palette.CLOUD_100,
+        "SURFACE_HEADER": Palette.WHITE,
+        "SURFACE_SIDEBAR": Palette.CLOUD_050,
+        "SURFACE_SELECTED": Palette.CLOUD_200,
+        "BORDER": Palette.CLOUD_200,
+        "DIVIDER": Palette.CLOUD_200,
+        "TEXT_PRIMARY": Palette.SLATE_900,
+        "TEXT_SECONDARY": Palette.SLATE_700,
+        "TEXT_MUTED": Palette.CLOUD_500,
+        "TEXT_ACCENT": Palette.SIGNAL_BLUE,
+        "STATE_SUCCESS": Palette.SIGNAL_TEAL,
+        "STATE_WARNING": "#F2A93B",
+        "STATE_ERROR": Palette.SIGNAL_RED,
+        "STATE_INFO": Palette.SIGNAL_BLUE,
+        "BUTTON_PRIMARY_BG": Palette.SIGNAL_BLUE,
+        "BUTTON_PRIMARY_HOVER": Palette.SIGNAL_BLUE_DARK,
+        "BUTTON_SECONDARY_BG": Palette.CLOUD_200,
+        "BUTTON_GHOST_BG": "#00000000",
+        "BG_PRIMARY": Palette.WHITE,
+        "BG_SECONDARY": Palette.CLOUD_050,
+        "BG_TERTIARY": Palette.CLOUD_100,
+        "BG_CHAT_AREA": Palette.CLOUD_050,
+        "BG_MESSAGE_OWN": Palette.SIGNAL_BLUE,
+        "BG_MESSAGE_OTHER": Palette.CLOUD_100,
+        "BG_MESSAGE_SYSTEM": Palette.CLOUD_050,
+        "BG_INPUT_AREA": Palette.CLOUD_100,
+        "TEXT_PLACEHOLDER": Palette.CLOUD_500,
+        "TEXT_TIMESTAMP": Palette.CLOUD_500,
+        "MESSAGE_SYSTEM_TEXT": Palette.CLOUD_500,
+        "MESSAGE_BUBBLE_OWN_BG": Palette.SIGNAL_BLUE,
+        "MESSAGE_BUBBLE_OTHER_BG": Palette.CLOUD_100,
+        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_050
+    }
+}
 
-    TEXT_PRIMARY = Palette.SLATE_900
-    TEXT_SECONDARY = Palette.SLATE_700
-    TEXT_MUTED = Palette.CLOUD_500
-    TEXT_ACCENT = Palette.SIGNAL_BLUE
 
-    STATE_SUCCESS = Palette.SIGNAL_TEAL
-    STATE_WARNING = "#F2A93B"
-    STATE_ERROR = Palette.SIGNAL_RED
-    STATE_INFO = Palette.SIGNAL_BLUE
-    STATUS_CONNECTED = STATE_SUCCESS
-    STATUS_DISCONNECTED = STATE_ERROR
-    STATUS_CONNECTING = STATE_INFO
-    STATUS_PAIRING = STATE_INFO
+def _apply_theme_definition(mode: str):
+    theme = _THEME_DEFINITIONS[mode]
+    for key, value in theme.items():
+        setattr(Colors, key, value)
+    Colors.STATUS_CONNECTED = Colors.STATE_SUCCESS
+    Colors.STATUS_DISCONNECTED = Colors.STATE_ERROR
+    Colors.STATUS_CONNECTING = Colors.STATE_INFO
+    Colors.STATUS_PAIRING = Colors.STATE_INFO
 
-    BUTTON_PRIMARY_BG = Palette.SIGNAL_BLUE
-    BUTTON_PRIMARY_HOVER = Palette.SIGNAL_BLUE_DARK
-    BUTTON_SECONDARY_BG = Palette.CLOUD_200
-    BUTTON_GHOST_BG = "#00000000"
 
-    # Backwards compatibility aliases (deprecated - use semantic names)
-    BG_PRIMARY = SURFACE
-    BG_SECONDARY = SURFACE_ALT
-    BG_TERTIARY = SURFACE_RAISED
-    BG_CHAT_AREA = Palette.CLOUD_050
-    BG_MESSAGE_OWN = Palette.SIGNAL_BLUE
-    BG_MESSAGE_OTHER = Palette.CLOUD_100
-    BG_MESSAGE_SYSTEM = Palette.CLOUD_050
-    BG_INPUT_AREA = SURFACE_RAISED
-    TEXT_PLACEHOLDER = TEXT_MUTED
-    TEXT_TIMESTAMP = TEXT_MUTED
-    MESSAGE_SYSTEM_TEXT = TEXT_SECONDARY
-
-    MESSAGE_BUBBLE_OWN_BG = Palette.SIGNAL_BLUE
-    MESSAGE_BUBBLE_OTHER_BG = Palette.CLOUD_100
-    MESSAGE_BUBBLE_SYSTEM_BG = Palette.CLOUD_050
+_apply_theme_definition("dark")
 
 
 class Typography:
@@ -169,6 +213,7 @@ class ThemeManager:
     """Registers ttk styles for the application."""
 
     _initialized = False
+    _current_mode = "dark"
     BUTTON_STYLES = {
         "primary": "Locomm.Primary.TButton",
         "secondary": "Locomm.Secondary.TButton",
@@ -280,6 +325,10 @@ class ThemeManager:
 
         cls._initialized = True
 
+    @classmethod
+    def current_mode(cls) -> str:
+        return cls._current_mode
+
     @staticmethod
     def _register_button(style: ttk.Style, style_name: str, bg: str, hover_bg: str, fg: str, border: int = 0):
         style.configure(
@@ -297,6 +346,16 @@ class ThemeManager:
             background=[("active", hover_bg), ("disabled", Colors.BUTTON_SECONDARY_BG)],
             foreground=[("disabled", Colors.TEXT_MUTED)]
         )
+
+    @classmethod
+    def toggle_mode(cls, dark: bool):
+        mode = "dark" if dark else "light"
+        if mode == cls._current_mode:
+            return
+        cls._current_mode = mode
+        _apply_theme_definition(mode)
+        cls._initialized = False
+        cls.ensure()
 
 
 def ensure_styles_initialized():
