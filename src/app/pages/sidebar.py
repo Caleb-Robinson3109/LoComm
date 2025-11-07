@@ -78,7 +78,7 @@ class Sidebar(tk.Frame):
         footer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.LG, 0))
         tk.Label(footer, text="v2.1 Preview", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
 
         self._update_active_button("home")
 
