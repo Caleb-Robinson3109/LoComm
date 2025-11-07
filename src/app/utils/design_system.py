@@ -1,496 +1,454 @@
 """
-Enhanced Design System for Modern LoRa Chat Desktop
-Provides comprehensive styling for contemporary messaging applications
+Locomm Design System v3
+Provides a layered token/component-based styling toolkit for the desktop app.
 """
+from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
+from dataclasses import dataclass
 
-# ==================== ENHANCED COLOR PALETTE ==================== #
+
+# ---------------------------------------------------------------------------
+# DESIGN TOKENS
+# ---------------------------------------------------------------------------
+class Palette:
+    """Foundational color palette."""
+
+    NIGHT_1000 = "#05070A"
+    NIGHT_950 = "#0B0E13"
+    NIGHT_900 = "#10141C"
+    NIGHT_850 = "#141925"
+    NIGHT_800 = "#1B2030"
+    NIGHT_700 = "#212738"
+    NIGHT_600 = "#2C3448"
+    NIGHT_500 = "#343C52"
+    CLOUD_300 = "#9AA2B1"
+    CLOUD_200 = "#B7C0D4"
+    CLOUD_100 = "#D3DCEA"
+    CLOUD_050 = "#F5F6FA"
+
+    ACCENT_BLUE = "#6CC1FF"
+    ACCENT_PURPLE = "#9A7BFF"
+    ACCENT_TEAL = "#2DE1C2"
+    ACCENT_AMBER = "#FFB347"
+    ACCENT_RED = "#FF6B6B"
+    ACCENT_GREEN = "#3DD598"
+
+
 class Colors:
-    """Modern color palette for contemporary chat applications"""
+    """Semantic color mapping used throughout the UI."""
 
-    # === CORE BACKGROUND COLORS ===
-    BG_PRIMARY = "#1e1e1e"           # Main background (Discord dark)
-    BG_SECONDARY = "#2d2d30"         # Secondary background
-    BG_TERTIARY = "#37373d"          # Tertiary elements
-    BG_CHAT_AREA = "#1e1e1e"         # Chat background
-    BG_MESSAGE_OWN = "#0e639c"       # Own message bubbles
-    BG_MESSAGE_OTHER = "#2d2d30"     # Other message bubbles
-    BG_MESSAGE_SYSTEM = "#252526"    # System message bubbles
-    BG_INPUT_AREA = "#2d2d30"        # Message input background
+    SURFACE = Palette.NIGHT_900
+    SURFACE_ALT = Palette.NIGHT_850
+    SURFACE_RAISED = Palette.NIGHT_800
+    SURFACE_HEADER = Palette.NIGHT_950
+    SURFACE_SIDEBAR = Palette.NIGHT_950
+    SURFACE_SELECTED = Palette.NIGHT_800
 
-    # === TEXT COLORS ===
-    TEXT_PRIMARY = "#ffffff"         # Primary text
-    TEXT_SECONDARY = "#cccccc"       # Secondary text
-    TEXT_MUTED = "#969696"           # Muted text
-    TEXT_PLACEHOLDER = "#6a6a6a"     # Placeholder text
-    TEXT_TIMESTAMP = "#8a8a8a"       # Timestamp text
+    BORDER = Palette.NIGHT_600
+    DIVIDER = Palette.NIGHT_600
 
-    # === MESSAGE COLORS ===
-    MESSAGE_OWN_TEXT = "#ffffff"     # Own message text
-    MESSAGE_OTHER_TEXT = "#ffffff"   # Other message text
-    MESSAGE_SYSTEM_TEXT = "#cccccc"  # System message text
-    MESSAGE_ME = "#ffffff"           # "Me" label color
-    MESSAGE_OTHER = "#ffffff"        # Other user label color
-    MESSAGE_SYSTEM = "#cccccc"       # System message label
+    TEXT_PRIMARY = Palette.CLOUD_050
+    TEXT_SECONDARY = Palette.CLOUD_200
+    TEXT_MUTED = Palette.CLOUD_300
+    TEXT_ACCENT = Palette.ACCENT_BLUE
 
-    # === STATUS & INDICATOR COLORS ===
-    STATUS_CONNECTED = "#23a559"     # Connected status (green)
-    STATUS_DISCONNECTED = "#f23f43" # Disconnected status (red)
-    STATUS_CONNECTING = "#fea500"   # Connecting status (orange)
-    STATUS_PAIRING = "#0078d4"      # Pairing status (blue)
+    STATE_SUCCESS = Palette.ACCENT_GREEN
+    STATE_WARNING = Palette.ACCENT_AMBER
+    STATE_ERROR = Palette.ACCENT_RED
+    STATE_INFO = Palette.ACCENT_BLUE
+    STATUS_CONNECTED = STATE_SUCCESS
+    STATUS_DISCONNECTED = STATE_ERROR
+    STATUS_CONNECTING = STATE_INFO
+    STATUS_PAIRING = STATE_INFO
 
-    # === DELIVERY STATUS INDICATORS ===
-    STATUS_PENDING = "#fea500"       # Pending (orange)
-    STATUS_SENT = "#23a559"          # Sent (green)
-    STATUS_DELIVERED = "#23a559"     # Delivered (green)
-    STATUS_READ = "#0078d4"          # Read (blue)
-    STATUS_FAILED = "#f23f43"        # Failed (red)
+    BUTTON_PRIMARY_BG = Palette.ACCENT_BLUE
+    BUTTON_PRIMARY_HOVER = "#54A3DB"
+    BUTTON_SECONDARY_BG = Palette.NIGHT_700
+    BUTTON_GHOST_BG = "#00000000"
 
-    # === UI COMPONENT COLORS ===
-    BORDER_PRIMARY = "#3e3e42"       # Primary borders
-    BORDER_FOCUS = "#0078d4"         # Focus borders
-    BORDER_HOVER = "#484848"         # Hover borders
+    # Backwards compatibility aliases
+    BG_PRIMARY = SURFACE
+    BG_SECONDARY = SURFACE_ALT
+    BG_TERTIARY = SURFACE_RAISED
+    BG_CHAT_AREA = SURFACE
+    BG_MESSAGE_OWN = Palette.ACCENT_BLUE
+    BG_MESSAGE_OTHER = SURFACE_ALT
+    BG_MESSAGE_SYSTEM = SURFACE_RAISED
+    BG_INPUT_AREA = SURFACE_RAISED
+    TEXT_PLACEHOLDER = TEXT_MUTED
+    TEXT_TIMESTAMP = TEXT_MUTED
+    MESSAGE_SYSTEM_TEXT = TEXT_SECONDARY
 
-    # === BUTTON COLORS ===
-    BTN_PRIMARY = "#0078d4"          # Primary button
-    BTN_PRIMARY_HOVER = "#106ebe"    # Primary hover
-    BTN_SUCCESS = "#23a559"          # Success button
-    BTN_WARNING = "#fea500"          # Warning button
-    BTN_DANGER = "#f23f43"           # Danger button
-    BTN_SECONDARY = "#6c757d"        # Secondary button
-    BTN_GHOST = "#404040"            # Ghost button
-    BTN_INFO = "#0e639c"             # Info button
 
-    # === INPUT COLORS ===
-    INPUT_BG = "#2d2d30"             # Input background
-    INPUT_BORDER = "#3e3e42"         # Input border
-    INPUT_FOCUS = "#0078d4"          # Input focus border
-    INPUT_ERROR = "#f23f43"          # Input error border
-    INPUT_HOVER = "#3e3e42"          # Input hover
-
-    # === SIDEBAR & NAVIGATION ===
-    SIDEBAR_BG = "#1e1e1e"           # Sidebar background
-    SIDEBAR_ACTIVE = "#2d2d30"       # Active sidebar item
-    SIDEBAR_HOVER = "#37373d"        # Sidebar hover
-    TAB_ACTIVE_BG = "#2d2d30"        # Active tab background
-    TAB_INACTIVE_BG = "#3e3e42"      # Inactive tab background
-
-    # === SPECIAL COLORS ===
-    ACCENT_BLUE = "#0078d4"          # Accent blue
-    ACCENT_GREEN = "#23a559"         # Accent green
-    ACCENT_ORANGE = "#fea500"        # Accent orange
-    ACCENT_RED = "#f23f43"           # Accent red
-
-    # === BACKWARD COMPATIBILITY ===
-    CHAT_TEXT_LIGHT = "#ffffff"
-    CHAT_TEXT_DARK = "#ffffff"
-    CHAT_INPUT_FG = "#ffffff"
-    CHAT_INPUT_BG = "#2d2d30"
-    BORDER_LIGHT = "#3e3e42"
-    BORDER_DARK = "#3e3e42"
-    TAB_ACTIVE_FG = "#ffffff"
-    TAB_INACTIVE_FG = "#cccccc"
-    TAB_ACTIVE_BG = "#2d2d30"
-    TAB_INACTIVE_BG = "#3e3e42"
-    PRIMARY_BLUE = "#0078d4"
-    PRIMARY_BLUE_HOVER = "#106ebe"
-    PRIMARY_BLUE_LIGHT = "#005a9e"
-    BTN_INFO = "#0e639c"
-
-# ==================== ENHANCED TYPOGRAPHY ==================== #
 class Typography:
-    """Modern typography system for contemporary chat applications"""
+    """Typography scale (8pt grid)."""
 
-    # === FONT FAMILIES ===
-    FONT_PRIMARY = "Segoe UI"         # Primary UI font
-    FONT_MONO = "Consolas"            # Monospace font for code
-    FONT_CHAT = "Segoe UI"            # Chat-specific font
+    FONT_UI = "SF Pro Display"
+    FONT_MONO = "JetBrains Mono"
 
-    # === FONT SIZES ===
-    SIZE_XXS = 9                      # Smallest text
-    SIZE_XS = 10                      # Extra small
-    SIZE_SM = 11                      # Small
-    SIZE_MD = 12                      # Medium (base size)
-    SIZE_LG = 13                      # Large
-    SIZE_XL = 14                      # Extra large
-    SIZE_XXL = 16                     # Double extra large
-    SIZE_XXXL = 18                    # Triple extra large
+    SIZE_12 = 12
+    SIZE_14 = 14
+    SIZE_16 = 16
+    SIZE_18 = 18
+    SIZE_20 = 20
+    SIZE_24 = 24
+    SIZE_32 = 32
 
-    # === CHAT-SPECIFIC SIZES ===
-    CHAT_TIMESTAMP = SIZE_XS
-    CHAT_USERNAME = SIZE_SM
-    CHAT_MESSAGE = SIZE_MD
-    CHAT_SYSTEM = SIZE_SM
-    CHAT_STATUS = SIZE_XS
-
-    # === FONT WEIGHTS ===
-    WEIGHT_LIGHT = "light"
-    WEIGHT_NORMAL = "normal"
-    WEIGHT_MEDIUM = "normal"          # Tkinter compatibility
+    WEIGHT_REGULAR = "normal"
+    WEIGHT_MEDIUM = "medium"
     WEIGHT_BOLD = "bold"
-    WEIGHT_HEAVY = "heavy"
 
-# ==================== ENHANCED SPACING ==================== #
+
+class Space:
+    """Spacing tokens based on an 8px unit."""
+
+    BASE = 8
+    XXXS = int(BASE * 0.5)
+    XXS = BASE
+    XS = BASE * 1
+    SM = BASE * 1.5
+    MD = BASE * 2
+    LG = BASE * 3
+    XL = BASE * 4
+    XXL = BASE * 5
+    XXXL = BASE * 6
+
+
 class Spacing:
-    """Comprehensive spacing system for modern chat UI"""
+    """Legacy spacing aliases used across existing widgets."""
 
-    # === BASE SPACING ===
-    XS = 4                            # Extra small
-    SM = 8                            # Small
-    MD = 12                           # Medium
-    LG = 16                           # Large
-    XL = 20                           # Extra large
-    XXL = 24                          # Double extra large
-    XXXL = 32                         # Triple extra large
+    TAB_PADDING = Space.LG
+    HEADER_PADDING = Space.XL
+    BUTTON_PADDING = Space.SM
+    SECTION_MARGIN = Space.LG
+    MESSAGE_BUBBLE_PADDING = (Space.LG, Space.SM)
+    MESSAGE_GROUP_GAP = Space.XXS
+    MESSAGE_MARGIN = (Space.SM, Space.XXS)
+    CHAT_AREA_PADDING = Space.MD
+    SIDEBAR_WIDTH = 260
+    HEADER_HEIGHT = 64
+    XS = Space.XXS
+    SM = Space.XS
+    MD = Space.MD
+    LG = Space.LG
+    XL = Space.XL
+    XXL = Space.XXL
+    XXXL = Space.XXXL
 
-    # === COMPONENT-SPECIFIC SPACING ===
-    MESSAGE_BUBBLE_PADDING = (12, 8)  # Message bubble padding (horizontal, vertical)
-    MESSAGE_GROUP_GAP = 2             # Gap between message groups
-    MESSAGE_MARGIN = (8, 4)           # Margin around message bubbles
-    CHAT_AREA_PADDING = 12            # Padding inside chat area
-    SIDEBAR_WIDTH = 240               # Sidebar width
-    HEADER_HEIGHT = 56                # Header area height
 
-    # === LEGACY COMPATIBILITY ===
-    HEADER_PADDING = 20
-    TAB_PADDING = 16
-    BUTTON_PADDING = 8
-    SECTION_MARGIN = 20
+class Radii:
+    CARD = 14
+    PANEL = 18
+    CHIP = 999
 
-# ==================== MODERN COMPONENT STYLES ==================== #
-class ComponentStyles:
-    """Enhanced component styles for contemporary chat UI"""
+
+class Shadows:
+    LEVEL_1 = (0, 8, 24)
+    LEVEL_2 = (0, 16, 32)
+
+
+# ---------------------------------------------------------------------------
+# THEME MANAGER
+# ---------------------------------------------------------------------------
+class ThemeManager:
+    """Registers ttk styles for the application."""
 
     _initialized = False
+    BUTTON_STYLES = {
+        "primary": "Locomm.Primary.TButton",
+        "secondary": "Locomm.Secondary.TButton",
+        "ghost": "Locomm.Ghost.TButton",
+        "danger": "Locomm.Danger.TButton",
+        "success": "Locomm.Success.TButton",
+        "nav": "Locomm.Nav.TButton",
+    }
 
     @classmethod
-    def initialize(cls):
-        """Create and register comprehensive component styles once."""
+    def ensure(cls):
         if cls._initialized:
             return
 
         style = ttk.Style()
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
 
-        # Configure Ttk theme for modern appearance
-        if 'clam' not in style.theme_names():
-            style.theme_use('clam')
+        default_font = (Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)
+        style.configure("TLabel", background=Colors.SURFACE, foreground=Colors.TEXT_PRIMARY, font=default_font)
+        style.configure("TFrame", background=Colors.SURFACE)
 
-        # === LABEL STYLES ===
-        style.configure('Header.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_XL, Typography.WEIGHT_BOLD),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BG_PRIMARY)
+        # Buttons -----------------------------------------------------------------
+        cls._register_button(style, "Locomm.Primary.TButton", Colors.BUTTON_PRIMARY_BG, Colors.BUTTON_PRIMARY_HOVER, Colors.SURFACE)
+        cls._register_button(style, "Locomm.Secondary.TButton", Colors.BUTTON_SECONDARY_BG, Palette.NIGHT_600, Colors.TEXT_PRIMARY)
+        cls._register_button(style, "Locomm.Ghost.TButton", Colors.BUTTON_GHOST_BG, Palette.NIGHT_800, Colors.TEXT_PRIMARY, border=0)
+        cls._register_button(style, "Locomm.Danger.TButton", Palette.ACCENT_RED, "#CC4C4C", Colors.SURFACE)
+        cls._register_button(style, "Locomm.Success.TButton", Palette.ACCENT_GREEN, "#2FB67C", Colors.SURFACE)
 
-        style.configure('SubHeader.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_SECONDARY,
-                       background=Colors.BG_PRIMARY)
+        # Navigation buttons (flat, left aligned)
+        style.configure(
+            "Locomm.Nav.TButton",
+            background=Colors.SURFACE,
+            foreground=Colors.TEXT_SECONDARY,
+            relief="flat",
+            anchor="w",
+            padding=(Space.MD, Space.SM),
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
+        )
+        style.map(
+            "Locomm.Nav.TButton",
+            background=[("active", Colors.SURFACE_SELECTED)],
+            foreground=[("active", Colors.TEXT_PRIMARY)]
+        )
+        style.configure(
+            "Locomm.NavActive.TButton",
+            background=Colors.SURFACE_SELECTED,
+            foreground=Colors.TEXT_PRIMARY,
+            relief="flat",
+            anchor="w",
+            padding=(Space.MD, Space.SM),
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)
+        )
 
-        style.configure('Body.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BG_PRIMARY)
+        # Entry / input fields
+        style.configure(
+            "Locomm.Input.TEntry",
+            fieldbackground=Colors.SURFACE_RAISED,
+            foreground=Colors.TEXT_PRIMARY,
+            insertcolor=Colors.TEXT_PRIMARY,
+            padding=(Space.SM, int(Space.XS / 1.5)),
+            bordercolor=Colors.BORDER
+        )
+        style.map(
+            "Locomm.Input.TEntry",
+            fieldbackground=[("focus", Colors.SURFACE_SELECTED)],
+            foreground=[("disabled", Colors.TEXT_MUTED)]
+        )
 
-        style.configure('Small.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-                       foreground=Colors.TEXT_MUTED,
-                       background=Colors.BG_PRIMARY)
+        # Labels ------------------------------------------------------------------
+        style.configure("Locomm.H1.TLabel", font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD))
+        style.configure("Locomm.H2.TLabel", font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD))
+        style.configure("Locomm.H3.TLabel", font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM))
+        style.configure("Locomm.Caption.TLabel", font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM), foreground=Colors.TEXT_MUTED)
+        # Legacy style aliases
+        style.configure('Header.TLabel', font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD), foreground=Colors.TEXT_PRIMARY, background=Colors.SURFACE)
+        style.configure('SubHeader.TLabel', font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM), foreground=Colors.TEXT_SECONDARY, background=Colors.SURFACE)
+        style.configure('Body.TLabel', font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), foreground=Colors.TEXT_PRIMARY, background=Colors.SURFACE)
+        style.configure('Small.TLabel', font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR), foreground=Colors.TEXT_MUTED, background=Colors.SURFACE)
 
-        style.configure('Timestamp.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_XS),
-                       foreground=Colors.TEXT_TIMESTAMP,
-                       background=Colors.BG_PRIMARY)
+        # Cards / sections
+        style.configure(
+            "Locomm.Card.TFrame",
+            background=Colors.SURFACE_ALT,
+            bordercolor=Colors.BORDER,
+            relief="flat",
+            borderwidth=1
+        )
+        style.configure(
+            "Locomm.Section.TFrame",
+            background=Colors.SURFACE_ALT,
+            bordercolor=Colors.BORDER,
+            relief="flat",
+            borderwidth=1
+        )
 
-        # === CHAT-SPECIFIC LABEL STYLES ===
-        style.configure('ChatUsername.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_BOLD),
-                       foreground=Colors.MESSAGE_OTHER_TEXT,
-                       background=Colors.BG_CHAT_AREA)
+        # Badges
+        style.configure(
+            "Locomm.Badge.Info.TLabel",
+            background=Colors.BUTTON_SECONDARY_BG,
+            foreground=Colors.TEXT_PRIMARY,
+            padding=(Space.SM, int(Space.XS)),
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
+        )
 
-        style.configure('ChatMessage.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                       foreground=Colors.MESSAGE_OTHER_TEXT,
-                       background=Colors.BG_CHAT_AREA,
-                       wraplength=600)
-
-        style.configure('ChatSystem.TLabel',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_SM, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.MESSAGE_SYSTEM_TEXT,
-                       background=Colors.BG_CHAT_AREA)
-
-        # === BUTTON STYLES ===
-        style.configure('Primary.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BTN_PRIMARY,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        style.map('Primary.TButton',
-                 background=[('active', Colors.BTN_PRIMARY_HOVER)])
-
-        style.configure('Success.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BTN_SUCCESS,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        style.configure('Warning.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BTN_WARNING,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        style.configure('Danger.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BTN_DANGER,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        style.configure('Secondary.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                       foreground=Colors.TEXT_SECONDARY,
-                       background=Colors.BTN_SECONDARY,
-                       borderwidth=1,
-                       focuscolor='none')
-
-        style.configure('Ghost.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-                       foreground=Colors.TEXT_SECONDARY,
-                       background=Colors.BTN_GHOST,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        # === CHAT BUTTON STYLES ===
-        style.configure('Send.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BTN_PRIMARY,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        style.configure('MessageAction.TButton',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_XS),
-                       foreground=Colors.TEXT_MUTED,
-                       background=Colors.BG_TERTIARY,
-                       borderwidth=0,
-                       focuscolor='none')
-
-        # === ENTRY STYLES ===
-        style.configure('ChatEntry.TEntry',
-                       font=(Typography.FONT_CHAT, Typography.SIZE_MD),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.INPUT_BG,
-                       bordercolor=Colors.INPUT_BORDER,
-                       focuscolor=Colors.INPUT_FOCUS,
-                       selectforeground=Colors.TEXT_PRIMARY,
-                       selectbackground=Colors.BTN_PRIMARY)
-
-        style.map('ChatEntry.TEntry',
-                 bordercolor=[('focus', Colors.INPUT_FOCUS)],
-                 background=[('hover', Colors.INPUT_HOVER)])
-
-        # === LABELFRAME STYLES ===
-        style.configure('Custom.TLabelframe',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD),
-                       borderwidth=2,
-                       relief='solid',
-                       bordercolor=Colors.BORDER_PRIMARY,
-                       background=Colors.BG_PRIMARY,
-                       labelanchor='nw')
-
-        style.configure('Custom.TLabelframe.Label',
-                       font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD),
-                       foreground=Colors.TEXT_PRIMARY,
-                       background=Colors.BG_PRIMARY)
-
-        # === FRAME STYLES ===
-        style.configure('ChatFrame.TFrame',
-                       background=Colors.BG_CHAT_AREA,
-                       relief='flat')
-
-        style.configure('MessageBubbleOwn.TFrame',
-                       background=Colors.BG_MESSAGE_OWN,
-                       relief='flat',
-                       borderwidth=0)
-
-        style.configure('MessageBubbleOther.TFrame',
-                       background=Colors.BG_MESSAGE_OTHER,
-                       relief='flat',
-                       borderwidth=0)
-
-        style.configure('MessageBubbleSystem.TFrame',
-                       background=Colors.BG_MESSAGE_SYSTEM,
-                       relief='flat',
-                       borderwidth=0)
+        # Backwards compatibility styles (legacy names)
+        style.configure("Primary.TButton", background=Colors.BUTTON_PRIMARY_BG, foreground=Colors.SURFACE)
+        style.configure("Secondary.TButton", background=Colors.BUTTON_SECONDARY_BG, foreground=Colors.TEXT_PRIMARY)
 
         cls._initialized = True
 
-# ==================== MODERN UTILITY FUNCTIONS ==================== #
+    @staticmethod
+    def _register_button(style: ttk.Style, style_name: str, bg: str, hover_bg: str, fg: str, border: int = 0):
+        style.configure(
+            style_name,
+            background=bg,
+            foreground=fg,
+            padding=(Space.MD, Space.SM),
+            borderwidth=border,
+            focusthickness=0,
+            focuscolor=bg,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
+        )
+        style.map(
+            style_name,
+            background=[("active", hover_bg), ("disabled", Colors.BUTTON_SECONDARY_BG)],
+            foreground=[("disabled", Colors.TEXT_MUTED)]
+        )
+
+
+def ensure_styles_initialized():
+    ThemeManager.ensure()
+
+
+# ---------------------------------------------------------------------------
+# COMPONENT FACTORY
+# ---------------------------------------------------------------------------
 class DesignUtils:
-    """Enhanced utility functions for modern chat application design"""
+    """Factory helpers that return styled widgets."""
 
     @staticmethod
-    def get_status_color(status_text: str) -> str:
-        """Get appropriate color for status text based on modern design"""
-        status_lower = status_text.lower()
-
-        if any(word in status_lower for word in ['connected', 'ready', 'online']):
-            return Colors.STATUS_CONNECTED
-        elif any(word in status_lower for word in ['connecting', 'pairing', 'verifying']):
-            return Colors.STATUS_CONNECTING
-        elif any(word in status_lower for word in ['disconnected', 'offline', 'failed']):
-            return Colors.STATUS_DISCONNECTED
-        elif any(word in status_lower for word in ['warning', 'error']):
-            return Colors.STATUS_CONNECTING
-        else:
-            return Colors.TEXT_SECONDARY
+    def button(parent, text: str, command=None, variant: str = "primary", width: int | None = None):
+        ThemeManager.ensure()
+        style_name = ThemeManager.BUTTON_STYLES.get(variant, "Locomm.Primary.TButton")
+        return ttk.Button(parent, text=text, command=command, style=style_name, width=width)
 
     @staticmethod
-    def get_delivery_status_color(status_text: str) -> str:
-        """Get color for message delivery status"""
-        status_lower = status_text.lower()
-
-        if 'pending' in status_lower:
-            return Colors.STATUS_PENDING
-        elif 'sent' in status_lower:
-            return Colors.STATUS_SENT
-        elif 'delivered' in status_lower:
-            return Colors.STATUS_DELIVERED
-        elif 'read' in status_lower:
-            return Colors.STATUS_READ
-        elif 'failed' in status_lower:
-            return Colors.STATUS_FAILED
-        else:
-            return Colors.TEXT_MUTED
-
-    @staticmethod
-    def create_styled_button(parent, text, command, style='Primary.TButton', **kwargs):
-        """Create a styled button with modern appearance"""
-        btn = ttk.Button(parent, text=text, command=command, style=style, **kwargs)
-        return btn
-
-    @staticmethod
-    def create_styled_label(parent, text, style='Body.TLabel', **kwargs):
-        """Create a styled label with modern appearance"""
-        label = ttk.Label(parent, text=text, style=style, **kwargs)
+    def pill(parent, text: str, variant: str = "info"):
+        ThemeManager.ensure()
+        variant_map = {
+            "info": (Colors.BUTTON_SECONDARY_BG, Colors.TEXT_PRIMARY),
+            "success": (Palette.ACCENT_GREEN, Colors.SURFACE),
+            "warning": (Palette.ACCENT_AMBER, Colors.SURFACE),
+            "danger": (Palette.ACCENT_RED, Colors.SURFACE),
+        }
+        bg, fg = variant_map.get(variant, variant_map["info"])
+        label = tk.Label(
+            parent,
+            text=text,
+            bg=bg,
+            fg=fg,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            padx=Space.SM,
+            pady=int(Space.XS / 2)
+        )
+        label.configure(relief="flat")
         return label
 
     @staticmethod
-    def create_header_frame(parent, title, **kwargs):
-        """Create a styled header frame"""
-        frame = ttk.LabelFrame(parent, text=title, style='Custom.TLabelframe', **kwargs)
-        return frame
+    def card(parent, title: str, subtitle: str = "", actions: list | None = None):
+        ThemeManager.ensure()
+        frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.BORDER, highlightthickness=1, bd=0)
+        frame.pack_propagate(False)
+
+        header = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+        header.pack(fill=tk.X, pady=(Space.SM, 0), padx=Space.MD)
+
+        tk.Label(header, text=title, bg=Colors.SURFACE_ALT,
+                 fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        if subtitle:
+            tk.Label(header, text=subtitle, bg=Colors.SURFACE_ALT,
+                     fg=Colors.TEXT_MUTED,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
+
+        if actions:
+            actions_frame = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+            actions_frame.pack(fill=tk.X, padx=Space.MD, pady=(Space.XS, Space.SM))
+            for action in actions:
+                btn = DesignUtils.button(actions_frame, **action)
+                btn.pack(side=tk.LEFT, padx=(0, Space.SM))
+
+        body = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+        body.pack(fill=tk.BOTH, expand=True, padx=Space.MD, pady=(0, Space.MD))
+        return frame, body
 
     @staticmethod
-    def create_message_bubble(parent, is_own: bool = False):
-        """Create a styled message bubble frame"""
-        style = 'MessageBubbleOwn.TFrame' if is_own else 'MessageBubbleOther.TFrame'
-        bubble_frame = ttk.Frame(parent, style=style, padding=Spacing.MESSAGE_BUBBLE_PADDING)
-        return bubble_frame
+    def section(parent, title: str, description: str = "", icon: str | None = None):
+        ThemeManager.ensure()
+        container = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.DIVIDER, highlightthickness=1, bd=0)
+        container.pack(fill=tk.X, pady=(0, Space.LG))
+
+        header = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        header.pack(fill=tk.X, padx=Space.LG, pady=(Space.MD, Space.SM))
+
+        title_text = title if not icon else f"{icon} {title}"
+        tk.Label(header, text=title_text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        if description:
+            tk.Label(header, text=description, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
+
+        body = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        body.pack(fill=tk.X, padx=Space.LG, pady=(0, Space.LG))
+        return container, body
+
+    @staticmethod
+    def stat_block(parent, label: str, value: str, helper: str = ""):
+        block = tk.Frame(parent, bg=Colors.SURFACE_RAISED)
+        block.pack(fill=tk.X, padx=0, pady=(0, Space.SM))
+        tk.Label(block, text=label.upper(), bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_MUTED,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        tk.Label(block, text=value, bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD)).pack(anchor="w", pady=(Space.XXS, 0))
+        if helper:
+            tk.Label(block, text=helper, bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
+        return block
+
+    @staticmethod
+    def hero_header(parent, title: str, subtitle: str, actions: list | None = None):
+        container = tk.Frame(parent, bg=Colors.SURFACE, pady=Space.LG)
+        container.pack(fill=tk.X, pady=(0, Space.LG))
+        text_wrap = tk.Frame(container, bg=Colors.SURFACE)
+        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        tk.Label(text_wrap, text=title, bg=Colors.SURFACE, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        tk.Label(text_wrap, text=subtitle, bg=Colors.SURFACE, fg=Colors.TEXT_SECONDARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XS, 0))
+
+        if actions:
+            action_frame = tk.Frame(container, bg=Colors.SURFACE)
+            action_frame.pack(side=tk.RIGHT, anchor="e")
+            for action in actions:
+                btn = DesignUtils.button(action_frame, **action)
+                btn.pack(side=tk.LEFT, padx=(0, Space.SM))
+
+        return container
+
+    @staticmethod
+    def create_styled_button(parent, text: str, command=None, style: str = 'Locomm.Primary.TButton'):
+        """Backwards-compatible helper."""
+        ThemeManager.ensure()
+        return ttk.Button(parent, text=text, command=command, style=style)
+
+    @staticmethod
+    def create_styled_label(parent, text: str, style: str = 'Body.TLabel', **kwargs):
+        ThemeManager.ensure()
+        return ttk.Label(parent, text=text, style=style, **kwargs)
 
     @staticmethod
     def create_chat_entry(parent, **kwargs):
-        """Create a styled chat entry widget"""
-        entry = ttk.Entry(parent, style='ChatEntry.TEntry', **kwargs)
-        return entry
+        ThemeManager.ensure()
+        return ttk.Entry(parent, style="Locomm.Input.TEntry", **kwargs)
 
     @staticmethod
-    def create_tooltip_text(widget, text: str, delay: int = 500):
-        """Create a tooltip for widgets"""
-        def on_enter(event):
-            tooltip = tk.Toplevel()
-            tooltip.wm_overrideredirect(True)
-            tooltip.configure(bg=Colors.BG_TERTIARY)
-            label = tk.Label(tooltip, text=text, bg=Colors.BG_TERTIARY,
-                           fg=Colors.TEXT_PRIMARY, font=(Typography.FONT_PRIMARY, Typography.SIZE_XS))
-            label.pack()
-
-            x, y, _, _ = widget.bbox("insert") if hasattr(widget, 'bbox') else (0, 0, 0, 0)
-            tooltip.wm_geometry(f"+{x+20}+{y-25}")
-            widget.tooltip = tooltip
-
-        def on_leave(event):
-            if hasattr(widget, 'tooltip'):
-                widget.tooltip.destroy()
-                del widget.tooltip
-
-        widget.bind('<Enter>', on_enter)
-        widget.bind('<Leave>', on_leave)
+    def create_nav_button(parent, text: str, command=None):
+        ThemeManager.ensure()
+        return ttk.Button(parent, text=text, command=command, style="Locomm.Nav.TButton")
 
     @staticmethod
-    def apply_hover_effect(widget, bg_color: str):
-        """Apply hover effect to a widget"""
-        def on_enter(event):
-            if hasattr(widget, 'original_bg'):
-                widget.configure(bg=bg_color)
-            else:
-                widget.original_bg = str(widget.cget('background'))
-                widget.configure(background=bg_color)
-
-        def on_leave(event):
-            if hasattr(widget, 'original_bg'):
-                widget.configure(bg=widget.original_bg)
-                del widget.original_bg
-
-        widget.bind('<Enter>', on_enter)
-        widget.bind('<Leave>', on_leave)
-
-    @staticmethod
-    def format_timestamp(timestamp: float) -> str:
-        """Format timestamp for chat display"""
-        import time
-        return time.strftime("%H:%M", time.localtime(timestamp))
-
-    @staticmethod
-    def format_relative_time(timestamp: float) -> str:
-        """Format timestamp as relative time (e.g., '2 minutes ago')"""
-        import time
-        import datetime
-
-        now = time.time()
-        diff = now - timestamp
-
-        if diff < 60:
-            return "just now"
-        elif diff < 3600:
-            minutes = int(diff / 60)
-            return f"{minutes}m ago"
-        elif diff < 86400:
-            hours = int(diff / 3600)
-            return f"{hours}h ago"
-        else:
-            days = int(diff / 86400)
-            return f"{days}d ago"
-
-def ensure_styles_initialized():
-    """Public helper to ensure styles are registered after Tk root exists."""
-    ComponentStyles.initialize()
+    def create_message_row(parent, title: str, value: str):
+        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        row.pack(fill=tk.X, pady=(0, Space.SM))
+        tk.Label(row, text=title, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_MUTED,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        return row
 
 
-# ==================== APPLICATION CONFIGURATION ==================== #
+# ---------------------------------------------------------------------------
+# APP CONFIG (unchanged values re-exported)
+# ---------------------------------------------------------------------------
 class AppConfig:
     """Application-wide configuration constants"""
 
-    # === DEBUG CONFIGURATION ===
-    DEBUG = False  # Set to True to see debug prints
-
-    # === STATUS KEYWORDS ===
-    # Keywords that indicate connected/ready state
+    DEBUG = False
     STATUS_CONNECTED_KEYWORDS = {"ready", "connected (mock)", "message from"}
-
-    # Keywords that indicate disconnected/failed state
     STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid pairing code"}
-
-    # Keywords that indicate error state
     STATUS_ERROR_KEYWORDS = {"failed", "error", "invalid"}
 
-    # === STATUS MESSAGES ===
     STATUS_DISCONNECTED = "Disconnected"
     STATUS_CONNECTED = "Connected"
     STATUS_CONNECTED_MOCK = "Connected (mock)"
@@ -500,44 +458,22 @@ class AppConfig:
     STATUS_AWAITING_PEER = "Awaiting peer"
     STATUS_NOT_CONNECTED = "Not connected"
 
-    # === WINDOW CONFIGURATION ===
-    WINDOW_WIDTH = 800
-    WINDOW_HEIGHT = 700
-
-    # === APPLICATION CONSTANTS ===
+    WINDOW_WIDTH = 1024
+    WINDOW_HEIGHT = 720
     APP_TITLE = "LoRa Chat Desktop"
 
-    # === TIMING CONFIGURATION ===
-    STATUS_UPDATE_DELAY = 2000  # milliseconds
-    RX_THREAD_SLEEP_INTERVAL = 0.2  # seconds
-    MOCK_API_SLEEP_INTERVAL = 0.2  # seconds
-    PIN_FOCUS_DELAY = 100  # milliseconds
-    STATUS_UPDATE_DELAY_SHORT = 500  # milliseconds
+    STATUS_UPDATE_DELAY = 2000
+    RX_THREAD_SLEEP_INTERVAL = 0.2
+    MOCK_API_SLEEP_INTERVAL = 0.2
+    PIN_FOCUS_DELAY = 100
+    STATUS_UPDATE_DELAY_SHORT = 500
+    PAIR_DEVICES_TIMEOUT = 30
 
-    # === DEVICE CONFIGURATION ===
-    PAIR_DEVICES_TIMEOUT = 30  # seconds
-
-    # === CHAT HISTORY CONFIGURATION ===
     CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{device}.txt"
-
-    # === NOTIFICATION CONFIGURATION ===
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
 
-    # === LEGACY COMPATIBILITY ===
-    # Legacy constants for backward compatibility
-    COLOR_PRIMARY = "#4a90e2"
-    COLOR_SUCCESS = "#5cb85c"
-    COLOR_WARNING = "#f0ad4e"
-    COLOR_DANGER = "#d9534f"
-    COLOR_INFO = "#66CCFF"
 
-    # Status indicator colors
-    STATUS_DISCONNECTED_COLOR = COLOR_DANGER
-    STATUS_CONNECTED_COLOR = COLOR_SUCCESS
-    STATUS_WARNING_COLOR = COLOR_WARNING
-
-
-# Legacy constants for backward compatibility
+# Legacy exports for compatibility
 DEBUG = AppConfig.DEBUG
 STATUS_CONNECTED_KEYWORDS = AppConfig.STATUS_CONNECTED_KEYWORDS
 STATUS_DISCONNECTED_KEYWORDS = AppConfig.STATUS_DISCONNECTED_KEYWORDS
@@ -557,6 +493,5 @@ STATUS_NOT_CONNECTED = AppConfig.STATUS_NOT_CONNECTED
 CHAT_EXPORT_FILENAME_PATTERN = AppConfig.CHAT_EXPORT_FILENAME_PATTERN
 NOTIFICATION_MESSAGE_PATTERN = AppConfig.NOTIFICATION_MESSAGE_PATTERN
 
-# File configuration
 import os
 USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
