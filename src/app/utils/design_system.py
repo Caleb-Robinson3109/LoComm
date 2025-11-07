@@ -97,7 +97,7 @@ class Typography:
     SIZE_32 = 32
 
     WEIGHT_REGULAR = "normal"
-    WEIGHT_MEDIUM = "medium"
+    WEIGHT_MEDIUM = "normal"  # Tkinter does not support "medium"
     WEIGHT_BOLD = "bold"
 
 
