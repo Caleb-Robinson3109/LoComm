@@ -68,7 +68,7 @@ class Colors:
     BUTTON_SECONDARY_BG = Palette.NIGHT_700
     BUTTON_GHOST_BG = "#00000000"
 
-    # Backwards compatibility aliases
+    # Backwards compatibility aliases (deprecated - use semantic names)
     BG_PRIMARY = SURFACE
     BG_SECONDARY = SURFACE_ALT
     BG_TERTIARY = SURFACE_RAISED
@@ -81,12 +81,18 @@ class Colors:
     TEXT_TIMESTAMP = TEXT_MUTED
     MESSAGE_SYSTEM_TEXT = TEXT_SECONDARY
 
+    # Message bubble colors - ensure consistency
+    MESSAGE_BUBBLE_OWN_BG = SURFACE
+    MESSAGE_BUBBLE_OTHER_BG = SURFACE_ALT
+    MESSAGE_BUBBLE_SYSTEM_BG = SURFACE_RAISED
+
 
 class Typography:
-    """Typography scale (8pt grid)."""
+    """Typography scale (8pt grid) with system fallbacks."""
 
-    FONT_UI = "SF Pro Display"
-    FONT_MONO = "JetBrains Mono"
+    # Primary fonts (with fallbacks handled by OS)
+    FONT_UI = "SF Pro Display"  # Will fall back to system sans-serif
+    FONT_MONO = "JetBrains Mono"  # Will fall back to system monospace
 
     SIZE_12 = 12
     SIZE_14 = 14
@@ -99,6 +105,16 @@ class Typography:
     WEIGHT_REGULAR = "normal"
     WEIGHT_MEDIUM = "normal"  # Tkinter does not support "medium"
     WEIGHT_BOLD = "bold"
+
+    @staticmethod
+    def font_ui(size: int, weight: str = "normal"):
+        """Create a UI font with proper fallback."""
+        return (Typography.FONT_UI, size, weight)
+
+    @staticmethod
+    def font_mono(size: int, weight: str = "normal"):
+        """Create a monospace font with proper fallback."""
+        return (Typography.FONT_MONO, size, weight)
 
 
 class Space:
@@ -301,7 +317,17 @@ class DesignUtils:
     def button(parent, text: str, command=None, variant: str = "primary", width: int | None = None):
         ThemeManager.ensure()
         style_name = ThemeManager.BUTTON_STYLES.get(variant, "Locomm.Primary.TButton")
-        return ttk.Button(parent, text=text, command=command, style=style_name, width=width)
+        # Create button with proper type handling
+        if command is None:
+            if width is None:
+                return ttk.Button(parent, text=text, style=style_name)
+            else:
+                return ttk.Button(parent, text=text, style=style_name, width=width)
+        else:
+            if width is None:
+                return ttk.Button(parent, text=text, command=command, style=style_name)
+            else:
+                return ttk.Button(parent, text=text, command=command, style=style_name, width=width)
 
     @staticmethod
     def pill(parent, text: str, variant: str = "info"):
@@ -411,7 +437,10 @@ class DesignUtils:
     def create_styled_button(parent, text: str, command=None, style: str = 'Locomm.Primary.TButton'):
         """Backwards-compatible helper."""
         ThemeManager.ensure()
-        return ttk.Button(parent, text=text, command=command, style=style)
+        if command is None:
+            return ttk.Button(parent, text=text, style=style)
+        else:
+            return ttk.Button(parent, text=text, command=command, style=style)
 
     @staticmethod
     def create_styled_label(parent, text: str, style: str = 'Body.TLabel', **kwargs):
@@ -426,7 +455,10 @@ class DesignUtils:
     @staticmethod
     def create_nav_button(parent, text: str, command=None):
         ThemeManager.ensure()
-        return ttk.Button(parent, text=text, command=command, style="Locomm.Nav.TButton")
+        if command is None:
+            return ttk.Button(parent, text=text, style="Locomm.Nav.TButton")
+        else:
+            return ttk.Button(parent, text=text, command=command, style="Locomm.Nav.TButton")
 
     @staticmethod
     def create_message_row(parent, title: str, value: str):

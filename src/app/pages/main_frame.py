@@ -70,7 +70,7 @@ class MainFrame(ttk.Frame):
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
 
         # ---------- Right Content Area ---------- #
-        self.content_frame = tk.Frame(main_container, bg=Colors.BG_PRIMARY)
+        self.content_frame = tk.Frame(main_container, bg=Colors.SURFACE)
         self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(Spacing.TAB_PADDING, 0), pady=(0, Spacing.TAB_PADDING))
 
         # Initialize view containers
@@ -79,23 +79,23 @@ class MainFrame(ttk.Frame):
     def _create_views(self):
         """Create all view containers."""
         # Home view container
-        self.home_container = tk.Frame(self.content_frame, bg=Colors.BG_PRIMARY, relief="flat", bd=0)
+        self.home_container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
         self.home_container.pack(fill=tk.BOTH, expand=True)
 
         # Chat view container
-        self.chat_container = tk.Frame(self.content_frame, bg=Colors.BG_PRIMARY, relief="flat", bd=0)
+        self.chat_container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
         self.chat_container.pack(fill=tk.BOTH, expand=True)
 
         # Pair/Device management view container
-        self.pair_container = tk.Frame(self.content_frame, bg=Colors.BG_PRIMARY, relief="flat", bd=0)
+        self.pair_container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
         self.pair_container.pack(fill=tk.BOTH, expand=True)
 
         # Settings view container (simplified - app config only)
-        self.settings_container = tk.Frame(self.content_frame, bg=Colors.BG_PRIMARY, relief="flat", bd=0)
+        self.settings_container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
         self.settings_container.pack(fill=tk.BOTH, expand=True)
 
         # About view container
-        self.about_container = tk.Frame(self.content_frame, bg=Colors.BG_PRIMARY, relief="flat", bd=0)
+        self.about_container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
         self.about_container.pack(fill=tk.BOTH, expand=True)
 
         # Create the actual components and pack them

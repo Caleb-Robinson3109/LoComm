@@ -14,7 +14,7 @@ class PINPairingFrame(tk.Frame):
     """PIN-based device pairing interface."""
 
     def __init__(self, master, on_pair_success: Callable[[str, str], None], on_demo_login: Optional[Callable] = None):
-        super().__init__(master, bg=Colors.BG_PRIMARY)
+        super().__init__(master, bg=Colors.SURFACE)
         self.on_pair_success = on_pair_success
         self.on_demo_login = on_demo_login
         self.pin_auth = get_pin_auth()

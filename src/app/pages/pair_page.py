@@ -105,7 +105,8 @@ class PairPage(tk.Frame):
         self._show_pin_pairing_interface(device_id, name)
 
     def _show_pin_pairing_interface(self, device_id, device_name):
-        from pages import PINPairingFrame
+        # Import at the top of the function to avoid circular imports
+        from .pin_pairing_frame import PINPairingFrame
 
         self.main_body.pack_forget()
         self.pairing_container = tk.Frame(self, bg=Colors.SURFACE)

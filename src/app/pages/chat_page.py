@@ -66,9 +66,9 @@ class ChatPage(tk.Frame):
     def _build_messages_section(self, parent):
         section, body = DesignUtils.section(parent, "Conversation", "Messages are retained locally for this session.")
         # History frame
-        messages_frame = tk.Frame(body, bg=Colors.BG_CHAT_AREA)
+        messages_frame = tk.Frame(body, bg=Colors.SURFACE)
         messages_frame.pack(fill=tk.BOTH, expand=True)
-        self.history_frame = tk.Frame(messages_frame, bg=Colors.BG_CHAT_AREA)
+        self.history_frame = tk.Frame(messages_frame, bg=Colors.SURFACE)
         self.history_frame.pack(fill=tk.BOTH, expand=True, padx=Space.MD, pady=(Space.SM, Space.MD))
 
         controls = tk.Frame(body, bg=Colors.SURFACE_ALT)
@@ -92,18 +92,22 @@ class ChatPage(tk.Frame):
         self._add_message("System", welcome_msg, is_system=True)
 
     def _add_message(self, sender: str, message: str, is_system: bool = False):
-        wrapper = tk.Frame(self.history_frame, bg=Colors.BG_CHAT_AREA)
+        wrapper = tk.Frame(self.history_frame, bg=Colors.SURFACE)
         wrapper.pack(fill=tk.X, pady=(Space.XXS, 0))
 
-        color = Colors.MESSAGE_SYSTEM_TEXT if is_system else Colors.TEXT_PRIMARY
-        tk.Label(wrapper, text=f"{sender}:" if not is_system else sender, bg=Colors.BG_CHAT_AREA,
+        color = Colors.TEXT_SECONDARY if is_system else Colors.TEXT_PRIMARY
+        tk.Label(wrapper, text=f"{sender}:" if not is_system else sender, bg=Colors.SURFACE,
                  fg=color, font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        bubble = tk.Frame(wrapper, bg=Colors.BG_MESSAGE_OTHER if sender != self.session.device_name else Colors.BG_MESSAGE_OWN,
-                          padx=Space.MD, pady=Space.XXS)
+
+        # Determine bubble color based on sender
+        is_own_message = sender == getattr(self.session, "device_name", None) or sender == "This Device"
+        bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG if is_own_message else Colors.MESSAGE_BUBBLE_OTHER_BG
+
+        bubble = tk.Frame(wrapper, bg=bubble_bg, padx=Space.MD, pady=Space.XXS)
         bubble.pack(fill=tk.X)
         tk.Label(bubble, text=message, bg=bubble.cget("bg"), wraplength=600,
                  fg=Colors.TEXT_PRIMARY, font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), justify="left").pack(anchor="w")
-        tk.Label(wrapper, text=time.strftime("%H:%M"), bg=Colors.BG_CHAT_AREA, fg=Colors.TEXT_TIMESTAMP,
+        tk.Label(wrapper, text=time.strftime("%H:%M"), bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e")
         if not is_system:
             self._message_counter += 1
