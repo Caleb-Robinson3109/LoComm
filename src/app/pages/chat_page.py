@@ -112,7 +112,7 @@ class ChatPage(tk.Frame):
                  fg=text_color, font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), justify="left").pack(anchor="w")
 
         tk.Label(wrapper, text=time.strftime("%H:%M"), bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_REGULAR)).pack(anchor="e" if is_own_message else "w")
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e" if is_own_message else "w")
         if not is_system:
             self._message_counter += 1
             self.message_count_label.configure(text=f"{self._message_counter} messages this session")
