@@ -1,6 +1,6 @@
 """
 PIN-based authentication system for the LoRa Chat application.
-Replaces traditional username/password authentication with 5-digit PIN pairing.
+Replaces legacy credential flows with simple 5-digit PIN pairing.
 """
 import random
 import string

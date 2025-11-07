@@ -51,12 +51,16 @@ class App(tk.Tk):
 
         # Update session data
         if device_id and device_name:
-            self.session.username = device_name
+            self.session.device_name = device_name
             self.session.device_id = device_id
+            self.session.paired_at = time.time()
 
         # Create main frame
         self.current_frame = MainFrame(self, self, self.session, self.transport, self._handle_logout)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
+
+        if hasattr(self.current_frame, "chat_page"):
+            self.current_frame.chat_page.sync_session_info()
 
         # Update status if available
         if self._last_status:
@@ -78,13 +82,16 @@ class App(tk.Tk):
         self.current_frame = PINPairingFrame(self, self._handle_pair_success, self._handle_demo_login)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
 
-    def _handle_pair_success(self, device_id: str, device_name: str):
-        """Handle successful PIN pairing with timeout protection."""
-        def finish_pairing(success: bool, error_msg: str = ""):
+    def start_transport_session(self, device_id: str, device_name: str, *, mode: str = "pin",
+                                failure_title: str = "Pairing Failed",
+                                failure_message: str = "Connection failed.") -> None:
+        """Kick off the background workflow to connect to a device."""
+
+        def finish_session(success: bool, error_msg: str = ""):
             if success:
                 self.show_main(device_id, device_name)
             else:
-                messagebox.showerror("Pairing Failed", error_msg or "Connection failed.")
+                messagebox.showerror(failure_title, error_msg or failure_message)
                 self._clear_session()
 
         def worker():
@@ -96,52 +103,38 @@ class App(tk.Tk):
                 timeout_timer.start()
 
                 try:
-                    password = f"device_{device_id}"
-                    ok = self.transport.start(password)
+                    pairing_context = {
+                        "mode": mode,
+                        "device_id": device_id,
+                        "device_name": device_name,
+                    }
+                    ok = self.transport.start(pairing_context)
                     timeout_timer.cancel()
-                    self.after(0, lambda: finish_pairing(ok))
+                    self.after(0, lambda: finish_session(ok))
                 except TimeoutError:
                     timeout_timer.cancel()
-                    self.after(0, lambda: finish_pairing(False, "Connection timeout. Please check device connection."))
-                except Exception as e:
+                    self.after(0, lambda: finish_session(False, "Connection timeout. Please check device connection."))
+                except Exception as exc:
                     timeout_timer.cancel()
-                    self.after(0, lambda: finish_pairing(False, f"Connection error: {str(e)}"))
-            except Exception as e:
-                self.after(0, lambda: finish_pairing(False, f"Unexpected error: {str(e)}"))
+                    self.after(0, lambda: finish_session(False, f"Connection error: {str(exc)}"))
+            except Exception as exc:
+                self.after(0, lambda: finish_session(False, f"Unexpected error: {str(exc)}"))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _handle_pair_success(self, device_id: str, device_name: str):
+        """Handle successful PIN pairing with timeout protection."""
+        self.start_transport_session(device_id, device_name)
 
     def _handle_demo_login(self):
         """Handle demo login (skip PIN pairing)."""
-        def finish_demo_login(success: bool, error_msg: str = ""):
-            if success:
-                self.show_main("demo-device", "Demo Device")
-            else:
-                messagebox.showerror("Demo Failed", error_msg or "Demo connection failed.")
-                self._clear_session()
-
-        def worker():
-            try:
-                def timeout_handler():
-                    raise TimeoutError("Demo connection timeout")
-
-                timeout_timer = threading.Timer(AppConfig.PAIR_DEVICES_TIMEOUT, timeout_handler)
-                timeout_timer.start()
-
-                try:
-                    ok = self.transport.start("demo")
-                    timeout_timer.cancel()
-                    self.after(0, lambda: finish_demo_login(ok))
-                except TimeoutError:
-                    timeout_timer.cancel()
-                    self.after(0, lambda: finish_demo_login(False, "Demo connection timeout."))
-                except Exception as e:
-                    timeout_timer.cancel()
-                    self.after(0, lambda: finish_demo_login(False, f"Demo connection error: {str(e)}"))
-            except Exception as e:
-                self.after(0, lambda: finish_demo_login(False, f"Demo connection error: {str(e)}"))
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.start_transport_session(
+            "demo-device",
+            "Demo Device",
+            mode="demo",
+            failure_title="Demo Failed",
+            failure_message="Demo connection failed."
+        )
 
     def _handle_logout(self):
         """Handle user logout with proper cleanup."""
@@ -154,9 +147,7 @@ class App(tk.Tk):
 
     def _clear_session(self):
         """Clear session data safely."""
-        self.session.username = ""
-        self.session.device_id = ""
-        self.session.login_time = 0.0
+        self.session.clear()
 
     def _on_receive(self, sender: str, msg: str, ts: float):
         """Handle incoming messages with thread-safe UI updates."""
@@ -169,7 +160,7 @@ class App(tk.Tk):
         if sender:
             self._current_peer = sender
 
-        if sender and sender != self.session.username:
+        if sender and sender != (self.session.device_name or ""):
             self.notify_incoming_message(sender, msg)
 
     def _on_status(self, text: str):
@@ -177,7 +168,7 @@ class App(tk.Tk):
         status_lower = text.lower()
 
         # Update peer tracking
-        if any(keyword in status_lower for keyword in ("disconnected", "connection failed", "invalid device password")):
+        if any(keyword in status_lower for keyword in ("disconnected", "connection failed", "invalid pairing code")):
             self._current_peer = ""
         elif any(keyword in status_lower for keyword in ("connected (mock)", "ready")):
             if not self._current_peer:
