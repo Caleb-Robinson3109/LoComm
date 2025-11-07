@@ -1,13 +1,13 @@
 """
-PIN Pairing Frame - Replaces traditional login with 5-digit PIN authentication.
-Users simply enter a 5-digit PIN to pair and connect devices.
+PIN Pairing Frame - Replaces traditional login with secure PIN authentication.
+Users enter an 8-digit PIN to pair and connect devices with rate limiting protection.
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Optional
 from utils.design_system import Colors, Typography, Spacing, DesignUtils, AppConfig
 from utils.ui_helpers import create_scroll_container
-from utils.pin_authentication import generate_pairing_pin, verify_pairing_pin, validate_pin_format, get_pin_auth
+from utils.pin_authentication import generate_pairing_pin, verify_pairing_pin, validate_pin_format, get_pin_auth, get_security_status
 
 
 class PINPairingFrame(tk.Frame):
@@ -18,6 +18,7 @@ class PINPairingFrame(tk.Frame):
         self.on_pair_success = on_pair_success
         self.on_demo_login = on_demo_login
         self.pin_auth = get_pin_auth()
+        self.device_context_var = tk.StringVar(value="Select a device to begin")
 
         self._create_ui()
 
@@ -32,15 +33,23 @@ class PINPairingFrame(tk.Frame):
         DesignUtils.hero_header(
             content,
             title="Device pairing",
-            subtitle="Enter the 5-digit PIN shared by your peer to begin a secure session."
+            subtitle="Enter the 8-digit secure PIN shared by your peer to begin a protected session."
         )
 
-        section, body = DesignUtils.section(content, "PIN authentication", "Codes expire after 10 minutes")
+        tk.Label(
+            content,
+            textvariable=self.device_context_var,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+
+        section, body = DesignUtils.section(content, "Secure PIN authentication", "Codes expire after 10 minutes, max 5 attempts")
 
         # PIN input field
         pin_label = tk.Label(
             body,
-            text="Enter 5-digit PIN",
+            text="Enter 8-digit PIN",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
@@ -56,7 +65,7 @@ class PINPairingFrame(tk.Frame):
             pin_input_frame,
             textvariable=self.pin_var,
             justify='center',
-            width=10
+            width=12  # Increased width for 8 digits
         )
         self.pin_entry.pack(side=tk.LEFT, padx=(0, Spacing.MD))
         self.pin_entry.bind('<KeyRelease>', self._on_pin_change)
@@ -64,6 +73,16 @@ class PINPairingFrame(tk.Frame):
 
         clear_btn = DesignUtils.button(pin_input_frame, text="Clear", command=self._clear_pin, variant="ghost")
         clear_btn.pack(side=tk.LEFT)
+
+        # Security status display
+        self.security_label = tk.Label(
+            body,
+            text="",
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            fg=Colors.STATE_INFO,
+            bg=Colors.SURFACE_ALT
+        )
+        self.security_label.pack(anchor="w", pady=(0, Spacing.XS))
 
         # Error message
         self.error_label = tk.Label(
@@ -88,71 +107,109 @@ class PINPairingFrame(tk.Frame):
             DesignUtils.button(button_frame, text="Demo access (skip pairing)", command=self._on_demo_login, variant="secondary").pack(fill=tk.X)
 
         # Info section
-        info_section, info_body = DesignUtils.section(content, "How to pair", "Quick steps")
-        steps = [
-            "Get the 5-digit PIN from a nearby device",
-            "Enter the PIN in the field above",
-            "Wait for confirmation before chatting",
-            "Use demo access if hardware is unavailable"
-        ]
-        for step in steps:
-            tk.Label(info_body, text=f"• {step}", bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
-
         # Set initial focus
         self.after(100, lambda: self.pin_entry.focus_set())
+
+        # Update security status display
+        self._update_security_status()
+
+    def set_pending_device(self, device_name: str, device_id: str | None = None):
+        """Expose context to the host pairing page."""
+        label = device_name
+        if device_id:
+            label = f"{device_name} ({device_id})"
+        self.device_context_var.set(f"Pairing with {label}")
+
+    def focus_input(self):
+        """Focus the PIN entry field."""
+        self.pin_entry.focus_set()
+
+    def _update_security_status(self):
+        """CRITICAL FIX: Update security status display."""
+        try:
+            status = get_security_status("desktop-client")
+            if status['is_locked']:
+                minutes_remaining = int(status['lockout_remaining_seconds'] // 60)
+                self.security_label.configure(
+                    text=f"🔒 Account locked for {minutes_remaining} more minutes",
+                    fg=Colors.STATE_ERROR
+                )
+            elif status['recent_failed_attempts'] > 0:
+                remaining = status['attempts_remaining']
+                self.security_label.configure(
+                    text=f"⚠️ {status['recent_failed_attempts']} failed attempts. {remaining} remaining.",
+                    fg=Colors.STATE_WARNING
+                )
+            else:
+                self.security_label.configure(
+                    text="🔐 Secure 8-digit PIN authentication",
+                    fg=Colors.STATE_INFO
+                )
+        except Exception:
+            self.security_label.configure(text="")
 
     def _on_pin_change(self, event):
         """Handle PIN input changes with validation."""
         pin = self.pin_var.get()
 
-        # Limit to 5 digits
-        if len(pin) > 5:
-            self.pin_var.set(pin[:5])
+        # CRITICAL FIX: Limit to 8 digits
+        if len(pin) > 8:
+            self.pin_var.set(pin[:8])
 
         # Validate format
-        if len(pin) == 5:
+        if len(pin) == 8:
             if not validate_pin_format(pin):
-                self._show_error("PIN must be 5 digits only")
+                self._show_error("PIN must be 8 digits only")
             else:
                 self._clear_error()
         else:
             self._clear_error()
 
     def _on_submit_pin(self, event=None):
-        """Handle PIN submission."""
+        """CRITICAL FIX: Handle PIN submission with security measures."""
         pin = self.pin_var.get().strip()
 
         if not pin:
             self._show_error("Please enter a PIN")
             return
 
-        if len(pin) != 5:
-            self._show_error("PIN must be exactly 5 digits")
+        # CRITICAL FIX: Validate 8-digit format
+        if len(pin) != 8:
+            self._show_error("PIN must be exactly 8 digits")
             return
 
         if not validate_pin_format(pin):
             self._show_error("PIN must contain only numbers")
             return
 
+        # Check security status before allowing attempt
+        security_status = get_security_status("desktop-client")
+        if security_status['is_locked']:
+            minutes_remaining = int(security_status['lockout_remaining_seconds'] // 60)
+            self._show_error(f"Account locked for {minutes_remaining} more minutes")
+            return
+
         # Verify PIN
         self._set_waiting(True)
         self._clear_error()
 
-        # Verify PIN in background
+        # Verify PIN in background with security tracking
         def verify_worker():
             try:
-                device_info = verify_pairing_pin(pin)
+                device_info, error_message, wait_time = verify_pairing_pin(pin, "desktop-client")
 
                 if device_info:
                     # Success - notify callback
                     self.after(0, lambda: self._on_pair_success(device_info))
                 else:
-                    # Failed - show error
-                    self.after(0, lambda: self._on_pair_failed("Invalid or expired PIN"))
+                    # Failed - show error and update security status
+                    self.after(0, lambda em=error_message, wt=wait_time: self._on_pair_failed(em, wt))
 
             except Exception as e:
                 self.after(0, lambda: self._on_pair_failed(f"Pairing error: {str(e)}"))
+            finally:
+                # Always update security status display
+                self.after(0, self._update_security_status)
 
         import threading
         threading.Thread(target=verify_worker, daemon=True).start()
@@ -166,10 +223,18 @@ class PINPairingFrame(tk.Frame):
         if self.on_pair_success:
             self.on_pair_success(device_id, device_name)
 
-    def _on_pair_failed(self, error_msg):
-        """Handle failed PIN pairing."""
+    def _on_pair_failed(self, error_msg, wait_time=0.0):
+        """CRITICAL FIX: Handle failed PIN pairing with security measures."""
         self._set_waiting(False)
         self._show_error(error_msg)
+        self._update_security_status()  # Update security display
+
+        if wait_time > 0:
+            # If there's a wait time, disable the button temporarily
+            wait_seconds = int(wait_time)
+            self.pair_btn.configure(state="disabled", text=f"Wait {wait_seconds}s...")
+            self.after(int(wait_time * 1000), lambda: self._set_waiting(False))
+
         self.pin_entry.focus_set()
         self.pin_entry.select_range(0, tk.END)
 

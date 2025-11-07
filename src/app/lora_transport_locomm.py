@@ -119,6 +119,10 @@ class LoCommTransport:
 
     def start(self, pairing_context: Optional[dict] = None) -> bool:
         """Connect to a device using the supplied pairing context."""
+        current_thread_id = threading.get_ident()
+        main_thread_id = threading.main_thread().ident
+        print(f"[LoRaTransport] start() called from thread {current_thread_id} (main={current_thread_id == main_thread_id})")
+
         try:
             if DEBUG:
                 print(f"[LoRaTransport] Starting connection via {self._backend_label}")
@@ -126,7 +130,9 @@ class LoCommTransport:
             success = self._backend.connect(pairing_context)
             if not success:
                 if self.on_status:
-                    self.on_status("Connection failed")
+                    # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                    status_msg = "Connection failed"
+                    self.root.after(0, lambda: self._safe_status_callback(status_msg))
                 return False
 
             self.running = True
@@ -139,15 +145,26 @@ class LoCommTransport:
                 status_text = "Connected (mock backend)"
 
             if self.on_status:
-                self.on_status(status_text)
+                # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                self.root.after(0, lambda: self._safe_status_callback(status_text))
             return True
 
         except Exception as exc:  # noqa: BLE001
             if DEBUG:
                 print(f"[LoRaTransport] Connection error: {exc!r}")
             if self.on_status:
-                self.on_status(f"Connection error: {exc}")
+                # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                self.root.after(0, lambda: self._safe_status_callback(f"Connection error: {exc}"))
             return False
+
+    def _safe_status_callback(self, status_text: str):
+        """Thread-safe status callback wrapper."""
+        try:
+            if self.on_status:
+                self.on_status(status_text)
+        except Exception as exc:
+            if DEBUG:
+                print(f"[LoRaTransport] Status callback error: {exc!r}")
 
     def _start_rx_thread(self) -> None:
         """Start background receive thread."""
@@ -157,6 +174,9 @@ class LoCommTransport:
 
     def stop(self) -> None:
         """Stop communication and disconnect device."""
+        stop_thread_id = threading.get_ident()
+        print(f"[LoRaTransport] stop() called from thread {stop_thread_id}")
+
         self.running = False
         self._stop_event.set()
 
@@ -167,7 +187,8 @@ class LoCommTransport:
                 print(f"[LoRaTransport] Disconnect error: {exc!r}")
 
         if self.on_status:
-            self.on_status("Disconnected")
+            # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+            self.root.after(0, lambda: self._safe_status_callback("Disconnected"))
 
     def send(self, name: str, text: str) -> None:
         """Send message to connected device."""
@@ -206,6 +227,9 @@ class LoCommTransport:
 
     def _rx_loop(self) -> None:
         """Background receive loop for incoming messages."""
+        rx_thread_id = threading.get_ident()
+        print(f"[LoRaTransport] _rx_loop started on thread {rx_thread_id}")
+
         while not self._stop_event.is_set():
             try:
                 sender, msg = self._backend.receive()
@@ -214,9 +238,12 @@ class LoCommTransport:
                     # Ensure callback is callable before calling
                     callback = self.on_receive
                     if callback:
+                        print(f"[LoRaTransport] Scheduling receive callback on main thread from thread {rx_thread_id}")
                         self.root.after(0, lambda s=sender, m=msg, ts=timestamp: callback(s, m, ts))
             except Exception as exc:  # noqa: BLE001
                 if DEBUG:
                     print(f"[LoRaTransport] Receive error: {exc!r}")
 
             time.sleep(0.2)
+
+        print(f"[LoRaTransport] _rx_loop ending on thread {rx_thread_id}")

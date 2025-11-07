@@ -14,8 +14,9 @@ class ViewManager:
         self.active_view: Optional[str] = None
         self.view_containers: Dict[str, tk.Frame] = {}
         self.view_components: Dict[str, Any] = {}
+        self.view_pack_options: Dict[str, dict] = {}
 
-    def register_view(self, view_name: str, container: tk.Frame, component: Any = None):
+    def register_view(self, view_name: str, container: tk.Frame, component: Any = None, *, pack_options: Optional[dict] = None):
         """
         Register a view with the view manager.
 
@@ -27,6 +28,21 @@ class ViewManager:
         self.view_containers[view_name] = container
         if component:
             self.view_components[view_name] = component
+        if pack_options:
+            self.view_pack_options[view_name] = pack_options
+
+    def attach_component(self, view_name: str, component: Any):
+        """
+        Attach or replace the component associated with a view without
+        recreating the container. Useful for lazy-loaded views.
+
+        Args:
+            view_name: Registered view identifier.
+            component: Component instance associated with the view.
+        """
+        if view_name not in self.view_containers:
+            raise ValueError(f"Cannot attach component for unregistered view '{view_name}'")
+        self.view_components[view_name] = component
 
     def show_view(self, view_name: str):
         """
@@ -44,7 +60,8 @@ class ViewManager:
 
         # Show the requested view
         container = self.view_containers[view_name]
-        container.pack(fill=tk.BOTH, expand=True)
+        pack_opts = self.view_pack_options.get(view_name, {"fill": tk.BOTH, "expand": True})
+        container.pack(**pack_opts)
 
         # Update active view
         self.active_view = view_name

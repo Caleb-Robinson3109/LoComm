@@ -217,6 +217,8 @@ class Spacing:
     """Legacy spacing aliases used across existing widgets."""
 
     TAB_PADDING = Space.LG
+    PAGE_MARGIN = Space.MD
+    PAGE_PADDING = Space.SM
     HEADER_PADDING = Space.XL
     BUTTON_PADDING = Space.SM
     SECTION_MARGIN = Space.LG

@@ -4,6 +4,7 @@ Provides centralized status categorization, device state management, and UI upda
 """
 from __future__ import annotations
 
+import threading
 import tkinter as tk
 from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass
@@ -65,6 +66,7 @@ class StatusManager:
         # Status categorization
         self._current_status: str = "Disconnected"
         self._status_callbacks: list[Callable[[str, str], None]] = []
+        self._callback_lock = threading.Lock()
 
         # Device state management
         self.current_device = DeviceInfo()
@@ -145,15 +147,34 @@ class StatusManager:
         elif category in ["disconnected", "error"]:
             self.current_device.is_connected = False
 
-        # Notify callbacks
-        for callback in self._status_callbacks:
+        # CRITICAL FIX: Thread-safe callback execution with proper synchronization
+        callbacks_to_execute = []
+
+        with self._callback_lock:
+            # Copy callbacks to avoid issues if they modify during iteration
+            callbacks_to_execute.extend(self._status_callbacks)
+
+        # Execute callbacks outside the lock to prevent deadlocks
+        for callback in callbacks_to_execute:
             try:
+                thread_id = threading.get_ident()
+                main_thread_id = threading.main_thread().ident
+                print(f"[STATUS_CALLBACK] Calling status callback from thread {thread_id} (main={thread_id == main_thread_id})")
                 callback(status_text, color)
             except Exception:
                 pass  # Silently ignore callback errors
 
-        for callback in self._device_callbacks:
+        # CRITICAL FIX: Thread-safe device callback execution
+        device_callbacks_to_execute = []
+
+        with self._callback_lock:
+            device_callbacks_to_execute.extend(self._device_callbacks)
+
+        for callback in device_callbacks_to_execute:
             try:
+                thread_id = threading.get_ident()
+                main_thread_id = threading.main_thread().ident
+                print(f"[STATUS_CALLBACK] Calling device callback from thread {thread_id} (main={thread_id == main_thread_id})")
                 callback(self.current_device)
             except Exception:
                 pass  # Silently ignore callback errors
@@ -195,6 +216,66 @@ class StatusManager:
             callback: Function receiving (is_connected, device_id, device_name)
         """
         self._connection_callbacks.append(callback)
+
+    def unregister_status_callback(self, callback: Callable[[str, str], None]) -> bool:
+        """
+        Unregister a callback for status updates.
+
+        Args:
+            callback: Function to remove from callbacks
+
+        Returns:
+            True if callback was found and removed
+        """
+        with self._callback_lock:
+            try:
+                self._status_callbacks.remove(callback)
+                return True
+            except ValueError:
+                return False
+
+    def unregister_device_callback(self, callback: Callable[[DeviceInfo], None]) -> bool:
+        """
+        Unregister a callback for device info changes.
+
+        Args:
+            callback: Function to remove from callbacks
+
+        Returns:
+            True if callback was found and removed
+        """
+        with self._callback_lock:
+            try:
+                self._device_callbacks.remove(callback)
+                return True
+            except ValueError:
+                return False
+
+    def unregister_connection_callback(self, callback: Callable[[bool, str, str], None]) -> bool:
+        """
+        Unregister a callback for connection state changes.
+
+        Args:
+            callback: Function to remove from callbacks
+
+        Returns:
+            True if callback was found and removed
+        """
+        with self._callback_lock:
+            try:
+                self._connection_callbacks.remove(callback)
+                return True
+            except ValueError:
+                return False
+
+    def clear_all_callbacks(self):
+        """
+        Clear all registered callbacks. Use with caution - this is for cleanup only.
+        """
+        with self._callback_lock:
+            self._status_callbacks.clear()
+            self._device_callbacks.clear()
+            self._connection_callbacks.clear()
 
     # Device state management methods
     def connect_device(self, device_id: str, device_name: str) -> bool:

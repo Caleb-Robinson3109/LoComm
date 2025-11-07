@@ -19,9 +19,7 @@ class App(tk.Tk):
         super().__init__()
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
-        self.geometry(f"{AppConfig.WINDOW_WIDTH}x{AppConfig.WINDOW_HEIGHT}")
-        self.minsize(AppConfig.MIN_WINDOW_WIDTH, AppConfig.MIN_WINDOW_HEIGHT)
-        self.resizable(True, True)
+        self._init_fullscreen_window()
 
         # Business logic is delegated to separate controller
         self.app_controller = AppController(self)
@@ -49,6 +47,9 @@ class App(tk.Tk):
 
         # Update session data if we just paired
         if device_id and device_name:
+            # CRITICAL FIX: Preserve local device name while updating peer info
+            if not hasattr(session, 'local_device_name') or not session.local_device_name:
+                session.local_device_name = "This Device"
             session.device_name = device_name
             session.device_id = device_id
             session.paired_at = time.time()
@@ -126,7 +127,8 @@ class App(tk.Tk):
 
         # Notify user if message is from external peer
         session = self.app_controller.session
-        if sender and sender != (session.device_name or ""):
+        local_device_name = getattr(session, "local_device_name", "This Device")
+        if sender and sender not in (local_device_name, "This Device"):
             self.notify_incoming_message(sender, msg)
 
     def _handle_business_status(self, text: str):
@@ -156,6 +158,20 @@ class App(tk.Tk):
         # Get current session info from business logic layer
         session = self.app_controller.session
         self.show_main(session.device_id or None, session.device_name or None)
+
+    # ------------------------------------------------------------------ #
+    def _init_fullscreen_window(self):
+        """Force the app to occupy the full screen and prevent shrinking."""
+        self.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        target_w = int(screen_w * 0.95)
+        target_h = int(screen_h * 0.95)
+        offset_x = max((screen_w - target_w) // 2, 0)
+        offset_y = max((screen_h - target_h) // 2, 0)
+        self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
+        self.minsize(target_w, target_h)
+        self.resizable(True, True)
 
 
 if __name__ == "__main__":

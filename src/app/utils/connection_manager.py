@@ -4,19 +4,19 @@ Provides consistent connection state management across all UI components.
 """
 from typing import Optional, Callable, Dict, Any
 import threading
-from utils.status_manager import update_global_status
+from utils.status_manager import get_status_manager
 
 
 class ConnectionManager:
     """
     Centralized connection state management that ensures consistency
-    across all UI components (pair tab, chat tab, sidebar, etc.)
+    across all UI components. Now unified with StatusManager for
+    consistent device identity tracking.
     """
 
     def __init__(self):
-        self._current_device_id: Optional[str] = None
-        self._current_device_name: Optional[str] = None
-        self._is_connected: bool = False
+        # Delegate to StatusManager for unified device state
+        self._status_manager = get_status_manager()
         self._connection_callbacks: list[Callable[[bool, Optional[str], Optional[str]], None]] = []
         self._device_info_callbacks: list[Callable[[Optional[Dict[str, Any]]], None]] = []
         self._lock = threading.Lock()  # Thread safety
@@ -26,6 +26,7 @@ class ConnectionManager:
     def connect_device(self, device_id: str, device_name: str) -> bool:
         """
         Connect to a device and update all registered components.
+        CRITICAL FIX: Now properly calls StatusManager to populate DeviceInfo.
 
         Args:
             device_id: Device identifier
@@ -35,44 +36,39 @@ class ConnectionManager:
             True if connection was successful
         """
         with self._lock:
-            self._current_device_id = device_id
-            self._current_device_name = device_name
-            self._is_connected = True
+            # CRITICAL FIX: Use unified status manager to populate DeviceInfo
+            success = self._status_manager.connect_device(device_id, device_name)
 
-            # Update global status manager
-            update_global_status("Connected", device_name)
+            if success:
+                # Notify all registered components about connection change
+                self._notify_connection_change()
+                self._notify_device_info_change()
 
-            # Notify all registered components
-            self._notify_connection_change()
-            self._notify_device_info_change()
-
-        return True
+        return success
 
     def disconnect_device(self) -> bool:
         """
         Disconnect from current device and update all registered components.
+        CRITICAL FIX: Now properly calls StatusManager to clear DeviceInfo.
 
         Returns:
             True if disconnection was successful
         """
         with self._lock:
-            self._current_device_id = None
-            self._current_device_name = None
-            self._is_connected = False
+            # CRITICAL FIX: Use unified status manager to clear DeviceInfo
+            success = self._status_manager.disconnect_device()
 
-            # Update global status manager
-            update_global_status("Disconnected")
+            if success:
+                # Notify all registered components about disconnection
+                self._notify_connection_change()
+                self._notify_device_info_change()
 
-            # Notify all registered components
-            self._notify_connection_change()
-            self._notify_device_info_change()
-
-        return True
+        return success
 
     def is_connected(self) -> bool:
         """Get current connection status."""
         with self._lock:
-            return self._is_connected
+            return self._status_manager.is_connected()
 
     def get_connected_device(self) -> Optional[Dict[str, Any]]:
         """Get information about currently connected device (alias for get_connected_device_info)."""
@@ -81,18 +77,20 @@ class ConnectionManager:
     def get_connected_device_info(self) -> Optional[Dict[str, Any]]:
         """Get information about currently connected device."""
         with self._lock:
-            if self._is_connected and self._current_device_id:
+            device_info = self._status_manager.get_current_device()
+            if device_info.is_connected:
                 return {
-                    'id': self._current_device_id,
-                    'name': self._current_device_name,
-                    'is_connected': self._is_connected
+                    'id': device_info.device_id,
+                    'name': device_info.device_name,
+                    'is_connected': device_info.is_connected
                 }
             return None
 
     def get_connection_status_text(self) -> str:
         """Get appropriate status text for UI display."""
-        if self._is_connected:
-            return f"Connected to {self._current_device_name}" if self._current_device_name else "Connected"
+        device_info = self._status_manager.get_current_device()
+        if device_info.is_connected:
+            return f"Connected to {device_info.device_name}" if device_info.device_name else "Connected"
         else:
             return "Disconnected"
 
@@ -120,18 +118,26 @@ class ConnectionManager:
 
     def _notify_connection_change(self):
         """Notify all registered callbacks about connection state change."""
+        device_info = self._status_manager.get_current_device()
         for callback in self._connection_callbacks:
             try:
-                callback(self._is_connected, self._current_device_id, self._current_device_name)
+                callback(device_info.is_connected, device_info.device_id, device_info.device_name)
             except Exception:
                 pass  # Silently ignore callback errors
 
     def _notify_device_info_change(self):
         """Notify all registered callbacks about device info change."""
-        device_info = self.get_connected_device_info()
+        device_info = self._status_manager.get_current_device()
         for callback in self._device_info_callbacks:
             try:
-                callback(device_info)
+                if device_info.is_connected:
+                    callback({
+                        'id': device_info.device_id,
+                        'name': device_info.device_name,
+                        'is_connected': device_info.is_connected
+                    })
+                else:
+                    callback(None)
             except Exception:
                 pass  # Silently ignore callback errors
 
@@ -145,7 +151,8 @@ class ConnectionManager:
             connect_btn: Connect button widget
             disconnect_btn: Disconnect button widget
         """
-        if self._is_connected:
+        device_info = self._status_manager.get_current_device()
+        if device_info.is_connected:
             connect_btn.configure(state="disabled", text="Connected")
             disconnect_btn.configure(state="normal", text="Disconnect")
         else:
@@ -162,15 +169,16 @@ class ConnectionManager:
         Returns:
             True if connect button should be disabled
         """
-        if not self._is_connected:
+        device_info = self._status_manager.get_current_device()
+        if not device_info.is_connected:
             return False
 
         # If connected to a different device, disable connect button
-        if selected_device_id and selected_device_id != self._current_device_id:
+        if selected_device_id and selected_device_id != device_info.device_id:
             return True
 
         # If connected to the selected device, disable connect button
-        if selected_device_id == self._current_device_id:
+        if selected_device_id == device_info.device_id:
             return True
 
         return False
@@ -183,18 +191,15 @@ class ConnectionManager:
             True if disconnection was successful
         """
         with self._lock:
-            self._current_device_id = None
-            self._current_device_name = None
-            self._is_connected = False
+            # CRITICAL FIX: Use unified status manager for proper cleanup
+            success = self._status_manager.disconnect_device()
 
-            # Update global status manager
-            update_global_status("Disconnected")
+            if success:
+                # Notify all registered components
+                self._notify_connection_change()
+                self._notify_device_info_change()
 
-            # Notify all registered components
-            self._notify_connection_change()
-            self._notify_device_info_change()
-
-        return True
+        return success
 
 
 # Global connection manager instance

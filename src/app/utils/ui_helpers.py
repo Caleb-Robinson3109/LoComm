@@ -45,17 +45,54 @@ def create_scroll_container(parent: tk.Misc, *,
     return ScrollContainer(wrapper=wrapper, canvas=canvas, frame=scrollable_frame, scrollbar=scrollbar)
 
 
+class GlobalMousewheelManager:
+    """CRITICAL FIX: Global mousewheel manager to prevent scrolling conflicts."""
+
+    _instance = None
+    _active_canvas = None
+    _canvas_handlers = {}
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = GlobalMousewheelManager()
+        return cls._instance
+
+    def register_canvas(self, canvas: tk.Canvas) -> None:
+        """Register a canvas for mousewheel scrolling."""
+        def _on_mousewheel(event):
+            if self._active_canvas == canvas:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        def _on_enter(event):
+            self._active_canvas = canvas
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _on_leave(event):
+            if self._active_canvas == canvas:
+                self._active_canvas = None
+                canvas.unbind_all("<MouseWheel>")
+
+        # Store handlers to prevent garbage collection
+        self._canvas_handlers[canvas] = {
+            'mousewheel': _on_mousewheel,
+            'enter': _on_enter,
+            'leave': _on_leave
+        }
+
+        canvas.bind("<Enter>", _on_enter)
+        canvas.bind("<Leave>", _on_leave)
+
+    def unregister_canvas(self, canvas: tk.Canvas) -> None:
+        """Unregister a canvas from mousewheel scrolling."""
+        if canvas in self._canvas_handlers:
+            del self._canvas_handlers[canvas]
+            if self._active_canvas == canvas:
+                self._active_canvas = None
+                canvas.unbind_all("<MouseWheel>")
+
+
 def _bind_mousewheel(canvas: tk.Canvas) -> None:
     """Attach consistent mousewheel handlers to a canvas."""
-
-    def _on_mousewheel(event):
-        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-    def _bind_to_mousewheel(event):
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-    def _unbind_from_mousewheel(event):
-        canvas.unbind_all("<MouseWheel>")
-
-    canvas.bind("<Enter>", _bind_to_mousewheel)
-    canvas.bind("<Leave>", _unbind_from_mousewheel)
+    manager = GlobalMousewheelManager.get_instance()
+    manager.register_canvas(canvas)

@@ -46,7 +46,7 @@ class AboutPage(tk.Frame):
         specs = {
             "Transport": "LoCommTransport abstraction + mock backend",
             "UI": "Tkinter + Locomm Design System v3",
-            "Authentication": "5-digit PIN pairing",
+            "Authentication": "8-digit PIN pairing",
             "Session storage": "Local session.json cache",
         }
         for key, value in specs.items():
@@ -56,4 +56,3 @@ class AboutPage(tk.Frame):
                      font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
             tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
                      font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
-

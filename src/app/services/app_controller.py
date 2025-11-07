@@ -42,6 +42,7 @@ class SessionStore:
         data = {
             "device_id": session.device_id,
             "device_name": session.device_name,
+            "local_device_name": getattr(session, "local_device_name", "This Device"),
             "paired_at": session.paired_at,
         }
         try:
@@ -65,6 +66,8 @@ class AppController:
         self.root = ui_root
         self.logger = get_logger()
         self.session = Session()
+        # CRITICAL FIX: Initialize local device name for proper message attribution
+        self.session.local_device_name = "This Device"
         self.transport = LoCommTransport(ui_root)
         self.connection_manager = get_connection_manager()
         self.status_manager = get_status_manager()
@@ -89,6 +92,7 @@ class AppController:
             return
         self.session.device_id = cached.get("device_id", "")
         self.session.device_name = cached.get("device_name", "")
+        self.session.local_device_name = cached.get("local_device_name", "This Device")
         self.session.paired_at = cached.get("paired_at", 0.0)
 
     def _persist_session(self) -> None:
@@ -118,21 +122,35 @@ class AppController:
             mode: Connection mode ("pin" or "demo").
             callback: Optional completion handler receiving (success, error_message).
         """
+        # CRITICAL FIX: Use worker lock to prevent overlapping transport threads
+        if not self._worker_lock.acquire(timeout=0.1):
+            if callback:
+                self.root.after(0, lambda: callback(False, "Connection already in progress"))
+            return
 
         def finish(success: bool, error: Optional[str] = None) -> None:
-            if success:
-                self.session.device_id = device_id
-                self.session.device_name = device_name
-                self.session.paired_at = time.time()
-                self.connection_manager.connect_device(device_id, device_name)
-                self._persist_session()
-            else:
-                self.connection_manager.disconnect_device()
-                self.session.clear()
-                self._persist_session()
+            try:
+                if success:
+                    self.session.device_id = device_id
+                    self.session.device_name = device_name
+                    self.session.paired_at = time.time()
+                    # CRITICAL FIX: Queue connection updates on main thread to prevent Tk violations
+                    self.root.after(0, lambda: self._safe_connect_device(device_id, device_name))
+                    self._persist_session()
+                else:
+                    # CRITICAL FIX: Stop transport first to prevent resource leaks
+                    self.transport.stop()
+                    # CRITICAL FIX: Queue disconnection updates on main thread
+                    self.root.after(0, self._safe_disconnect_device)
+                    self.session.clear()
+                    self._persist_session()
 
-            if callback:
-                self.root.after(0, lambda: callback(success, error))
+                if callback:
+                    # CRITICAL FIX: Schedule callback on main thread
+                    self.root.after(0, lambda cb=callback: cb(success, error))
+            finally:
+                # Always release the worker lock
+                self._worker_lock.release()
 
         def worker():
             timeout_event = threading.Event()
@@ -154,6 +172,8 @@ class AppController:
 
                 if timeout_event.is_set():
                     self.logger.warning("Connection timeout for %s", device_id)
+                    # CRITICAL FIX: Stop transport to prevent resource leaks on timeout
+                    self.transport.stop()
                     finish(False, "Connection timeout. Please check device connection.")
                 elif success:
                     finish(True, None)
@@ -161,11 +181,30 @@ class AppController:
                     finish(False, "Connection failed.")
             except Exception as exc:  # noqa: BLE001
                 self.logger.exception("Transport connection error: %s", exc)
+                # CRITICAL FIX: Stop transport on exceptions too
+                try:
+                    self.transport.stop()
+                except Exception:
+                    pass
                 finish(False, f"Connection error: {exc}")
             finally:
                 timer.cancel()
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _safe_connect_device(self, device_id: str, device_name: str):
+        """Thread-safe device connection."""
+        try:
+            self.connection_manager.connect_device(device_id, device_name)
+        except Exception as exc:
+            self.logger.exception("Safe connect device error: %s", exc)
+
+    def _safe_disconnect_device(self):
+        """Thread-safe device disconnection."""
+        try:
+            self.connection_manager.disconnect_device()
+        except Exception as exc:
+            self.logger.exception("Safe disconnect device error: %s", exc)
 
     def stop_session(self) -> None:
         """Disconnect transport and reset session state."""
@@ -177,7 +216,8 @@ class AppController:
             self._persist_session()
 
     def send_message(self, message: str) -> None:
-        sender = self.session.device_name or "This Device"
+        # CRITICAL FIX: Use local device name instead of peer name for proper attribution
+        sender = getattr(self.session, 'local_device_name', None) or "This Device"
         self.transport.send(sender, message)
 
     # ------------------------------------------------------------------ #

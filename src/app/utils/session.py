@@ -5,11 +5,13 @@ from dataclasses import dataclass
 class Session:
     """Lightweight container for the currently paired device."""
 
-    device_name: str = ""
-    device_id: str = ""
+    device_name: str = ""      # Peer device name
+    device_id: str = ""        # Peer device ID
+    local_device_name: str = ""  # Local device name for proper message attribution
     paired_at: float = 0.0
 
     def clear(self):
         self.device_name = ""
         self.device_id = ""
+        self.local_device_name = ""
         self.paired_at = 0.0
