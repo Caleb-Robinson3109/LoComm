@@ -41,7 +41,7 @@ class ChatPage(tk.Frame):
 
         left = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        contact = self.session.device_name or "Conversation"
+        contact = self.session.device_name or "Chat"
         self.name_label = tk.Label(left, text=contact, bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
                                    font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
         self.name_label.pack(anchor="w")
@@ -49,10 +49,10 @@ class ChatPage(tk.Frame):
         self.status_badge.pack(anchor="w", pady=(Space.XXS, 0))
 
         actions = tk.Frame(header, bg=Colors.SURFACE_HEADER)
-        actions.pack(side=tk.RIGHT)
-        DesignUtils.button(actions, text="Devices", variant="ghost", command=self._open_devices).pack(side=tk.LEFT, padx=(0, Space.SM))
-        DesignUtils.button(actions, text="Settings", variant="ghost", command=self._open_settings).pack(side=tk.LEFT, padx=(0, Space.SM))
-        DesignUtils.button(actions, text="Disconnect", variant="secondary", command=self._handle_disconnect).pack(side=tk.LEFT)
+        actions.pack(side=tk.RIGHT, anchor="e")
+        DesignUtils.button(actions, text="Clear chat", variant="ghost", command=self.clear_history).pack(side=tk.LEFT, padx=(0, Space.SM))
+        self.connection_btn = DesignUtils.button(actions, text="Connect", variant="secondary", command=self._handle_connection_button)
+        self.connection_btn.pack(side=tk.LEFT)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -76,21 +76,20 @@ class ChatPage(tk.Frame):
     def _build_composer(self):
         composer = tk.Frame(self.shell, bg=Colors.SURFACE_RAISED, padx=Space.LG, pady=Space.SM)
         composer.grid(row=2, column=0, sticky="ew")
-        composer.grid_columnconfigure(1, weight=1)
-
-        DesignUtils.button(composer, text="+", variant="ghost", command=self._handle_attach).grid(row=0, column=0, padx=(0, Space.SM))
+        composer.grid_columnconfigure(0, weight=1)
 
         self.msg_var = tk.StringVar()
         self.entry = DesignUtils.create_chat_entry(composer, textvariable=self.msg_var)
-        self.entry.grid(row=0, column=1, sticky="ew")
+        self.entry.grid(row=0, column=0, sticky="ew")
         self.entry.bind("<Return>", self._send_message)
 
-        DesignUtils.button(composer, text="Send", command=self._send_message).grid(row=0, column=2, padx=(Space.SM, 0))
+        DesignUtils.button(composer, text="Send", command=self._send_message).grid(row=0, column=1, padx=(Space.SM, 0))
 
     # ---------------------------------------------------------------- helpers
     def _setup_chat_history(self):
         for widget in self.history_frame.winfo_children():
             widget.destroy()
+        self._message_counter = 0
         self._add_message("System", "Welcome to Locomm Desktop! This is a secure chat interface.", is_system=True)
 
     def _scroll_to_bottom(self):
@@ -99,27 +98,25 @@ class ChatPage(tk.Frame):
 
     def _add_message(self, sender: str, message: str, is_system: bool = False):
         bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
-        bubble_row.pack(fill=tk.X, pady=(Space.XXS, 0))
+        bubble_row.pack(fill=tk.X, pady=(Space.XXS, 0), padx=Space.MD)
 
         is_self = sender in (self.session.device_name, "This Device") and not is_system
         bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG if is_self else Colors.MESSAGE_BUBBLE_OTHER_BG
         fg = Colors.SURFACE if is_self else Colors.TEXT_PRIMARY
 
-        meta = tk.Frame(bubble_row, bg=Colors.SURFACE_ALT)
-        meta.pack(fill=tk.X)
-        tk.Label(meta, text=sender, bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="e" if is_self else "w")
-
         bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
-        bubble.pack(anchor="e" if is_self else "w", padx=(Space.LG, Space.XS) if is_self else (Space.XS, Space.LG))
+        bubble.pack(anchor="e" if is_self else "w")
+        tk.Label(bubble, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
+                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
         tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
                  wraplength=520, justify="left",
-                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w")
-
-        tk.Label(bubble_row, text=time.strftime("%H:%M"), bg=Colors.SURFACE_ALT, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e" if is_self else "w")
+                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
+        tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=Colors.TEXT_MUTED,
+                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_REGULAR)).pack(anchor="e")
 
         self._scroll_to_bottom()
+        if not is_system:
+            self._message_counter += 1
 
     def _on_mousewheel(self, event):
         self._history_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -132,13 +129,12 @@ class ChatPage(tk.Frame):
     def _handle_attach(self):
         pass  # Placeholder for future file picker
 
-    def _open_devices(self):
-        if hasattr(self.master, "show_pair_page"):
-            self.master.show_pair_page()
-
-    def _open_settings(self):
-        if hasattr(self.master, "show_settings_page"):
-            self.master.show_settings_page()
+    def _handle_connection_button(self):
+        if self._connected:
+            self._handle_disconnect()
+        else:
+            if hasattr(self.master, "show_pair_page"):
+                self.master.show_pair_page()
 
     def _send_message(self, event=None):
         if not self._connected:
@@ -178,6 +174,8 @@ class ChatPage(tk.Frame):
             fg = Colors.SURFACE
             self._connected = False
         self.status_badge.configure(text=text, bg=bg, fg=fg)
+        if hasattr(self, "connection_btn"):
+            self.connection_btn.configure(text="Disconnect" if self._connected else "Connect")
 
     def clear_history(self):
         self._setup_chat_history()
