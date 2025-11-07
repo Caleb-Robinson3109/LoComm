@@ -5,7 +5,7 @@ Provides consistent status categorization and UI updates.
 from typing import Optional, Callable
 import tkinter as tk
 from utils.design_system import Colors
-from utils.config import (
+from utils.design_system import (
     STATUS_DISCONNECTED_KEYWORDS,
     STATUS_CONNECTED_KEYWORDS,
     STATUS_ERROR_KEYWORDS

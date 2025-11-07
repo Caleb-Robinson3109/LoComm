@@ -39,7 +39,6 @@ class Colors:
     STATUS_CONNECTED = "#23a559"     # Connected status (green)
     STATUS_DISCONNECTED = "#f23f43" # Disconnected status (red)
     STATUS_CONNECTING = "#fea500"   # Connecting status (orange)
-    STATUS_AUTHENTICATED = "#23a559" # Authenticated status
     STATUS_PAIRING = "#0078d4"      # Pairing status (blue)
 
     # === DELIVERY STATUS INDICATORS ===
@@ -155,10 +154,10 @@ class Spacing:
     HEADER_HEIGHT = 56                # Header area height
 
     # === LEGACY COMPATIBILITY ===
-    HEADER_PADDING = 12
-    TAB_PADDING = 8
-    BUTTON_PADDING = 6
-    SECTION_MARGIN = 16
+    HEADER_PADDING = 20
+    TAB_PADDING = 16
+    BUTTON_PADDING = 8
+    SECTION_MARGIN = 20
 
 # ==================== MODERN COMPONENT STYLES ==================== #
 class ComponentStyles:
@@ -334,7 +333,7 @@ class DesignUtils:
         """Get appropriate color for status text based on modern design"""
         status_lower = status_text.lower()
 
-        if any(word in status_lower for word in ['connected', 'ready', 'authenticated', 'online']):
+        if any(word in status_lower for word in ['connected', 'ready', 'online']):
             return Colors.STATUS_CONNECTED
         elif any(word in status_lower for word in ['connecting', 'pairing', 'verifying']):
             return Colors.STATUS_CONNECTING
@@ -464,3 +463,114 @@ class DesignUtils:
 
 # Initialize modern styles on import
 ComponentStyles.create_styles()
+
+
+# ==================== APPLICATION CONFIGURATION ==================== #
+class AppConfig:
+    """Application-wide configuration constants"""
+
+    # === DEBUG CONFIGURATION ===
+    DEBUG = False  # Set to True to see debug prints
+
+    # === STATUS KEYWORDS ===
+    # Keywords that indicate connected/ready state
+    STATUS_CONNECTED_KEYWORDS = {"ready", "connected (mock)", "message from"}
+
+    # Keywords that indicate disconnected/failed state
+    STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid device password"}
+
+    # Keywords that indicate error state
+    STATUS_ERROR_KEYWORDS = {"failed", "error", "invalid"}
+
+    # === STATUS MESSAGES ===
+    STATUS_DISCONNECTED = "Disconnected"
+    STATUS_CONNECTED = "Connected"
+    STATUS_CONNECTED_MOCK = "Connected (mock)"
+    STATUS_CONNECTION_FAILED = "Connection failed"
+    STATUS_INVALID_PASSWORD = "Invalid device password"
+    STATUS_CONNECTION_DEVICE_FAILED = "Connection failed (device not found)"
+    STATUS_AWAITING_PEER = "Awaiting peer"
+    STATUS_NOT_CONNECTED = "Not connected"
+
+    # === WINDOW CONFIGURATION ===
+    WINDOW_WIDTH = 800
+    WINDOW_HEIGHT = 700
+
+    # === APPLICATION CONSTANTS ===
+    APP_TITLE = "LoRa Chat Desktop"
+
+    # === TIMING CONFIGURATION ===
+    STATUS_UPDATE_DELAY = 2000  # milliseconds
+    RX_THREAD_SLEEP_INTERVAL = 0.2  # seconds
+    MOCK_API_SLEEP_INTERVAL = 0.2  # seconds
+    PIN_FOCUS_DELAY = 100  # milliseconds
+    STATUS_UPDATE_DELAY_SHORT = 500  # milliseconds
+
+    # === DEVICE CONFIGURATION ===
+    PAIR_DEVICES_TIMEOUT = 30  # seconds
+    PASSWORD_MAX_LENGTH = 32  # characters
+    PASSWORD_MIN_LENGTH = 1   # characters
+
+    # === VALIDATION CONFIGURATION ===
+    MAX_CRED_LEN = 32
+    ASCII_RANGE = set(range(0x20, 0x7F))
+
+    # === ENTRY FIELD CONFIGURATION ===
+    ENTRY_WIDTH = 30
+    PASSWORD_CHAR = "*"
+
+    # === PROGRESS BAR CONFIGURATION ===
+    PROGRESSBAR_LENGTH = 220
+    PROGRESSBAR_MODE = "indeterminate"
+
+    # === CHAT HISTORY CONFIGURATION ===
+    CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{username}.txt"
+
+    # === NOTIFICATION CONFIGURATION ===
+    NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
+
+    # === LEGACY COMPATIBILITY ===
+    # Legacy constants for backward compatibility
+    COLOR_PRIMARY = "#4a90e2"
+    COLOR_SUCCESS = "#5cb85c"
+    COLOR_WARNING = "#f0ad4e"
+    COLOR_DANGER = "#d9534f"
+    COLOR_INFO = "#66CCFF"
+
+    # Status indicator colors
+    STATUS_DISCONNECTED_COLOR = COLOR_DANGER
+    STATUS_CONNECTED_COLOR = COLOR_SUCCESS
+    STATUS_WARNING_COLOR = COLOR_WARNING
+
+
+# Legacy constants for backward compatibility
+DEBUG = AppConfig.DEBUG
+STATUS_CONNECTED_KEYWORDS = AppConfig.STATUS_CONNECTED_KEYWORDS
+STATUS_DISCONNECTED_KEYWORDS = AppConfig.STATUS_DISCONNECTED_KEYWORDS
+STATUS_ERROR_KEYWORDS = AppConfig.STATUS_ERROR_KEYWORDS
+MAX_CRED_LEN = AppConfig.MAX_CRED_LEN
+ASCII_RANGE = AppConfig.ASCII_RANGE
+APP_TITLE = AppConfig.APP_TITLE
+WINDOW_WIDTH = AppConfig.WINDOW_WIDTH
+WINDOW_HEIGHT = AppConfig.WINDOW_HEIGHT
+ENTRY_WIDTH = AppConfig.ENTRY_WIDTH
+PASSWORD_CHAR = AppConfig.PASSWORD_CHAR
+PROGRESSBAR_LENGTH = AppConfig.PROGRESSBAR_LENGTH
+PROGRESSBAR_MODE = AppConfig.PROGRESSBAR_MODE
+STATUS_DISCONNECTED = AppConfig.STATUS_DISCONNECTED
+STATUS_CONNECTED = AppConfig.STATUS_CONNECTED
+STATUS_CONNECTED_MOCK = AppConfig.STATUS_CONNECTED_MOCK
+STATUS_CONNECTION_FAILED = AppConfig.STATUS_CONNECTION_FAILED
+STATUS_INVALID_PASSWORD = AppConfig.STATUS_INVALID_PASSWORD
+STATUS_CONNECTION_DEVICE_FAILED = AppConfig.STATUS_CONNECTION_DEVICE_FAILED
+STATUS_AWAITING_PEER = AppConfig.STATUS_AWAITING_PEER
+STATUS_NOT_CONNECTED = AppConfig.STATUS_NOT_CONNECTED
+PAIR_DEVICES_TIMEOUT = AppConfig.PAIR_DEVICES_TIMEOUT
+PASSWORD_MAX_LENGTH = AppConfig.PASSWORD_MAX_LENGTH
+PASSWORD_MIN_LENGTH = AppConfig.PASSWORD_MIN_LENGTH
+CHAT_EXPORT_FILENAME_PATTERN = AppConfig.CHAT_EXPORT_FILENAME_PATTERN
+NOTIFICATION_MESSAGE_PATTERN = AppConfig.NOTIFICATION_MESSAGE_PATTERN
+
+# File configuration
+import os
+USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")

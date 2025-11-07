@@ -22,7 +22,7 @@ class ChatHistoryManager:
         Export chat history to a file.
 
         Args:
-            chat_tab: ChatTab instance with get_history_lines() method
+            chat_tab: ChatPage instance with get_history_lines() method
             session: Session instance containing username
             parent_widget: Parent widget for dialog boxes
 
@@ -69,7 +69,7 @@ class ChatHistoryManager:
         Clear chat history.
 
         Args:
-            chat_tab: ChatTab instance with clear_history() method
+            chat_tab: ChatPage instance with clear_history() method
             parent_widget: Parent widget for dialog boxes
 
         Returns:
@@ -99,7 +99,7 @@ class ChatHistoryManager:
         Get statistics about the chat history.
 
         Args:
-            chat_tab: ChatTab instance
+            chat_tab: ChatPage instance
 
         Returns:
             Dictionary with statistics
