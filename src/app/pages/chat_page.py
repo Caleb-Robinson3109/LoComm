@@ -99,13 +99,24 @@ class ChatPage(tk.Frame):
     def _add_message(self, sender: str, message: str, is_system: bool = False):
         bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
         bubble_row.pack(fill=tk.X, pady=(Space.XXS, 0), padx=Space.MD)
+        bubble_row.grid_columnconfigure(0, weight=1)
+        bubble_row.grid_columnconfigure(1, weight=1)
 
         is_self = sender in (self.session.device_name, "This Device") and not is_system
-        bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG if is_self else Colors.MESSAGE_BUBBLE_OTHER_BG
-        fg = Colors.SURFACE if is_self else Colors.TEXT_PRIMARY
+        if is_system:
+            bubble_bg = Colors.MESSAGE_BUBBLE_SYSTEM_BG
+            fg = Colors.TEXT_PRIMARY
+        elif is_self or (not is_self and not is_system):
+            bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG
+            fg = Colors.SURFACE
+        else:
+            bubble_bg = Colors.MESSAGE_BUBBLE_OTHER_BG
+            fg = Colors.TEXT_PRIMARY
 
+        col = 1 if is_self else 0
+        sticky = "e" if is_self else "w"
         bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
-        bubble.pack(anchor="e" if is_self else "w")
+        bubble.grid(row=0, column=col, sticky=sticky)
         tk.Label(bubble, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
         tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
