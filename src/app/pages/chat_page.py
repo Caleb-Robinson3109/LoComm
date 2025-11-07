@@ -18,8 +18,14 @@ class ChatPage(tk.Frame):
         self.on_disconnect = on_disconnect
         self._connected = False
 
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        wrapper = tk.Frame(self, bg=Colors.SURFACE, padx=Space.XL, pady=Space.XL)
+        wrapper.pack(fill=tk.BOTH, expand=True)
+
+        self.shell = tk.Frame(wrapper, bg=Colors.SURFACE_ALT, highlightbackground=Colors.BORDER,
+                              highlightthickness=1, bd=0)
+        self.shell.pack(fill=tk.BOTH, expand=True)
+        self.shell.grid_rowconfigure(1, weight=1)
+        self.shell.grid_columnconfigure(0, weight=1)
 
         self._build_header()
         self._build_history()
@@ -30,7 +36,7 @@ class ChatPage(tk.Frame):
 
     # ------------------------------------------------------------------ header
     def _build_header(self):
-        header = tk.Frame(self, bg=Colors.SURFACE_HEADER, padx=Space.LG, pady=Space.MD)
+        header = tk.Frame(self.shell, bg=Colors.SURFACE_HEADER, padx=Space.LG, pady=Space.MD)
         header.grid(row=0, column=0, sticky="ew")
 
         left = tk.Frame(header, bg=Colors.SURFACE_HEADER)
@@ -50,25 +56,25 @@ class ChatPage(tk.Frame):
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
-        container = tk.Frame(self, bg=Colors.SURFACE)
+        container = tk.Frame(self.shell, bg=Colors.SURFACE_ALT)
         container.grid(row=1, column=0, sticky="nsew")
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self._history_canvas = tk.Canvas(container, bg=Colors.SURFACE, highlightthickness=0)
+        self._history_canvas = tk.Canvas(container, bg=Colors.SURFACE_ALT, highlightthickness=0)
         scrollbar = tk.Scrollbar(container, orient="vertical", command=self._history_canvas.yview)
         self._history_canvas.configure(yscrollcommand=scrollbar.set)
         self._history_canvas.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE)
+        self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
         self.history_frame.bind("<Configure>", lambda e: self._history_canvas.configure(scrollregion=self._history_canvas.bbox("all")))
         self._history_canvas.create_window((0, 0), window=self.history_frame, anchor="nw")
         self._history_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
     # --------------------------------------------------------------- composer
     def _build_composer(self):
-        composer = tk.Frame(self, bg=Colors.SURFACE_ALT, padx=Space.LG, pady=Space.SM)
+        composer = tk.Frame(self.shell, bg=Colors.SURFACE_RAISED, padx=Space.LG, pady=Space.SM)
         composer.grid(row=2, column=0, sticky="ew")
         composer.grid_columnconfigure(1, weight=1)
 
@@ -92,14 +98,14 @@ class ChatPage(tk.Frame):
         self._history_canvas.yview_moveto(1.0)
 
     def _add_message(self, sender: str, message: str, is_system: bool = False):
-        bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE)
+        bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
         bubble_row.pack(fill=tk.X, pady=(Space.XXS, 0))
 
         is_self = sender in (self.session.device_name, "This Device") and not is_system
         bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG if is_self else Colors.MESSAGE_BUBBLE_OTHER_BG
         fg = Colors.SURFACE if is_self else Colors.TEXT_PRIMARY
 
-        meta = tk.Frame(bubble_row, bg=Colors.SURFACE)
+        meta = tk.Frame(bubble_row, bg=Colors.SURFACE_ALT)
         meta.pack(fill=tk.X)
         tk.Label(meta, text=sender, bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="e" if is_self else "w")
@@ -110,7 +116,7 @@ class ChatPage(tk.Frame):
                  wraplength=520, justify="left",
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
-        tk.Label(bubble_row, text=time.strftime("%H:%M"), bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
+        tk.Label(bubble_row, text=time.strftime("%H:%M"), bg=Colors.SURFACE_ALT, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e" if is_self else "w")
 
         self._scroll_to_bottom()
