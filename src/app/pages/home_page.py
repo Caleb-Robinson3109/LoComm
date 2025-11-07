@@ -81,17 +81,17 @@ class HomePage(tk.Frame):
             {
                 "title": "1. Connect hardware",
                 "subtitle": "Install latest firmware, plug LoComm bridge, confirm drivers.",
-                "actions": [{"text": "View guide", "variant": "secondary", "command": self.app.show_about_view if hasattr(self.app, 'show_about_view') else None}]
+                "actions": [{"text": "View guide", "variant": "secondary", "command": self.host.show_about_page}]
             },
             {
                 "title": "2. Pair devices",
                 "subtitle": "Use the Pair tab to scan, select, and enter the short-lived PIN.",
-                "actions": [{"text": "Open Pairing", "command": self.app.show_pair_page}]
+                "actions": [{"text": "Open Pairing", "command": self.host.show_pair_page}]
             },
             {
                 "title": "3. Chat + monitor",
                 "subtitle": "Switch to Chat to validate transport messages and mock demos.",
-                "actions": [{"text": "Go to Chat", "command": lambda: self.app.controller.register_message_callback(lambda *_: None)}]
+                "actions": [{"text": "Go to Chat", "command": self.host.show_chat_page}]
             },
         ]
         for cfg in cards:
