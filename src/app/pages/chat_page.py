@@ -107,12 +107,12 @@ class ChatPage(tk.Frame):
         bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
         bubble.pack(anchor="e" if is_self else "w")
         tk.Label(bubble, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
         tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
                  wraplength=520, justify="left",
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
         tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_REGULAR)).pack(anchor="e")
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e")
 
         self._scroll_to_bottom()
         if not is_system:
