@@ -99,7 +99,7 @@ class MainFrame(ttk.Frame):
         self.about_container.pack(fill=tk.BOTH, expand=True)
 
         # Create the actual components and pack them
-        self.home_page = HomePage(self.home_container, self.app, self.session)
+        self.home_page = HomePage(self.home_container, self.app, self.session, self)
         self.home_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
         self.chat_page = ChatPage(
@@ -165,6 +165,10 @@ class MainFrame(ttk.Frame):
         """Show the home page."""
         self._show_home_view()
 
+    def show_chat_page(self):
+        """Show the chat page."""
+        self._show_chat_view()
+
     def show_pair_page(self):
         """Show the pair page."""
         self._show_pair_view()
@@ -176,6 +180,8 @@ class MainFrame(ttk.Frame):
             self.chat_page.set_status(text)
         if hasattr(self, 'sidebar'):
             self.sidebar.set_status(text)
+        self._last_status = text
+        self._update_status_display()
 
     def _handle_disconnect(self):
         """Handle disconnect request from chat tab."""
@@ -200,76 +206,33 @@ class MainFrame(ttk.Frame):
 
     def _create_inline_header(self):
         """Create the inline header UI directly in main frame."""
-        # Create header frame that spans full width
-        self.header_frame = tk.Frame(self, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        self.header_frame.pack(fill=tk.X, padx=0, pady=(Spacing.TAB_PADDING, 0))
+        self.header_frame = tk.Frame(self, bg=Colors.SURFACE_HEADER)
+        self.header_frame.pack(fill=tk.X, padx=Spacing.MD, pady=(Spacing.MD, 0))
 
-        # ---------- Left Section: Status Indicator ---------- #
-        status_section = tk.Frame(self.header_frame, bg=Colors.BG_SECONDARY)
-        status_section.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(Spacing.TAB_PADDING, 0))
+        left = tk.Frame(self.header_frame, bg=Colors.SURFACE_HEADER)
+        left.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Status indicator container
-        status_container = tk.Frame(status_section, bg=Colors.BG_SECONDARY)
-        status_container.pack(side=tk.LEFT, anchor="w")
+        self.status_badge = DesignUtils.pill(left, "Disconnected", variant="danger")
+        self.status_badge.pack(anchor="w")
 
-        # Status dot (colored indicator)
-        self.status_dot = tk.Label(
-            status_container,
-            text="●",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_LG),
-            fg=Colors.STATUS_DISCONNECTED,
-            bg=Colors.BG_SECONDARY
-        )
-        self.status_dot.pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        self.status_title = tk.Label(left, text="Awaiting connection", bg=Colors.SURFACE_HEADER,
+                                     fg=Colors.TEXT_PRIMARY,
+                                     font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD))
+        self.status_title.pack(anchor="w", pady=(Spacing.XXS, 0))
 
-        # Device name and status text
-        self.status_label = tk.Label(
-            status_container,
-            text="001 - Disconnected",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-            fg=Colors.TEXT_SECONDARY,
-            bg=Colors.BG_SECONDARY
-        )
-        self.status_label.pack(side=tk.LEFT)
+        self.status_subtitle = tk.Label(left, text="Pair a device to start chatting", bg=Colors.SURFACE_HEADER,
+                                        fg=Colors.TEXT_SECONDARY,
+                                        font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR))
+        self.status_subtitle.pack(anchor="w")
 
-        # ---------- Right Section: Device Info and Logout ---------- #
-        device_section = tk.Frame(self.header_frame, bg=Colors.BG_SECONDARY)
-        device_section.pack(side=tk.RIGHT, anchor="e", padx=(0, Spacing.TAB_PADDING))
+        right = tk.Frame(self.header_frame, bg=Colors.SURFACE_HEADER)
+        right.pack(side=tk.RIGHT)
 
-        # Device info container
-        device_info_frame = tk.Frame(device_section, bg=Colors.BG_SECONDARY)
-        device_info_frame.pack(side=tk.RIGHT, padx=(0, Spacing.MD))
-
-        # Device ID display (only shown when connected)
-        self.device_id_label = tk.Label(
-            device_info_frame,
-            text="",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg=Colors.TEXT_SECONDARY,
-            bg=Colors.BG_SECONDARY
-        )
-        self.device_id_label.pack(anchor="e")
-
-        # Device name display (only shown when connected)
-        self.device_name_label = tk.Label(
-            device_info_frame,
-            text="",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD),
-            fg=Colors.TEXT_PRIMARY,
-            bg=Colors.BG_SECONDARY
-        )
-        self.device_name_label.pack(anchor="e")
-
-        # Disconnect button
-        self.logout_btn = DesignUtils.create_styled_button(
-            device_section,
-            text="Disconnect",
-            command=self._handle_logout,
-            style='Secondary.TButton'
-        )
+        self.primary_action = DesignUtils.button(right, text="🔗 Pair Device", command=self._on_pair_click, variant="primary")
+        self.primary_action.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+        self.logout_btn = DesignUtils.button(right, text="Disconnect", command=self._handle_logout, variant="ghost")
         self.logout_btn.pack(side=tk.RIGHT)
 
-        # Initial status update
         self._update_status_display()
 
     def _update_status_display(self):
@@ -284,29 +247,15 @@ class MainFrame(ttk.Frame):
         self._current_device_info = device_info
 
         if is_connected and device_info:
-            # Connected state
             device_name = device_info['name']
             device_id = device_info['id']
-
-            # Update status display (always show device name 001)
-            self.status_label.configure(text=f"001 - Connected to {device_name}")
-            self.status_dot.configure(fg=Colors.STATUS_CONNECTED)
-
-            # Update device info display
-            self.device_name_label.configure(text=device_name)
-            self.device_id_label.configure(text=f"ID: {device_id}")
-
-            # Show device info elements
-            self.device_name_label.pack(anchor="e")
-            self.device_id_label.pack(anchor="e")
+            self.status_badge.configure(text="Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
+            self.status_title.configure(text=f"Paired with {device_name}")
+            self.status_subtitle.configure(text=f"Device ID {device_id}")
         else:
-            # Disconnected state (always show device name 001)
-            self.status_label.configure(text="001 - Disconnected")
-            self.status_dot.configure(fg=Colors.STATUS_DISCONNECTED)
-
-            # Hide device info elements
-            self.device_name_label.configure(text="")
-            self.device_id_label.configure(text="")
+            self.status_badge.configure(text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+            self.status_title.configure(text="Awaiting connection")
+            self.status_subtitle.configure(text="Pair a device to start chatting")
 
     def _handle_logout(self):
         """Handle logout button click."""

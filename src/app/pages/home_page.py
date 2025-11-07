@@ -1,161 +1,104 @@
-"""Enhanced Home tab with welcome message, features info, and device pairing access."""
+"""Modernized Home page built on the refreshed design system."""
+from __future__ import annotations
+
 import tkinter as tk
-from tkinter import ttk
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+
+from utils.design_system import Colors, DesignUtils, Spacing, Typography
+from utils.ui_helpers import create_scroll_container
 
 
 class HomePage(tk.Frame):
-    """Enhanced home page with welcome, features, and quick access to device pairing."""
+    """Landing surface with hero, stats, and feature callouts."""
 
-    def __init__(self, master, app, session):
-        super().__init__(master, bg=Colors.BG_PRIMARY)
+    def __init__(self, master, app, session, host):
+        super().__init__(master, bg=Colors.SURFACE)
         self.app = app
         self.session = session
+        self.host = host
 
-        # Configure frame styling
-        self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
+        self.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
+        body = scroll.frame
 
-        # Create scrollable frame for all content
-        canvas = tk.Canvas(self, bg=Colors.BG_PRIMARY, highlightthickness=0)
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=Colors.BG_PRIMARY)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        DesignUtils.hero_header(
+            body,
+            title="Design-forward Locomm Desktop",
+            subtitle="Pair LoRa devices, monitor live status, and chat securely across the fleet.",
+            actions=[{"text": "Start Pairing", "command": host.show_pair_page},
+                     {"text": "Open Chat", "command": host.show_chat_page, "variant": "secondary"}]
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self._build_stat_row(body)
+        self._build_quick_actions(body)
+        self._build_feature_section(body)
+        self._build_getting_started(body)
 
-        # Bind mouse wheel scrolling
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    # ------------------------------------------------------------------ #
+    def _build_stat_row(self, parent):
+        stat_row = tk.Frame(parent, bg=Colors.SURFACE)
+        stat_row.pack(fill=tk.X, pady=(0, Spacing.LG))
+        stats = [
+            ("Paired Devices", self.session.device_name or "0", "Most recent pairing" if self.session.device_name else "No device active"),
+            ("Chat Sessions", "Unlimited", "Encrypted LoRa communication"),
+            ("Network Mode", "Mock Backend", "Swap once hardware arrives"),
+        ]
+        for label, value, helper in stats:
+            card, content = DesignUtils.card(stat_row, label, helper)
+            card.configure(width=240, height=120)
+            DesignUtils.stat_block(content, label, value, helper)
+            card.pack(side=tk.LEFT, padx=(0, Spacing.MD))
 
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    def _build_quick_actions(self, parent):
+        section, body = DesignUtils.section(parent, "Quick actions", "Launch common workflows in one click")
+        actions = [
+            ("🔗 Pair devices", "Connect using a 5-digit PIN", self.host.show_pair_page),
+            ("💬 Open conversations", "Jump straight into the chat interface", self.host.show_chat_page),
+            ("🧪 Demo mode", "Explore the UI using mock data", self.app._handle_demo_login),
+        ]
+        for text, desc, handler in actions:
+            row = tk.Frame(body, bg=Colors.SURFACE_ALT)
+            row.pack(fill=tk.X, pady=(0, Spacing.SM))
+            tk.Label(row, text=text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+            tk.Label(row, text=desc, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
+            DesignUtils.button(row, text="Launch", command=handler, variant="secondary").pack(anchor="e", pady=(Spacing.XXS, 0))
 
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
+    def _build_feature_section(self, parent):
+        section, body = DesignUtils.section(parent, "Platform highlights", "Why teams adopt Locomm")
+        features = [
+            ("Unified pairing", "Device discovery plus PIN entry in a single flow."),
+            ("Live transport monitor", "Status pills reflect the controller and backend state in real time."),
+            ("Modular UI", "Shared components keep future features visually consistent."),
+            ("Accessibility", "Keyboard-friendly navigation, focus outlines, and color contrast."),
+        ]
+        for icon, copy in features:
+            DesignUtils.create_message_row(body, icon, copy)
 
-        canvas.bind("<Enter>", _bind_to_mousewheel)
-        canvas.bind("<Leave>", _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # ---------- Title Section ---------- #
-        title_section = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        title_section.pack(fill=tk.X, pady=(0, Spacing.XL))
-
-        title_frame = tk.Frame(title_section, bg=Colors.BG_PRIMARY)
-        title_frame.pack(anchor="center")
-
-        title_label = tk.Label(
-            title_frame,
-            text="Locomm Desktop",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_XXL, Typography.WEIGHT_BOLD),
-            fg="#FFFFFF",
-            bg=Colors.BG_PRIMARY
-        )
-        title_label.pack()
-
-        subtitle_label = tk.Label(
-            title_frame,
-            text="Secure Device-to-Device Communication",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_LG),
-            fg="#CCCCCC",
-            bg=Colors.BG_PRIMARY
-        )
-        subtitle_label.pack(pady=(Spacing.SM, 0))
-
-        # ---------- Welcome Section with Box Border ---------- #
-        welcome_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        welcome_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.LG, Spacing.MD))
-
-        # Welcome section header
-        welcome_header = tk.Label(welcome_section, text="Welcome", bg=Colors.BG_SECONDARY,
-                                fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        welcome_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        welcome_content = tk.Frame(welcome_section, bg=Colors.BG_SECONDARY)
-        welcome_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Welcome text with features (updated terminology)
-        welcome_text = """Welcome to Locomm Desktop!
-
-This application allows you to connect and communicate securely with other LoRa-enabled devices using simple 5-digit PIN authentication.
-
-Features:
-• Secure 5-digit PIN pairing
-• Real-time device communication
-• Simple and user-friendly interface
-• Credential-free pairing experience
-• Professional LoRa communication platform"""
-
-        welcome_label = tk.Label(
-            welcome_content,
-            text=welcome_text,
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-            fg="#FFFFFF",
-            bg=Colors.BG_SECONDARY,
-            justify='left',
-            wraplength=400
-        )
-        welcome_label.pack(pady=(0, Spacing.LG))
-
-
-        # ---------- Application Features Section with Box Border ---------- #
-        features_section = tk.Frame(scrollable_frame, bg=Colors.BG_SECONDARY, relief="solid", bd=1)
-        features_section.pack(fill=tk.X, padx=Spacing.HEADER_PADDING, pady=(Spacing.MD, Spacing.LG))
-
-        # Features section header
-        features_header = tk.Label(features_section, text="Application Features", bg=Colors.BG_SECONDARY,
-                                 fg="#FFFFFF", font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_BOLD))
-        features_header.pack(anchor="w", padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, Spacing.XS))
-
-        features_content = tk.Frame(features_section, bg=Colors.BG_SECONDARY)
-        features_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(0, Spacing.SECTION_MARGIN))
-
-        # Application benefits
-        features_text = """Locomm provides a unified platform for secure LoRa communication:
-
-• PIN-based authentication system
-• Streamlined device management
-• Professional messaging interface
-• Real-time communication capabilities
-• Secure device pairing and connection management"""
-
-        features_label = tk.Label(
-            features_content,
-            text=features_text,
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-            fg="#FFFFFF",
-            bg=Colors.BG_SECONDARY,
-            justify='left',
-            wraplength=400
-        )
-        features_label.pack(pady=(0, Spacing.LG))
-
-        # ---------- Footer ---------- #
-        footer_frame = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
-        footer_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
-
-        footer_label = tk.Label(
-            footer_frame,
-            text="Use the sidebar to navigate between Home, Chat, Device Management, Settings, and About",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg="#888888",
-            bg=Colors.BG_PRIMARY
-        )
-        footer_label.pack()
-
-        # Store reference to parent for navigation
-        self.parent_frame = master  # This should be the MainFrame
-
+    def _build_getting_started(self, parent):
+        section, body = DesignUtils.section(parent, "Getting started", "Configure hardware, run diagnostics, or invite teammates")
+        cards = [
+            {
+                "title": "1. Connect hardware",
+                "subtitle": "Install latest firmware, plug LoComm bridge, confirm drivers.",
+                "actions": [{"text": "View guide", "variant": "secondary", "command": self.app.show_about_view if hasattr(self.app, 'show_about_view') else None}]
+            },
+            {
+                "title": "2. Pair devices",
+                "subtitle": "Use the Pair tab to scan, select, and enter the short-lived PIN.",
+                "actions": [{"text": "Open Pairing", "command": self.app.show_pair_page}]
+            },
+            {
+                "title": "3. Chat + monitor",
+                "subtitle": "Switch to Chat to validate transport messages and mock demos.",
+                "actions": [{"text": "Go to Chat", "command": lambda: self.app.controller.register_message_callback(lambda *_: None)}]
+            },
+        ]
+        for cfg in cards:
+            card, content = DesignUtils.card(body, cfg["title"], cfg["subtitle"], cfg.get("actions"))
+            card.pack(fill=tk.X, pady=(0, Spacing.SM))
 
     def refresh_content(self):
-        """Refresh the home tab content (called when returning to home tab)."""
-        # Display-friendly device name can be updated here if needed.
-        device_name = getattr(self.session, 'device_name', None) or "Device"
-        # Labels are currently static; hook into this method when dynamic text is required.
+        """Refresh the home tab content when returning to it."""
+        # Could be extended to show recent device stats; currently static.
+        pass
