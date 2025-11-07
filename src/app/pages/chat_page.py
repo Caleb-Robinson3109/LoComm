@@ -2,16 +2,17 @@ import tkinter as tk
 from tkinter import ttk
 import time
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
-from lora_transport_locomm import LoCommTransport
+from services import AppController
 from utils.session import Session
+from utils.ui_helpers import create_scroll_container
 
 
 class ChatPage(tk.Frame):
-    def __init__(self, master, transport: LoCommTransport, session: Session, on_disconnect=None):
+    def __init__(self, master, controller: AppController, session: Session, on_disconnect=None):
         super().__init__(master, bg=Colors.BG_PRIMARY)
         self.master = master  # Reference to parent for communication
         self.on_disconnect = on_disconnect  # Callback for disconnect action
-        self.transport = transport
+        self.controller = controller
         self.session = session
         self.history_buffer: list[str] = []
 
@@ -25,33 +26,8 @@ class ChatPage(tk.Frame):
         self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
         # Create scrollable frame for all content
-        canvas = tk.Canvas(self, bg=Colors.BG_PRIMARY, highlightthickness=0)
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=Colors.BG_PRIMARY)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Bind mouse wheel scrolling
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
-
-        canvas.bind("<Enter>", _bind_to_mousewheel)
-        canvas.bind("<Leave>", _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        scroll = create_scroll_container(self, bg=Colors.BG_PRIMARY)
+        scrollable_frame = scroll.frame
 
         # ---------- Title Section ---------- #
         title_section = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
@@ -203,9 +179,11 @@ class ChatPage(tk.Frame):
 
         sender = self._get_local_device_name()
 
-        # Send via transport
-        if hasattr(self.transport, 'send') and self.transport.send:
-            self.transport.send(sender, message)
+        try:
+            self.controller.send_message(message)
+        except Exception:
+            self.status_var.set("Send failed")
+            return
 
         # Add to local history
         self._add_message(sender, message)

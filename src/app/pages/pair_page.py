@@ -4,6 +4,7 @@ from tkinter import ttk
 from typing import Optional, Callable
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
+from utils.ui_helpers import create_scroll_container
 
 # MOCK: replace this with real device data once the API team delivers their integration.
 MOCK_DEVICE_ENTRIES = [
@@ -16,10 +17,10 @@ MOCK_DEVICE_ENTRIES = [
 class PairPage(tk.Frame):
     """Pair page for managing device connections and scanning (redesigned with ChatPage excellence)."""
 
-    def __init__(self, master, app, transport, session, on_device_paired: Optional[Callable] = None):
+    def __init__(self, master, app, controller, session, on_device_paired: Optional[Callable] = None):
         super().__init__(master, bg=Colors.BG_PRIMARY)
         self.app = app
-        self.transport = transport
+        self.controller = controller
         self.session = session
         self.on_device_paired = on_device_paired
 
@@ -54,36 +55,9 @@ class PairPage(tk.Frame):
         self.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
         # Create scrollable frame for all content (matching ChatPage)
-        self.list_container = tk.Frame(self, bg=Colors.BG_PRIMARY)
-        self.list_container.pack(fill=tk.BOTH, expand=True)
-
-        canvas = tk.Canvas(self.list_container, bg=Colors.BG_PRIMARY, highlightthickness=0)
-        scrollbar = tk.Scrollbar(self.list_container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=Colors.BG_PRIMARY)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Bind mouse wheel scrolling (matching ChatPage)
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-        def _bind_to_mousewheel(event):
-            canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
-        def _unbind_from_mousewheel(event):
-            canvas.unbind_all("<MouseWheel>")
-
-        canvas.bind("<Enter>", _bind_to_mousewheel)
-        canvas.bind("<Leave>", _unbind_from_mousewheel)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        scroll = create_scroll_container(self, bg=Colors.BG_PRIMARY)
+        self.list_container = scroll.wrapper
+        scrollable_frame = scroll.frame
 
         # ---------- Title Section (matching ChatPage) ---------- #
         title_section = tk.Frame(scrollable_frame, bg=Colors.BG_PRIMARY)
@@ -272,23 +246,15 @@ class PairPage(tk.Frame):
 
     def _simulate_scan(self):
         """Simulate device scanning (demo mode)."""
-        import time
-        import threading
 
-        def scan_worker():
-            # Simulate scan time
-            time.sleep(2)
-
-            # Add mock discovered devices
+        def finish_scan():
             mock_discovered = [
                 ("DEV004", "New Device Delta", "Available", "Just found"),
                 ("DEV005", "New Device Epsilon", "Available", "Just found"),
             ]
+            self._add_discovered_devices(mock_discovered)
 
-            # Update UI in main thread
-            self.app.after(0, lambda: self._add_discovered_devices(mock_discovered))
-
-        threading.Thread(target=scan_worker, daemon=True).start()
+        self.after(2000, finish_scan)
 
     def _add_discovered_devices(self, discovered_devices):
         """Add discovered devices to the list."""
@@ -398,13 +364,12 @@ class PairPage(tk.Frame):
 
         self.status_var.set("Disconnecting...")
 
-        # Stop transport to ensure UI and backend stay in sync
+        # Stop transport via controller to ensure UI and backend stay in sync
         try:
-            self.transport.stop()
+            self.controller.stop_session()
         except Exception:
             pass
 
-        # Use centralized connection manager
         success = self.connection_manager.disconnect_device()
 
         if success:

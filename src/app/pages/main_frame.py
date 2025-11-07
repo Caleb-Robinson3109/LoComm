@@ -16,11 +16,11 @@ from .view_manager import ViewManager
 
 
 class MainFrame(ttk.Frame):
-    def __init__(self, master, app, session, transport, on_logout):
+    def __init__(self, master, app, session, controller, on_logout):
         super().__init__(master)
         self.app = app
         self.session = session
-        self.transport = transport
+        self.controller = controller
         self.on_logout = on_logout
 
         # Header attributes
@@ -104,20 +104,20 @@ class MainFrame(ttk.Frame):
 
         self.chat_page = ChatPage(
             self.chat_container,
-            self.transport,
+            self.controller,
             self.session,
             on_disconnect=self._handle_disconnect
         )
         self.chat_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
-        self.pair_page = PairPage(self.pair_container, self.app, self.transport, self.session,
+        self.pair_page = PairPage(self.pair_container, self.app, self.controller, self.session,
                               on_device_paired=self._handle_device_pairing)
         self.pair_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
-        self.settings_page = SettingsPage(self.settings_container, self.app, self.transport, self.session)
+        self.settings_page = SettingsPage(self.settings_container, self.app, self.controller, self.session)
         self.settings_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
-        self.about_page = AboutPage(self.about_container, self.app, self.transport, self.session)
+        self.about_page = AboutPage(self.about_container, self.app, self.controller, self.session)
         self.about_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
     def _show_home_view(self):
@@ -177,19 +177,9 @@ class MainFrame(ttk.Frame):
         if hasattr(self, 'sidebar'):
             self.sidebar.set_status(text)
 
-    def _unpair_device(self):
-        """Handle unpairing with the other device."""
-        # This would typically stop pairing or disconnect
-        if hasattr(self.transport, 'stop_pairing'):
-            self.transport.stop_pairing()
-
     def _handle_disconnect(self):
         """Handle disconnect request from chat tab."""
-        # Stop transport connection
-        if hasattr(self.transport, 'stop'):
-            self.transport.stop()
-
-        # Update status in both components
+        self.controller.stop_session()
         self.update_status("Disconnected")
 
     def set_peer_name(self, name: str):

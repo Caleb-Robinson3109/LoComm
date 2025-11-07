@@ -10,10 +10,10 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 class AboutPage(tk.Frame):
     """About page for application information (redesigned with ChatPage excellence)."""
 
-    def __init__(self, master, app, transport, session=None):
+    def __init__(self, master, app, controller, session=None):
         super().__init__(master, bg=Colors.BG_PRIMARY)
         self.app = app
-        self.transport = transport
+        self.controller = controller
         self.session = session
 
         # Configure frame styling (matching ChatPage)
