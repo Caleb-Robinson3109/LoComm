@@ -17,13 +17,11 @@ from .view_manager import ViewManager
 
 class MainFrame(ttk.Frame):
     def __init__(self, master, app, session, controller, on_logout):
-        super().__init__(master, style='TFrame')
-        self.configure(style='TFrame')
+        super().__init__(master)
         self.app = app
         self.session = session
         self.controller = controller
         self.on_logout = on_logout
-        self.configure(bg=Colors.SURFACE)
 
         # Header attributes
         self._current_device_id = None
