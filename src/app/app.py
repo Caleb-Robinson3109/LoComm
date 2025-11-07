@@ -12,7 +12,8 @@ from utils.session import Session
 from utils.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
-from utils.design_system import AppConfig
+from utils.design_system import AppConfig, ensure_styles_initialized
+from utils.connection_manager import get_connection_manager
 
 
 class App(tk.Tk):
@@ -20,6 +21,7 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self.geometry(f"{AppConfig.WINDOW_WIDTH}x{AppConfig.WINDOW_HEIGHT}")
         self.minsize(AppConfig.WINDOW_WIDTH - 200, AppConfig.WINDOW_HEIGHT - 100)
@@ -27,6 +29,7 @@ class App(tk.Tk):
 
         # Initialize core components
         self.session = Session()
+        self.connection_manager = get_connection_manager()
         self.transport = LoCommTransport(self)
         self.transport.on_receive = self._on_receive
         self.transport.on_status = self._on_status
@@ -89,8 +92,10 @@ class App(tk.Tk):
 
         def finish_session(success: bool, error_msg: str = ""):
             if success:
+                self.connection_manager.connect_device(device_id, device_name)
                 self.show_main(device_id, device_name)
             else:
+                self.connection_manager.disconnect_device()
                 messagebox.showerror(failure_title, error_msg or failure_message)
                 self._clear_session()
 
@@ -143,6 +148,7 @@ class App(tk.Tk):
         self._pending_messages.clear()
         self._last_status = "Disconnected"
         self._current_peer = ""
+        self.connection_manager.disconnect_device()
         self.show_main()
 
     def _clear_session(self):

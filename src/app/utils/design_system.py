@@ -163,9 +163,14 @@ class Spacing:
 class ComponentStyles:
     """Enhanced component styles for contemporary chat UI"""
 
-    @staticmethod
-    def create_styles():
-        """Create and register comprehensive component styles"""
+    _initialized = False
+
+    @classmethod
+    def initialize(cls):
+        """Create and register comprehensive component styles once."""
+        if cls._initialized:
+            return
+
         style = ttk.Style()
 
         # Configure Ttk theme for modern appearance
@@ -324,6 +329,8 @@ class ComponentStyles:
                        relief='flat',
                        borderwidth=0)
 
+        cls._initialized = True
+
 # ==================== MODERN UTILITY FUNCTIONS ==================== #
 class DesignUtils:
     """Enhanced utility functions for modern chat application design"""
@@ -461,8 +468,9 @@ class DesignUtils:
             days = int(diff / 86400)
             return f"{days}d ago"
 
-# Initialize modern styles on import
-ComponentStyles.create_styles()
+def ensure_styles_initialized():
+    """Public helper to ensure styles are registered after Tk root exists."""
+    ComponentStyles.initialize()
 
 
 # ==================== APPLICATION CONFIGURATION ==================== #
@@ -477,7 +485,7 @@ class AppConfig:
     STATUS_CONNECTED_KEYWORDS = {"ready", "connected (mock)", "message from"}
 
     # Keywords that indicate disconnected/failed state
-    STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid device password"}
+    STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid pairing code"}
 
     # Keywords that indicate error state
     STATUS_ERROR_KEYWORDS = {"failed", "error", "invalid"}
@@ -487,7 +495,7 @@ class AppConfig:
     STATUS_CONNECTED = "Connected"
     STATUS_CONNECTED_MOCK = "Connected (mock)"
     STATUS_CONNECTION_FAILED = "Connection failed"
-    STATUS_INVALID_PASSWORD = "Invalid device password"
+    STATUS_INVALID_PIN = "Invalid pairing code"
     STATUS_CONNECTION_DEVICE_FAILED = "Connection failed (device not found)"
     STATUS_AWAITING_PEER = "Awaiting peer"
     STATUS_NOT_CONNECTED = "Not connected"
@@ -524,7 +532,7 @@ class AppConfig:
     PROGRESSBAR_MODE = "indeterminate"
 
     # === CHAT HISTORY CONFIGURATION ===
-    CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{username}.txt"
+    CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{device}.txt"
 
     # === NOTIFICATION CONFIGURATION ===
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
@@ -561,7 +569,7 @@ STATUS_DISCONNECTED = AppConfig.STATUS_DISCONNECTED
 STATUS_CONNECTED = AppConfig.STATUS_CONNECTED
 STATUS_CONNECTED_MOCK = AppConfig.STATUS_CONNECTED_MOCK
 STATUS_CONNECTION_FAILED = AppConfig.STATUS_CONNECTION_FAILED
-STATUS_INVALID_PASSWORD = AppConfig.STATUS_INVALID_PASSWORD
+STATUS_INVALID_PIN = AppConfig.STATUS_INVALID_PIN
 STATUS_CONNECTION_DEVICE_FAILED = AppConfig.STATUS_CONNECTION_DEVICE_FAILED
 STATUS_AWAITING_PEER = AppConfig.STATUS_AWAITING_PEER
 STATUS_NOT_CONNECTED = AppConfig.STATUS_NOT_CONNECTED

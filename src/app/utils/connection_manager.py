@@ -4,8 +4,7 @@ Provides consistent connection state management across all UI components.
 """
 from typing import Optional, Callable, Dict, Any
 import threading
-from utils.design_system import Colors
-from utils.status_manager import get_status_manager, update_global_status
+from utils.status_manager import update_global_status
 
 
 class ConnectionManager:
@@ -57,9 +56,6 @@ class ConnectionManager:
             True if disconnection was successful
         """
         with self._lock:
-            # Get device info before clearing
-            device_info = self.get_connected_device_info()
-
             self._current_device_id = None
             self._current_device_name = None
             self._is_connected = False
