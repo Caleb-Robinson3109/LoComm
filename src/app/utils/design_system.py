@@ -129,6 +129,7 @@ class Spacing:
     CHAT_AREA_PADDING = Space.MD
     SIDEBAR_WIDTH = 260
     HEADER_HEIGHT = 64
+    XXS = Space.XXS
     XS = Space.XXS
     SM = Space.XS
     MD = Space.MD
