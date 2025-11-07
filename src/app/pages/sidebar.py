@@ -134,7 +134,7 @@ class Sidebar(tk.Frame):
 
     def _on_status_change(self, status_text: str, status_color: str):
         # Sidebar mirrors connection events already handled above
-        pass
+        self.status_value.configure(text=status_text, fg=status_color)
 
     # Public helpers ------------------------------------------------------
     def show_chat(self):
@@ -148,3 +148,7 @@ class Sidebar(tk.Frame):
 
     def show_settings(self):
         self._on_settings_click()
+
+    def set_status(self, status_text: str):
+        """Compatibility helper for external callers."""
+        self.status_value.configure(text=status_text)
