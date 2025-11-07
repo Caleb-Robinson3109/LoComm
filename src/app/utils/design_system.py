@@ -389,9 +389,9 @@ class DesignUtils:
         ThemeManager.ensure()
         variant_map = {
             "info": (Colors.BUTTON_SECONDARY_BG, Colors.TEXT_PRIMARY),
-            "success": (Palette.ACCENT_GREEN, Colors.SURFACE),
-            "warning": (Palette.ACCENT_AMBER, Colors.SURFACE),
-            "danger": (Palette.ACCENT_RED, Colors.SURFACE),
+            "success": (Colors.STATE_SUCCESS, Colors.SURFACE),
+            "warning": (Colors.STATE_WARNING, Colors.SURFACE),
+            "danger": (Colors.STATE_ERROR, Colors.SURFACE),
         }
         bg, fg = variant_map.get(variant, variant_map["info"])
         label = tk.Label(
