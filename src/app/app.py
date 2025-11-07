@@ -20,7 +20,7 @@ class App(tk.Tk):
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self.geometry(f"{AppConfig.WINDOW_WIDTH}x{AppConfig.WINDOW_HEIGHT}")
-        self.minsize(AppConfig.WINDOW_WIDTH - 200, AppConfig.WINDOW_HEIGHT - 100)
+        self.minsize(AppConfig.MIN_WINDOW_WIDTH, AppConfig.MIN_WINDOW_HEIGHT)
         self.resizable(True, True)
 
         # Initialize controller + state

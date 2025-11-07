@@ -29,7 +29,6 @@ class AboutPage(tk.Frame):
 
         self._build_version_card(body)
         self._build_specs(body)
-        self._build_support(body)
 
     def _build_version_card(self, parent):
         card, content = DesignUtils.card(parent, "Version", "Internal preview build")
@@ -58,7 +57,3 @@ class AboutPage(tk.Frame):
             tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
                      font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
 
-    def _build_support(self, parent):
-        section, body = DesignUtils.section(parent, "Support", "How to reach the team")
-        DesignUtils.button(body, text="View documentation", variant="secondary").pack(anchor="w", pady=(0, Spacing.SM))
-        DesignUtils.button(body, text="Open diagnostics", variant="ghost").pack(anchor="w")

@@ -95,20 +95,24 @@ class ChatPage(tk.Frame):
         wrapper = tk.Frame(self.history_frame, bg=Colors.SURFACE)
         wrapper.pack(fill=tk.X, pady=(Space.XXS, 0))
 
-        color = Colors.TEXT_SECONDARY if is_system else Colors.TEXT_PRIMARY
-        tk.Label(wrapper, text=f"{sender}:" if not is_system else sender, bg=Colors.SURFACE,
-                 fg=color, font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-
-        # Determine bubble color based on sender
         is_own_message = sender == getattr(self.session, "device_name", None) or sender == "This Device"
         bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG if is_own_message else Colors.MESSAGE_BUBBLE_OTHER_BG
+        text_color = Colors.SURFACE if is_own_message else Colors.TEXT_PRIMARY
 
-        bubble = tk.Frame(wrapper, bg=bubble_bg, padx=Space.MD, pady=Space.XXS)
-        bubble.pack(fill=tk.X)
-        tk.Label(bubble, text=message, bg=bubble.cget("bg"), wraplength=600,
-                 fg=Colors.TEXT_PRIMARY, font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), justify="left").pack(anchor="w")
+        meta = tk.Frame(wrapper, bg=Colors.SURFACE)
+        meta.pack(fill=tk.X)
+        tk.Label(meta, text=f"{sender}" if not is_system else sender, bg=Colors.SURFACE,
+                 fg=Colors.TEXT_MUTED, font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+
+        bubble_row = tk.Frame(wrapper, bg=Colors.SURFACE)
+        bubble_row.pack(fill=tk.X)
+        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
+        bubble.pack(anchor="e" if is_own_message else "w", padx=(Space.LG, 0) if is_own_message else (0, Space.LG))
+        tk.Label(bubble, text=message, bg=bubble_bg, wraplength=520,
+                 fg=text_color, font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), justify="left").pack(anchor="w")
+
         tk.Label(wrapper, text=time.strftime("%H:%M"), bg=Colors.SURFACE, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e")
+                 font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_REGULAR)).pack(anchor="e" if is_own_message else "w")
         if not is_system:
             self._message_counter += 1
             self.message_count_label.configure(text=f"{self._message_counter} messages this session")

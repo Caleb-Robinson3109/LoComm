@@ -51,9 +51,6 @@ class MainFrame(ttk.Frame):
         self.connection_manager.register_device_info_callback(self._on_device_info_change)
         self.status_manager.register_status_callback(self._on_status_change)
 
-        # Create header that spans full width
-        self._create_inline_header()
-
         # Main container - sidebar + content
         main_container = tk.Frame(self, bg=Colors.SURFACE)
         main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.XL, pady=Spacing.XL)
@@ -178,12 +175,6 @@ class MainFrame(ttk.Frame):
         self._show_about_view()
 
     # ------------------------------------------------------------------ #
-    # Header actions
-    def _on_pair_click(self):
-        self._show_pair_view()
-        if hasattr(self.sidebar, "_update_active_button"):
-            self.sidebar._update_active_button("pair")
-
     def update_status(self, text: str):
         """Update status in both chat tab and sidebar."""
         # Only update if components exist
@@ -192,7 +183,6 @@ class MainFrame(ttk.Frame):
         if hasattr(self, 'sidebar'):
             self.sidebar.set_status(text)
         self._last_status = text
-        self._update_status_display()
 
     def _handle_disconnect(self):
         """Handle disconnect request from chat tab."""
@@ -213,66 +203,6 @@ class MainFrame(ttk.Frame):
             # Device is disconnected
             self.update_status("Device disconnected")
 
-    # ========== INLINE HEADER METHODS ==========
-
-    def _create_inline_header(self):
-        """Create the inline header UI directly in main frame."""
-        self.header_frame = tk.Frame(self, bg=Colors.SURFACE_HEADER)
-        self.header_frame.pack(fill=tk.X, padx=Spacing.MD, pady=(Spacing.MD, 0))
-
-        left = tk.Frame(self.header_frame, bg=Colors.SURFACE_HEADER)
-        left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        self.status_badge = DesignUtils.pill(left, "Disconnected", variant="danger")
-        self.status_badge.pack(anchor="w")
-
-        self.status_title = tk.Label(left, text="Awaiting connection", bg=Colors.SURFACE_HEADER,
-                                     fg=Colors.TEXT_PRIMARY,
-                                     font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD))
-        self.status_title.pack(anchor="w", pady=(Spacing.XXS, 0))
-
-        self.status_subtitle = tk.Label(left, text="Pair a device to start chatting", bg=Colors.SURFACE_HEADER,
-                                        fg=Colors.TEXT_SECONDARY,
-                                        font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR))
-        self.status_subtitle.pack(anchor="w")
-
-        right = tk.Frame(self.header_frame, bg=Colors.SURFACE_HEADER)
-        right.pack(side=tk.RIGHT)
-
-        self.primary_action = DesignUtils.button(right, text="Pair Device", command=self._on_pair_click, variant="primary")
-        self.primary_action.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
-        self.logout_btn = DesignUtils.button(right, text="Disconnect", command=self._handle_logout, variant="ghost")
-        self.logout_btn.pack(side=tk.RIGHT)
-
-        self._update_status_display()
-
-    def _update_status_display(self):
-        """Update the status display based on current connection state."""
-        # Get connection status from centralized manager
-        connection_status = self.connection_manager.get_connection_status_text()
-        is_connected = self.connection_manager.is_connected()
-        device_info = self.connection_manager.get_connected_device_info()
-
-        # Update connection state
-        self._is_connected = is_connected
-        self._current_device_info = device_info
-
-        if is_connected and device_info:
-            device_name = device_info['name']
-            device_id = device_info['id']
-            self.status_badge.configure(text="Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
-            self.status_title.configure(text=f"Paired with {device_name}")
-            self.status_subtitle.configure(text=f"Device ID {device_id}")
-        else:
-            self.status_badge.configure(text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
-            self.status_title.configure(text="Awaiting connection")
-            self.status_subtitle.configure(text="Pair a device to start chatting")
-
-    def _handle_logout(self):
-        """Handle logout button click."""
-        if self.on_logout:
-            self.on_logout()
-
     # ========== CONNECTION MANAGER CALLBACKS ==========
 
     def _on_connection_state_change(self, is_connected: bool, device_id: Optional[str], device_name: Optional[str]):
@@ -281,18 +211,16 @@ class MainFrame(ttk.Frame):
         self._current_device_name = device_name
 
         # Update UI on main thread
-        self.after(0, self._update_status_display)
         if hasattr(self, 'chat_page'):
             self.after(0, self.chat_page.sync_session_info)
 
     def _on_device_info_change(self, device_info: Optional[dict]):
         """Handle device info changes from centralized manager."""
         # Update UI on main thread
-        self.after(0, self._update_status_display)
         if hasattr(self, 'chat_page'):
             self.after(0, self.chat_page.sync_session_info)
 
     def _on_status_change(self, status_text: str, status_color: str):
         """Handle status changes from status manager."""
-        # Update UI on main thread
-        self.after(0, self._update_status_display)
+        # Status managed by sidebar and chat components
+        pass

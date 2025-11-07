@@ -29,9 +29,6 @@ class HomePage(tk.Frame):
         )
 
         self._build_stat_row(body)
-        self._build_quick_actions(body)
-        self._build_feature_section(body)
-        self._build_getting_started(body)
 
     # ------------------------------------------------------------------ #
     def _build_stat_row(self, parent):
@@ -48,55 +45,6 @@ class HomePage(tk.Frame):
             DesignUtils.stat_block(content, label, value, helper)
             card.pack(side=tk.LEFT, padx=(0, Spacing.MD))
 
-    def _build_quick_actions(self, parent):
-        section, body = DesignUtils.section(parent, "Quick actions", "Launch common workflows in one click")
-        actions = [
-            ("Pair devices", "Connect using a 5-digit PIN", self.host.show_pair_page),
-            ("Open conversations", "Jump straight into the chat interface", self.host.show_chat_page),
-            ("Demo mode", "Explore the UI using mock data", self.app._handle_demo_login),
-        ]
-        for text, desc, handler in actions:
-            row = tk.Frame(body, bg=Colors.SURFACE_ALT)
-            row.pack(fill=tk.X, pady=(0, Spacing.SM))
-            tk.Label(row, text=text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-            tk.Label(row, text=desc, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
-            DesignUtils.button(row, text="Launch", command=handler, variant="secondary").pack(anchor="e", pady=(Spacing.XXS, 0))
-
-    def _build_feature_section(self, parent):
-        section, body = DesignUtils.section(parent, "Platform highlights", "Why teams adopt Locomm")
-        features = [
-            ("Unified pairing", "Device discovery plus PIN entry in a single flow."),
-            ("Live transport monitor", "Status pills reflect the controller and backend state in real time."),
-            ("Modular UI", "Shared components keep future features visually consistent."),
-            ("Accessibility", "Keyboard-friendly navigation, focus outlines, and color contrast."),
-        ]
-        for icon, copy in features:
-            DesignUtils.create_message_row(body, icon, copy)
-
-    def _build_getting_started(self, parent):
-        section, body = DesignUtils.section(parent, "Getting started", "Configure hardware, run diagnostics, or invite teammates")
-        cards = [
-            {
-                "title": "1. Connect hardware",
-                "subtitle": "Install latest firmware, plug LoComm bridge, confirm drivers.",
-                "actions": [{"text": "View guide", "variant": "secondary", "command": self.host.show_about_page}]
-            },
-            {
-                "title": "2. Pair devices",
-                "subtitle": "Use the Pair tab to scan, select, and enter the short-lived PIN.",
-                "actions": [{"text": "Open Pairing", "command": self.host.show_pair_page}]
-            },
-            {
-                "title": "3. Chat + monitor",
-                "subtitle": "Switch to Chat to validate transport messages and mock demos.",
-                "actions": [{"text": "Go to Chat", "command": self.host.show_chat_page}]
-            },
-        ]
-        for cfg in cards:
-            card, content = DesignUtils.card(body, cfg["title"], cfg["subtitle"], cfg.get("actions"))
-            card.pack(fill=tk.X, pady=(0, Spacing.SM))
 
     def refresh_content(self):
         """Refresh the home tab content when returning to it."""

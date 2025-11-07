@@ -13,78 +13,74 @@ from dataclasses import dataclass
 # DESIGN TOKENS
 # ---------------------------------------------------------------------------
 class Palette:
-    """Foundational color palette."""
+    """Signal-inspired palette."""
 
-    NIGHT_1000 = "#030303"
-    NIGHT_950 = "#050505"
-    NIGHT_900 = "#080808"
-    NIGHT_850 = "#0B0B0B"
-    NIGHT_800 = "#0F0F0F"
-    NIGHT_700 = "#141414"
-    NIGHT_600 = "#1C1C1C"
-    NIGHT_500 = "#232323"
-    CLOUD_300 = "#A0A0A0"
-    CLOUD_200 = "#BEBEBE"
-    CLOUD_100 = "#E5E5E5"
-    CLOUD_050 = "#F9F9F9"
+    WHITE = "#FFFFFF"
+    CLOUD_050 = "#F7F9FC"
+    CLOUD_100 = "#EDF1F7"
+    CLOUD_200 = "#E0E6F0"
+    CLOUD_300 = "#CBD3E1"
+    CLOUD_500 = "#94A3B8"
 
-    ACCENT_BLUE = "#6CC1FF"
-    ACCENT_PURPLE = "#9A7BFF"
-    ACCENT_TEAL = "#2DE1C2"
-    ACCENT_AMBER = "#FFB347"
-    ACCENT_RED = "#FF6B6B"
-    ACCENT_GREEN = "#3DD598"
+    SLATE_700 = "#3F4A5A"
+    SLATE_800 = "#2B323C"
+    SLATE_900 = "#1C1F26"
+
+    SIGNAL_BLUE = "#0B7CFF"
+    SIGNAL_BLUE_DARK = "#075AC6"
+    SIGNAL_BLUE_LIGHT = "#3AA0FF"
+    SIGNAL_TEAL = "#00C7B1"
+    SIGNAL_RED = "#FF5A5F"
 
 
 class Colors:
     """Semantic color mapping used throughout the UI."""
 
-    SURFACE = Palette.NIGHT_950
-    SURFACE_ALT = Palette.NIGHT_900
-    SURFACE_RAISED = Palette.NIGHT_850
-    SURFACE_HEADER = Palette.NIGHT_1000
-    SURFACE_SIDEBAR = Palette.NIGHT_1000
-    SURFACE_SELECTED = Palette.NIGHT_800
+    SURFACE = Palette.WHITE
+    SURFACE_ALT = Palette.CLOUD_050
+    SURFACE_RAISED = Palette.CLOUD_100
+    SURFACE_HEADER = Palette.WHITE
+    SURFACE_SIDEBAR = Palette.CLOUD_050
+    SURFACE_SELECTED = Palette.CLOUD_200
 
-    BORDER = Palette.NIGHT_600
-    DIVIDER = Palette.NIGHT_600
+    BORDER = Palette.CLOUD_200
+    DIVIDER = Palette.CLOUD_200
 
-    TEXT_PRIMARY = Palette.CLOUD_050
-    TEXT_SECONDARY = Palette.CLOUD_200
-    TEXT_MUTED = Palette.CLOUD_300
-    TEXT_ACCENT = Palette.ACCENT_BLUE
+    TEXT_PRIMARY = Palette.SLATE_900
+    TEXT_SECONDARY = Palette.SLATE_700
+    TEXT_MUTED = Palette.CLOUD_500
+    TEXT_ACCENT = Palette.SIGNAL_BLUE
 
-    STATE_SUCCESS = Palette.ACCENT_GREEN
-    STATE_WARNING = Palette.ACCENT_AMBER
-    STATE_ERROR = Palette.ACCENT_RED
-    STATE_INFO = Palette.ACCENT_BLUE
+    STATE_SUCCESS = Palette.SIGNAL_TEAL
+    STATE_WARNING = "#F2A93B"
+    STATE_ERROR = Palette.SIGNAL_RED
+    STATE_INFO = Palette.SIGNAL_BLUE
     STATUS_CONNECTED = STATE_SUCCESS
     STATUS_DISCONNECTED = STATE_ERROR
     STATUS_CONNECTING = STATE_INFO
     STATUS_PAIRING = STATE_INFO
 
-    BUTTON_PRIMARY_BG = Palette.ACCENT_BLUE
-    BUTTON_PRIMARY_HOVER = "#54A3DB"
-    BUTTON_SECONDARY_BG = Palette.NIGHT_700
+    BUTTON_PRIMARY_BG = Palette.SIGNAL_BLUE
+    BUTTON_PRIMARY_HOVER = Palette.SIGNAL_BLUE_DARK
+    BUTTON_SECONDARY_BG = Palette.CLOUD_200
     BUTTON_GHOST_BG = "#00000000"
 
     # Backwards compatibility aliases (deprecated - use semantic names)
     BG_PRIMARY = SURFACE
     BG_SECONDARY = SURFACE_ALT
     BG_TERTIARY = SURFACE_RAISED
-    BG_CHAT_AREA = SURFACE
-    BG_MESSAGE_OWN = SURFACE
-    BG_MESSAGE_OTHER = SURFACE_ALT
-    BG_MESSAGE_SYSTEM = SURFACE_RAISED
+    BG_CHAT_AREA = Palette.CLOUD_050
+    BG_MESSAGE_OWN = Palette.SIGNAL_BLUE
+    BG_MESSAGE_OTHER = Palette.CLOUD_100
+    BG_MESSAGE_SYSTEM = Palette.CLOUD_050
     BG_INPUT_AREA = SURFACE_RAISED
     TEXT_PLACEHOLDER = TEXT_MUTED
     TEXT_TIMESTAMP = TEXT_MUTED
     MESSAGE_SYSTEM_TEXT = TEXT_SECONDARY
 
-    # Message bubble colors - ensure consistency
-    MESSAGE_BUBBLE_OWN_BG = SURFACE
-    MESSAGE_BUBBLE_OTHER_BG = SURFACE_ALT
-    MESSAGE_BUBBLE_SYSTEM_BG = SURFACE_RAISED
+    MESSAGE_BUBBLE_OWN_BG = Palette.SIGNAL_BLUE
+    MESSAGE_BUBBLE_OTHER_BG = Palette.CLOUD_100
+    MESSAGE_BUBBLE_SYSTEM_BG = Palette.CLOUD_050
 
 
 class Typography:
@@ -197,10 +193,10 @@ class ThemeManager:
 
         # Buttons -----------------------------------------------------------------
         cls._register_button(style, "Locomm.Primary.TButton", Colors.BUTTON_PRIMARY_BG, Colors.BUTTON_PRIMARY_HOVER, Colors.SURFACE)
-        cls._register_button(style, "Locomm.Secondary.TButton", Colors.BUTTON_SECONDARY_BG, Palette.NIGHT_600, Colors.TEXT_PRIMARY)
-        cls._register_button(style, "Locomm.Ghost.TButton", Colors.BUTTON_GHOST_BG, Palette.NIGHT_800, Colors.TEXT_PRIMARY, border=0)
-        cls._register_button(style, "Locomm.Danger.TButton", Palette.ACCENT_RED, "#CC4C4C", Colors.SURFACE)
-        cls._register_button(style, "Locomm.Success.TButton", Palette.ACCENT_GREEN, "#2FB67C", Colors.SURFACE)
+        cls._register_button(style, "Locomm.Secondary.TButton", Colors.BUTTON_SECONDARY_BG, Colors.SURFACE_SELECTED, Colors.TEXT_PRIMARY)
+        cls._register_button(style, "Locomm.Ghost.TButton", Colors.BUTTON_GHOST_BG, Colors.SURFACE_SELECTED, Colors.TEXT_PRIMARY, border=0)
+        cls._register_button(style, "Locomm.Danger.TButton", Colors.STATE_ERROR, "#E1464B", Colors.SURFACE)
+        cls._register_button(style, "Locomm.Success.TButton", Colors.STATE_SUCCESS, "#00B398", Colors.SURFACE)
 
         # Navigation buttons (flat, left aligned)
         style.configure(
@@ -491,8 +487,10 @@ class AppConfig:
     STATUS_AWAITING_PEER = "Awaiting peer"
     STATUS_NOT_CONNECTED = "Not connected"
 
-    WINDOW_WIDTH = 1024
-    WINDOW_HEIGHT = 720
+    WINDOW_WIDTH = 1200
+    WINDOW_HEIGHT = 820
+    MIN_WINDOW_WIDTH = 1024
+    MIN_WINDOW_HEIGHT = 720
     APP_TITLE = "LoRa Chat Desktop"
 
     STATUS_UPDATE_DELAY = 2000
@@ -514,6 +512,8 @@ STATUS_ERROR_KEYWORDS = AppConfig.STATUS_ERROR_KEYWORDS
 APP_TITLE = AppConfig.APP_TITLE
 WINDOW_WIDTH = AppConfig.WINDOW_WIDTH
 WINDOW_HEIGHT = AppConfig.WINDOW_HEIGHT
+MIN_WINDOW_WIDTH = AppConfig.MIN_WINDOW_WIDTH
+MIN_WINDOW_HEIGHT = AppConfig.MIN_WINDOW_HEIGHT
 PAIR_DEVICES_TIMEOUT = AppConfig.PAIR_DEVICES_TIMEOUT
 STATUS_DISCONNECTED = AppConfig.STATUS_DISCONNECTED
 STATUS_CONNECTED = AppConfig.STATUS_CONNECTED
