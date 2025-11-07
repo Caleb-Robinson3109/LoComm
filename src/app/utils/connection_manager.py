@@ -201,12 +201,32 @@ class ConnectionManager:
 _connection_manager: Optional[ConnectionManager] = None
 
 
+class ConnectionManagerFactory:
+    """Factory class for creating and managing ConnectionManager instances."""
+
+    _instance: Optional[ConnectionManager] = None
+
+    @classmethod
+    def create(cls) -> ConnectionManager:
+        """Create a new ConnectionManager instance."""
+        return ConnectionManager()
+
+    @classmethod
+    def get_singleton(cls) -> ConnectionManager:
+        """Get or create the singleton ConnectionManager instance."""
+        if cls._instance is None:
+            cls._instance = ConnectionManager()
+        return cls._instance
+
+    @classmethod
+    def reset(cls):
+        """Reset the singleton instance (useful for testing)."""
+        cls._instance = None
+
+
 def get_connection_manager() -> ConnectionManager:
-    """Get the global connection manager instance."""
-    global _connection_manager
-    if _connection_manager is None:
-        _connection_manager = ConnectionManager()
-    return _connection_manager
+    """Get the global connection manager instance (backward compatibility)."""
+    return ConnectionManagerFactory.get_singleton()
 
 
 # Convenience functions for components

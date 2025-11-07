@@ -72,23 +72,33 @@ class ViewManager:
         Args:
             view_name: Name of the view to clean up
         """
+        # Clean up view components
         if view_name in self.view_components:
             component = self.view_components[view_name]
             # Call cleanup method if available
             if hasattr(component, 'cleanup'):
                 try:
                     component.cleanup()
-                except Exception:
-                    pass  # Ignore cleanup errors
+                except Exception as e:
+                    # Log cleanup errors instead of silently ignoring
+                    print(f"Warning: Error during component cleanup for view '{view_name}': {e}")
             del self.view_components[view_name]
 
+        # Clean up view containers
         if view_name in self.view_containers:
             container = self.view_containers[view_name]
             # Destroy the container to free resources
             try:
+                # Clear any child widgets first
+                for child in container.winfo_children():
+                    try:
+                        child.destroy()
+                    except Exception:
+                        pass  # Ignore individual child destruction errors
                 container.destroy()
-            except Exception:
-                pass  # Ignore destroy errors
+            except Exception as e:
+                # Log container destruction errors
+                print(f"Warning: Error during container destruction for view '{view_name}': {e}")
             del self.view_containers[view_name]
 
     def cleanup_all(self):

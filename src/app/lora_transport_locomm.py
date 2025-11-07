@@ -18,12 +18,25 @@ from mock_transport_backend import MockLoCommBackend
 DEBUG = False  # Set to True for debug output
 
 
+from abc import ABC, abstractmethod
+from typing import Protocol
+
 @dataclass
 class BackendBundle:
     backend: Any
     label: str
     is_mock: bool
     error: Optional[str] = None
+
+class TransportBackend(Protocol):
+    """Protocol defining the common interface for transport backends."""
+
+    def connect(self, pairing_context: Optional[dict] = None) -> bool: ...
+    def disconnect(self) -> bool: ...
+    def send(self, sender: str, message: str) -> bool: ...
+    def receive(self) -> tuple[str, str]: ...
+    def start_pairing(self) -> bool: ...
+    def stop_pairing(self) -> bool: ...
 
 
 class RealLoCommBackend:
@@ -198,7 +211,10 @@ class LoCommTransport:
                 sender, msg = self._backend.receive()
                 if sender and msg and self.on_receive:
                     timestamp = time.time()
-                    self.root.after(0, lambda s=sender, m=msg, ts=timestamp: self.on_receive(s, m, ts))
+                    # Ensure callback is callable before calling
+                    callback = self.on_receive
+                    if callback:
+                        self.root.after(0, lambda s=sender, m=msg, ts=timestamp: callback(s, m, ts))
             except Exception as exc:  # noqa: BLE001
                 if DEBUG:
                     print(f"[LoRaTransport] Receive error: {exc!r}")

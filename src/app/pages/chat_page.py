@@ -6,6 +6,7 @@ import time
 from services import AppController
 from utils.session import Session
 from utils.design_system import Colors, Typography, DesignUtils, Space
+from utils.status_manager import get_status_manager, DeviceInfo
 
 
 class ChatPage(tk.Frame):
@@ -17,6 +18,10 @@ class ChatPage(tk.Frame):
         self.session = session
         self.on_disconnect = on_disconnect
         self._connected = False
+
+        # Use consolidated status manager for consistent status display
+        self.status_manager = get_status_manager()
+        self.status_manager.register_device_callback(self._on_device_change)
 
         wrapper = tk.Frame(self, bg=Colors.SURFACE, padx=Space.XL, pady=Space.XL)
         wrapper.pack(fill=tk.BOTH, expand=True)
@@ -41,7 +46,8 @@ class ChatPage(tk.Frame):
 
         left = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        contact = self.session.device_name or "Chat"
+        # Use fixed "Conversations" title instead of device-specific naming
+        contact = "Chat"  # Fixed title as requested
         self.name_label = tk.Label(left, text=contact, bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
                                    font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
         self.name_label.pack(anchor="w")
@@ -50,7 +56,7 @@ class ChatPage(tk.Frame):
 
         actions = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         actions.pack(side=tk.RIGHT, anchor="e")
-        DesignUtils.button(actions, text="Clear chat", variant="ghost", command=self.clear_history).pack(side=tk.LEFT, padx=(0, Space.SM))
+        DesignUtils.button(actions, text="Clear history", variant="ghost", command=self.clear_history).pack(side=tk.LEFT, padx=(0, Space.SM))
         self.connection_btn = DesignUtils.button(actions, text="Connect", variant="secondary", command=self._handle_connection_button)
         self.connection_btn.pack(side=tk.LEFT)
 
@@ -141,24 +147,41 @@ class ChatPage(tk.Frame):
         pass  # Placeholder for future file picker
 
     def _handle_connection_button(self):
+        """Handle connection button clicks."""
         if self._connected:
             self._handle_disconnect()
         else:
-            if hasattr(self.master, "show_pair_page"):
-                self.master.show_pair_page()
+            # Try to navigate to pair page through main frame using getattr
+            show_pair_method = getattr(self.master, "show_pair_page", None)
+            if show_pair_method and callable(show_pair_method):
+                try:
+                    show_pair_method()
+                except Exception as e:
+                    print(f"Navigation error: {e}")
+                    self.status_badge.configure(text="Navigation error", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+            else:
+                # Show status that pairing is needed when navigation isn't available
+                self.status_badge.configure(text="Pair device needed", bg=Colors.STATE_INFO, fg=Colors.SURFACE)
 
     def _send_message(self, event=None):
-        if not self._connected:
+        """Send message - use consolidated status manager to check connectivity."""
+        if not self.status_manager.can_send_messages():
             self.status_badge.configure(text="Not connected", bg=Colors.STATE_WARNING, fg=Colors.SURFACE)
             return
+
         message = self.msg_var.get().strip()
         if not message:
             return
+
         try:
             self.controller.send_message(message)
-        except Exception:
+            # Update connection state after successful send
+            self._connected = True
+        except Exception as e:
             self.status_badge.configure(text="Send failed", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+            print(f"Send error: {e}")
             return
+
         self._add_message(self._get_local_device_name(), message)
         self.msg_var.set("")
 
@@ -170,21 +193,32 @@ class ChatPage(tk.Frame):
         contact = self.session.device_name or "Conversation"
         self.name_label.configure(text=contact)
 
+    def _on_device_change(self, device_info: DeviceInfo):
+        """Handle consolidated device/status changes for consistent status display."""
+        status_text = device_info.get_status_summary()
+        status_color = self.status_manager.get_current_status_color()
+
+        # Update connection state
+        self._connected = device_info.is_connected
+
+        # Update UI elements
+        self.status_badge.configure(text=status_text, bg=status_color, fg=Colors.SURFACE)
+        if hasattr(self, "connection_btn"):
+            self.connection_btn.configure(text="Disconnect" if self._connected else "Connect")
+
     def set_status(self, text: str):
-        lowered = text.lower()
-        if "connected" in lowered:
-            bg = Colors.STATE_SUCCESS
-            fg = Colors.SURFACE
-            self._connected = True
-        elif "connecting" in lowered or "pairing" in lowered:
-            bg = Colors.STATE_INFO
-            fg = Colors.SURFACE
-            self._connected = False
-        else:
-            bg = Colors.STATE_ERROR
-            fg = Colors.SURFACE
-            self._connected = False
-        self.status_badge.configure(text=text, bg=bg, fg=fg)
+        """
+        Set status using the consolidated status manager for consistency.
+        """
+        # Use consolidated status management for consistent state handling
+        device_info = self.status_manager.get_current_device()
+        device_info.status_text = text
+
+        # Trigger consolidated status update
+        self._on_device_change(device_info)
+
+        # Update UI elements
+        self.status_badge.configure(text=text)
         if hasattr(self, "connection_btn"):
             self.connection_btn.configure(text="Disconnect" if self._connected else "Connect")
 

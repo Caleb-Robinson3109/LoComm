@@ -3,8 +3,7 @@ from tkinter import ttk
 from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
-from utils.connection_manager import get_connection_manager
-from utils.status_manager import get_status_manager
+from utils.status_manager import get_status_manager, DeviceInfo
 
 from .chat_page import ChatPage
 from .settings_page import SettingsPage
@@ -16,18 +15,23 @@ from .view_manager import ViewManager
 
 
 class MainFrame(ttk.Frame):
+    """
+    Main application frame with reduced coupling.
+    Uses composition pattern instead of deep inheritance.
+    """
     def __init__(self, master, app, session, controller, on_logout, on_theme_toggle):
         super().__init__(master)
+        # Reduce direct coupling by using interface-like approach
         self.app = app
         self.session = session
         self.controller = controller
         self.on_logout = on_logout
         self.on_theme_toggle = on_theme_toggle
 
-        # Header attributes
-        self._current_device_id = None
-        self._current_device_name = "001"  # Default device name
-        self._is_connected = False
+        # Use consolidated status manager for consistent status display
+        self.status_manager = get_status_manager()
+        self.status_manager.register_device_callback(self._on_device_change)
+        self.status_manager.register_connection_callback(self._on_connection_change)
 
         # ---------- Modern Sidebar Layout ---------- #
         self._create_layout()
@@ -43,13 +47,10 @@ class MainFrame(ttk.Frame):
         # Initialize view manager
         self._view_manager = ViewManager(self)
 
-        # Initialize connection and status managers
-        self.connection_manager = get_connection_manager()
+        # Initialize status manager
         self.status_manager = get_status_manager()
 
-        # Register for connection state updates
-        self.connection_manager.register_connection_callback(self._on_connection_state_change)
-        self.connection_manager.register_device_info_callback(self._on_device_info_change)
+        # Register for status updates
         self.status_manager.register_status_callback(self._on_status_change)
 
         # Main container - sidebar + content
@@ -205,19 +206,30 @@ class MainFrame(ttk.Frame):
             # Device is disconnected
             self.update_status("Device disconnected")
 
-    # ========== CONNECTION MANAGER CALLBACKS ==========
+    # ========== CONSOLIDATED STATUS CALLBACKS ==========
 
-    def _on_connection_state_change(self, is_connected: bool, device_id: Optional[str], device_name: Optional[str]):
-        """Handle connection state changes from centralized manager."""
+    def _on_device_change(self, device_info: DeviceInfo):
+        """Handle device information changes from consolidated status manager."""
+        # Update all child components with consolidated status
+        if hasattr(self, 'chat_page'):
+            # Update chat page status
+            status_text = device_info.get_status_summary()
+            self.chat_page.set_status(status_text)
+
+        if hasattr(self, 'sidebar'):
+            # Update sidebar status
+            status_color = self.status_manager.get_current_status_color()
+            self.sidebar.status_value.configure(
+                text=device_info.get_status_summary(),
+                fg=status_color
+            )
+
+    def _on_connection_change(self, is_connected: bool, device_id: str, device_name: str):
+        """Handle connection state changes from consolidated status manager."""
+        # Update local state
         self._current_device_id = device_id
         self._current_device_name = device_name
 
-        # Update UI on main thread
-        if hasattr(self, 'chat_page'):
-            self.after(0, self.chat_page.sync_session_info)
-
-    def _on_device_info_change(self, device_info: Optional[dict]):
-        """Handle device info changes from centralized manager."""
         # Update UI on main thread
         if hasattr(self, 'chat_page'):
             self.after(0, self.chat_page.sync_session_info)

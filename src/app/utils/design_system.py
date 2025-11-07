@@ -35,7 +35,48 @@ class Palette:
 
 class Colors:
     """Runtime theme values (populated at runtime)."""
-    pass
+
+    # Define all possible color attributes to avoid Pylance errors
+    SURFACE = ""
+    SURFACE_ALT = ""
+    SURFACE_RAISED = ""
+    SURFACE_HEADER = ""
+    SURFACE_SIDEBAR = ""
+    SURFACE_SELECTED = ""
+    BORDER = ""
+    DIVIDER = ""
+    TEXT_PRIMARY = ""
+    TEXT_SECONDARY = ""
+    TEXT_MUTED = ""
+    TEXT_ACCENT = ""
+    STATE_SUCCESS = ""
+    STATE_WARNING = ""
+    STATE_ERROR = ""
+    STATE_INFO = ""
+    BUTTON_PRIMARY_BG = ""
+    BUTTON_PRIMARY_HOVER = ""
+    BUTTON_SECONDARY_BG = ""
+    BUTTON_GHOST_BG = ""
+    BG_PRIMARY = ""
+    BG_SECONDARY = ""
+    BG_TERTIARY = ""
+    BG_CHAT_AREA = ""
+    BG_MESSAGE_OWN = ""
+    BG_MESSAGE_OTHER = ""
+    BG_MESSAGE_SYSTEM = ""
+    BG_INPUT_AREA = ""
+    TEXT_PLACEHOLDER = ""
+    TEXT_TIMESTAMP = ""
+    MESSAGE_SYSTEM_TEXT = ""
+    MESSAGE_BUBBLE_OWN_BG = ""
+    MESSAGE_BUBBLE_OTHER_BG = ""
+    MESSAGE_BUBBLE_SYSTEM_BG = ""
+
+    # Status-specific colors
+    STATUS_CONNECTED = ""
+    STATUS_DISCONNECTED = ""
+    STATUS_CONNECTING = ""
+    STATUS_PAIRING = ""
 
 
 _THEME_DEFINITIONS = {
@@ -130,7 +171,7 @@ _apply_theme_definition("dark")
 class Typography:
     """Typography scale (8pt grid) with system fallbacks."""
 
-    # Primary fonts (with fallbacks handled by OS)
+    # Primary fonts (with fallbacks handled by OS) - configurable constants
     FONT_UI = "SF Pro Display"  # Will fall back to system sans-serif
     FONT_MONO = "JetBrains Mono"  # Will fall back to system monospace
 

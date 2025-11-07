@@ -27,8 +27,8 @@ class SettingsPage(tk.Frame):
 
         DesignUtils.hero_header(
             body,
-            title="Workspace preferences",
-            subtitle="Tune how Locomm boots, notifies you, and interacts with the upcoming hardware stack."
+            title="Locomm Desktop Settings",
+            subtitle="Configure your secure LoRa communication preferences and application behavior."
         )
 
         self._build_general_section(body)
@@ -37,18 +37,18 @@ class SettingsPage(tk.Frame):
 
     # ------------------------------------------------------------------ #
     def _build_general_section(self, parent):
-        section, body = DesignUtils.section(parent, "General", "Startup and session defaults", icon="⚙️")
-        ttk.Checkbutton(body, text="Auto-start Locomm on system boot", variable=self.auto_start_var).pack(anchor="w", pady=(0, Spacing.SM))
-        ttk.Checkbutton(body, text="Restore last paired device on launch", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
+        section, body = DesignUtils.section(parent, "General", "Application startup and session behavior")
+        ttk.Checkbutton(body, text="Auto-start on system boot", variable=self.auto_start_var).pack(anchor="w", pady=(0, Spacing.SM))
+        ttk.Checkbutton(body, text="Restore last paired device", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
 
     def _build_notifications_section(self, parent):
-        section, body = DesignUtils.section(parent, "Notifications", "Control desktop and sound alerts")
-        ttk.Checkbutton(body, text="Desktop banner for new messages", variable=self.desktop_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
-        ttk.Checkbutton(body, text="Sound cue on incoming chat", variable=self.sound_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
-        ttk.Checkbutton(body, text="Toast when transport connects or disconnects", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
+        section, body = DesignUtils.section(parent, "Notifications", "Desktop and audio alert configuration")
+        ttk.Checkbutton(body, text="Desktop notifications for new messages", variable=self.desktop_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
+        ttk.Checkbutton(body, text="Audio alerts for incoming chat", variable=self.sound_notifications_var).pack(anchor="w", pady=(0, Spacing.SM))
+        ttk.Checkbutton(body, text="Connection status notifications", variable=tk.BooleanVar(value=True), state="disabled").pack(anchor="w")
 
     def _build_advanced_section(self, parent):
-        section, body = DesignUtils.section(parent, "Advanced", "Developer toggles and troubleshooting")
+        section, body = DesignUtils.section(parent, "Advanced", "System configuration and debugging")
         DesignUtils.button(body, text="Save preferences", command=self._save_preferences).pack(anchor="w", pady=(0, Spacing.SM))
         DesignUtils.button(body, text="Reset to defaults", command=self._reset_defaults, variant="secondary").pack(anchor="w")
         DesignUtils.button(body, text="Export logs", command=self._export_logs, variant="ghost").pack(anchor="w", pady=(Spacing.SM, 0))
@@ -56,7 +56,7 @@ class SettingsPage(tk.Frame):
     # ------------------------------------------------------------------ #
     def _save_preferences(self):
         try:
-            messagebox.showinfo("Preferences saved", "Settings stored locally for future sessions.")
+            messagebox.showinfo("Preferences Saved", "Settings have been saved to your local configuration.")
         except Exception as exc:  # pragma: no cover - UI alert fallback
             messagebox.showerror("Error", f"Failed to save preferences: {exc}")
 
@@ -64,7 +64,7 @@ class SettingsPage(tk.Frame):
         self.auto_start_var.set(False)
         self.desktop_notifications_var.set(True)
         self.sound_notifications_var.set(False)
-        messagebox.showinfo("Defaults restored", "All preferences returned to factory values.")
+        messagebox.showinfo("Defaults Restored", "All preferences have been reset to their default values.")
 
     def _export_logs(self):
-        messagebox.showinfo("Export", "Log export will be available once API integration ships.")
+        messagebox.showinfo("Export Available", "Log export functionality will be available in a future update.")
