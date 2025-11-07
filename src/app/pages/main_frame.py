@@ -173,6 +173,10 @@ class MainFrame(ttk.Frame):
         """Show the pair page."""
         self._show_pair_view()
 
+    def show_about_page(self):
+        """Show the about page."""
+        self._show_about_view()
+
     # ------------------------------------------------------------------ #
     # Header actions
     def _on_pair_click(self):
