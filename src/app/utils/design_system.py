@@ -15,18 +15,18 @@ from dataclasses import dataclass
 class Palette:
     """Foundational color palette."""
 
-    NIGHT_1000 = "#05070A"
-    NIGHT_950 = "#0B0E13"
-    NIGHT_900 = "#10141C"
-    NIGHT_850 = "#141925"
-    NIGHT_800 = "#1B2030"
-    NIGHT_700 = "#212738"
-    NIGHT_600 = "#2C3448"
-    NIGHT_500 = "#343C52"
-    CLOUD_300 = "#9AA2B1"
-    CLOUD_200 = "#B7C0D4"
-    CLOUD_100 = "#D3DCEA"
-    CLOUD_050 = "#F5F6FA"
+    NIGHT_1000 = "#030303"
+    NIGHT_950 = "#050505"
+    NIGHT_900 = "#080808"
+    NIGHT_850 = "#0B0B0B"
+    NIGHT_800 = "#0F0F0F"
+    NIGHT_700 = "#141414"
+    NIGHT_600 = "#1C1C1C"
+    NIGHT_500 = "#232323"
+    CLOUD_300 = "#A0A0A0"
+    CLOUD_200 = "#BEBEBE"
+    CLOUD_100 = "#E5E5E5"
+    CLOUD_050 = "#F9F9F9"
 
     ACCENT_BLUE = "#6CC1FF"
     ACCENT_PURPLE = "#9A7BFF"
@@ -39,11 +39,11 @@ class Palette:
 class Colors:
     """Semantic color mapping used throughout the UI."""
 
-    SURFACE = Palette.NIGHT_900
-    SURFACE_ALT = Palette.NIGHT_850
-    SURFACE_RAISED = Palette.NIGHT_800
-    SURFACE_HEADER = Palette.NIGHT_950
-    SURFACE_SIDEBAR = Palette.NIGHT_950
+    SURFACE = Palette.NIGHT_950
+    SURFACE_ALT = Palette.NIGHT_900
+    SURFACE_RAISED = Palette.NIGHT_850
+    SURFACE_HEADER = Palette.NIGHT_1000
+    SURFACE_SIDEBAR = Palette.NIGHT_1000
     SURFACE_SELECTED = Palette.NIGHT_800
 
     BORDER = Palette.NIGHT_600
@@ -73,7 +73,7 @@ class Colors:
     BG_SECONDARY = SURFACE_ALT
     BG_TERTIARY = SURFACE_RAISED
     BG_CHAT_AREA = SURFACE
-    BG_MESSAGE_OWN = Palette.ACCENT_BLUE
+    BG_MESSAGE_OWN = SURFACE
     BG_MESSAGE_OTHER = SURFACE_ALT
     BG_MESSAGE_SYSTEM = SURFACE_RAISED
     BG_INPUT_AREA = SURFACE_RAISED
@@ -391,7 +391,7 @@ class DesignUtils:
         container = tk.Frame(parent, bg=Colors.SURFACE, pady=Space.LG)
         container.pack(fill=tk.X, pady=(0, Space.LG))
         text_wrap = tk.Frame(container, bg=Colors.SURFACE)
-        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, Space.XL))
 
         tk.Label(text_wrap, text=title, bg=Colors.SURFACE, fg=Colors.TEXT_PRIMARY,
                  font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD)).pack(anchor="w")

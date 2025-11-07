@@ -20,7 +20,7 @@ class ScrollContainer:
 
 def create_scroll_container(parent: tk.Misc, *,
                             bg: str = Colors.BG_PRIMARY,
-                            padding: tuple[int, int] = (Spacing.TAB_PADDING, Spacing.TAB_PADDING)) -> ScrollContainer:
+                            padding: tuple[int, int] = (Spacing.XL, Spacing.XL)) -> ScrollContainer:
     """Create a vertical scroll container with unified styling."""
     wrapper = tk.Frame(parent, bg=bg)
     wrapper.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])

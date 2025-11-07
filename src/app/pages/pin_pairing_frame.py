@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Optional
 from utils.design_system import Colors, Typography, Spacing, DesignUtils, AppConfig
+from utils.ui_helpers import create_scroll_container
 from utils.pin_authentication import generate_pairing_pin, verify_pairing_pin, validate_pin_format, get_pin_auth
 
 
@@ -22,141 +23,81 @@ class PINPairingFrame(tk.Frame):
 
     def _create_ui(self):
         """Create the PIN pairing interface."""
-        self.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=Spacing.LG)
+        self.pack(fill=tk.BOTH, expand=True)
+        from utils.ui_helpers import create_scroll_container
 
-        # Main container
-        main_container = tk.Frame(self, bg=Colors.BG_PRIMARY)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.XL, Spacing.XL))
+        content = scroll.frame
 
-        # Title section
-        title_frame = tk.Frame(main_container, bg=Colors.BG_PRIMARY)
-        title_frame.pack(pady=(0, Spacing.XL))
-
-        title_label = tk.Label(
-            title_frame,
-            text="Device Pairing",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_XL, Typography.WEIGHT_BOLD),
-            fg="#FFFFFF",
-            bg=Colors.BG_PRIMARY
+        DesignUtils.hero_header(
+            content,
+            title="Device pairing",
+            subtitle="Enter the 5-digit PIN shared by your peer to begin a secure session."
         )
-        title_label.pack()
 
-        subtitle_label = tk.Label(
-            title_frame,
-            text="Enter 5-digit PIN to connect",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD),
-            fg="#CCCCCC",
-            bg=Colors.BG_PRIMARY
-        )
-        subtitle_label.pack(pady=(Spacing.SM, 0))
-
-        # PIN Input Section
-        pin_frame = ttk.LabelFrame(main_container, text="PIN Authentication", style='Custom.TLabelframe')
-        pin_frame.pack(fill=tk.X, pady=(0, Spacing.LG))
-
-        pin_content = tk.Frame(pin_frame, bg=Colors.BG_PRIMARY)
-        pin_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
+        section, body = DesignUtils.section(content, "PIN authentication", "Codes expire after 10 minutes")
 
         # PIN input field
         pin_label = tk.Label(
-            pin_content,
-            text="Enter 5-digit PIN:",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_MD, Typography.WEIGHT_MEDIUM),
-            fg="#FFFFFF",
-            bg=Colors.BG_PRIMARY
+            body,
+            text="Enter 5-digit PIN",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
         )
-        pin_label.pack(anchor="w", pady=(0, Spacing.SM))
+        pin_label.pack(anchor="w", pady=(0, Spacing.XS))
 
         # PIN entry with validation
-        pin_input_frame = tk.Frame(pin_content, bg=Colors.BG_PRIMARY)
+        pin_input_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
         pin_input_frame.pack(fill=tk.X, pady=(0, Spacing.LG))
 
         self.pin_var = tk.StringVar()
-        self.pin_entry = tk.Entry(
+        self.pin_entry = DesignUtils.create_chat_entry(
             pin_input_frame,
             textvariable=self.pin_var,
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_LG),
             justify='center',
-            width=10,
-            relief='flat',
-            bd=5,
-            bg=Colors.BG_SECONDARY,
-            fg="#FFFFFF",
-            insertbackground="#FFFFFF"
+            width=10
         )
         self.pin_entry.pack(side=tk.LEFT, padx=(0, Spacing.MD))
         self.pin_entry.bind('<KeyRelease>', self._on_pin_change)
         self.pin_entry.bind('<Return>', self._on_submit_pin)
 
-        # Clear PIN button
-        clear_btn = tk.Button(
-            pin_input_frame,
-            text="Clear",
-            command=self._clear_pin,
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            bg=Colors.BG_TERTIARY,
-            fg="#FFFFFF",
-            relief='flat',
-            bd=2,
-            padx=Spacing.MD,
-            pady=Spacing.SM
-        )
+        clear_btn = DesignUtils.button(pin_input_frame, text="Clear", command=self._clear_pin, variant="ghost")
         clear_btn.pack(side=tk.LEFT)
 
         # Error message
         self.error_label = tk.Label(
-            pin_content,
+            body,
             text="",
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg="#FF6B6B",
-            bg=Colors.BG_PRIMARY
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            fg=Colors.STATE_ERROR,
+            bg=Colors.SURFACE_ALT
         )
         self.error_label.pack(anchor="w")
 
         # Action buttons
-        button_frame = tk.Frame(pin_content, bg=Colors.BG_PRIMARY)
-        button_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
+        button_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
+        button_frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
         # Pair button
-        self.pair_btn = DesignUtils.create_styled_button(
-            button_frame,
-            "Pair Device",
-            self._on_submit_pin,
-            style='Primary.TButton'
-        )
-        self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.MD))
+        self.pair_btn = DesignUtils.button(button_frame, text="Pair device", command=self._on_submit_pin)
+        self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
 
         # Demo login button
         if self.on_demo_login:
-            demo_btn = DesignUtils.create_styled_button(
-                button_frame,
-                "Demo Access (Skip Pairing)",
-                self._on_demo_login,
-                style='Secondary.TButton'
-            )
-            demo_btn.pack(fill=tk.X)
+            DesignUtils.button(button_frame, text="Demo access (skip pairing)", command=self._on_demo_login, variant="secondary").pack(fill=tk.X)
 
         # Info section
-        info_frame = ttk.LabelFrame(main_container, text="How to Pair", style='Custom.TLabelframe')
-        info_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
-
-        info_content = tk.Frame(info_frame, bg=Colors.BG_PRIMARY)
-        info_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=Spacing.SECTION_MARGIN)
-
-        info_text = """• Get a 5-digit PIN from another device
-• Enter the PIN above to connect
-• PIN expires after 10 minutes
-• Use demo access for testing"""
-
-        info_label = tk.Label(
-            info_content,
-            text=info_text,
-            font=(Typography.FONT_PRIMARY, Typography.SIZE_SM),
-            fg="#CCCCCC",
-            bg=Colors.BG_PRIMARY,
-            justify='left'
-        )
-        info_label.pack(anchor="w")
+        info_section, info_body = DesignUtils.section(content, "How to pair", "Quick steps")
+        steps = [
+            "Get the 5-digit PIN from a nearby device",
+            "Enter the PIN in the field above",
+            "Wait for confirmation before chatting",
+            "Use demo access if hardware is unavailable"
+        ]
+        for step in steps:
+            tk.Label(info_body, text=f"• {step}", bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
         # Set initial focus
         self.after(100, lambda: self.pin_entry.focus_set())

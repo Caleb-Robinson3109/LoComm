@@ -17,11 +17,13 @@ from .view_manager import ViewManager
 
 class MainFrame(ttk.Frame):
     def __init__(self, master, app, session, controller, on_logout):
-        super().__init__(master)
+        super().__init__(master, style='TFrame')
+        self.configure(style='TFrame')
         self.app = app
         self.session = session
         self.controller = controller
         self.on_logout = on_logout
+        self.configure(bg=Colors.SURFACE)
 
         # Header attributes
         self._current_device_id = None
@@ -55,8 +57,8 @@ class MainFrame(ttk.Frame):
         self._create_inline_header()
 
         # Main container - sidebar + content
-        main_container = tk.Frame(self, bg=Colors.BG_PRIMARY)
-        main_container.pack(fill=tk.BOTH, expand=True)
+        main_container = tk.Frame(self, bg=Colors.SURFACE)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.XL, pady=Spacing.XL)
 
         # ---------- Left Sidebar ---------- #
         self.sidebar = Sidebar(
