@@ -102,8 +102,12 @@ class MainFrame(ttk.Frame):
         self.home_page = HomePage(self.home_container, self.app, self.session)
         self.home_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
-        self.chat_page = ChatPage(self.chat_container, self.transport, self.session.username,
-                              on_disconnect=self._handle_disconnect)
+        self.chat_page = ChatPage(
+            self.chat_container,
+            self.transport,
+            self.session,
+            on_disconnect=self._handle_disconnect
+        )
         self.chat_page.pack(fill=tk.BOTH, expand=True, padx=Spacing.TAB_PADDING, pady=Spacing.TAB_PADDING)
 
         self.pair_page = PairPage(self.pair_container, self.app, self.transport, self.session,
@@ -328,11 +332,15 @@ class MainFrame(ttk.Frame):
 
         # Update UI on main thread
         self.after(0, self._update_status_display)
+        if hasattr(self, 'chat_page'):
+            self.after(0, self.chat_page.sync_session_info)
 
     def _on_device_info_change(self, device_info: Optional[dict]):
         """Handle device info changes from centralized manager."""
         # Update UI on main thread
         self.after(0, self._update_status_display)
+        if hasattr(self, 'chat_page'):
+            self.after(0, self.chat_page.sync_session_info)
 
     def _on_status_change(self, status_text: str, status_color: str):
         """Handle status changes from status manager."""

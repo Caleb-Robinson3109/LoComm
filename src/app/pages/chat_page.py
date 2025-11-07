@@ -3,15 +3,16 @@ from tkinter import ttk
 import time
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from lora_transport_locomm import LoCommTransport
+from utils.session import Session
 
 
 class ChatPage(tk.Frame):
-    def __init__(self, master, transport: LoCommTransport, username: str, on_disconnect=None):
+    def __init__(self, master, transport: LoCommTransport, session: Session, on_disconnect=None):
         super().__init__(master, bg=Colors.BG_PRIMARY)
         self.master = master  # Reference to parent for communication
         self.on_disconnect = on_disconnect  # Callback for disconnect action
         self.transport = transport
-        self.username = username
+        self.session = session
         self.history_buffer: list[str] = []
 
         # Start in a disabled state until we know the transport is ready.
@@ -96,15 +97,15 @@ class ChatPage(tk.Frame):
         your_device_frame = ttk.Frame(info_frame)
         your_device_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
 
-        ttk.Label(your_device_frame, text="Your Device:", style='Small.TLabel').pack(anchor="w")
-        self.your_device_id_label = ttk.Label(your_device_frame, text="001", style='Body.TLabel')
+        ttk.Label(your_device_frame, text="Local Device ID:", style='Small.TLabel').pack(anchor="w")
+        self.your_device_id_label = ttk.Label(your_device_frame, text="Unpaired", style='Body.TLabel')
         self.your_device_id_label.pack(anchor="w")
 
         # Connected device information
         peer_device_frame = ttk.Frame(info_frame)
         peer_device_frame.pack(fill=tk.X)
 
-        ttk.Label(peer_device_frame, text="Connected Device:", style='Small.TLabel').pack(anchor="w")
+        ttk.Label(peer_device_frame, text="Device Alias:", style='Small.TLabel').pack(anchor="w")
         self.peer_device_name_label = ttk.Label(peer_device_frame, text="Not connected", style='Body.TLabel')
         self.peer_device_name_label.pack(anchor="w")
 
@@ -136,21 +137,9 @@ class ChatPage(tk.Frame):
         self.send_btn = DesignUtils.create_styled_button(input_frame, "Send Message", self._send_message, style='Send.TButton')
         self.send_btn.pack(anchor="e")
 
-        # Initialize chat history
+        # Initialize labels and chat history
+        self.sync_session_info()
         self._setup_chat_history()
-
-        # ---------- Connection Controls Section ---------- #
-        connection_frame = ttk.LabelFrame(scrollable_frame, text="Connection Controls", style='Custom.TLabelframe')
-        connection_frame.pack(fill=tk.X, padx=Spacing.HEADER_PADDING)
-
-        # Connection controls content
-        connection_content = ttk.Frame(connection_frame)
-        connection_content.pack(fill=tk.X, padx=Spacing.SECTION_MARGIN, pady=(Spacing.SECTION_MARGIN, 0))
-
-        # Disconnect button
-        if self.on_disconnect:
-            disconnect_btn = DesignUtils.create_styled_button(connection_content, "Disconnect", self.on_disconnect, style='Danger.TButton')
-            disconnect_btn.pack(anchor="w")
 
     def _setup_chat_history(self):
         """Setup the chat history display."""
@@ -159,7 +148,7 @@ class ChatPage(tk.Frame):
             widget.destroy()
 
         # Add welcome message
-        welcome_msg = f"Welcome {self.username}! This is a secure chat interface."
+        welcome_msg = "Welcome to Locomm Desktop! This is a secure chat interface."
         self._add_message("System", welcome_msg, is_system=True)
 
     def _add_message(self, sender: str, message: str, is_system: bool = False):
@@ -212,12 +201,14 @@ class ChatPage(tk.Frame):
         if not message:
             return
 
+        sender = self._get_local_device_name()
+
         # Send via transport
         if hasattr(self.transport, 'send') and self.transport.send:
-            self.transport.send(self.username, message)
+            self.transport.send(sender, message)
 
         # Add to local history
-        self._add_message(self.username, message)
+        self._add_message(sender, message)
 
         # Clear input
         self.msg_var.set("")
@@ -227,13 +218,24 @@ class ChatPage(tk.Frame):
         """Append a line to the chat history (called by transport callbacks)."""
         self._add_message(sender, message)
 
+    def sync_session_info(self):
+        """Refresh labels based on the current session data."""
+        self.your_device_id_label.configure(text=self.session.device_id or "Unpaired")
+        alias = self._get_local_device_name()
+        if self._connected:
+            self.peer_device_name_label.configure(text=alias)
+        else:
+            self.peer_device_name_label.configure(text="Not connected")
+
     def set_status(self, text: str):
         """Set the status display."""
         self.status_var.set(text)
         if "connected" in text.lower():
             self._connected = True
+            self.peer_device_name_label.configure(text=self._get_local_device_name() or "Awaiting peer")
         else:
             self._connected = False
+            self.peer_device_name_label.configure(text="Not connected")
 
     def clear_history(self):
         """Clear the chat history."""
@@ -250,3 +252,7 @@ class ChatPage(tk.Frame):
                     if isinstance(child, tk.Label) and child.cget('text'):
                         lines.append(child.cget('text'))
         return lines
+
+    def _get_local_device_name(self) -> str:
+        """Helper to derive a friendly name for the local device."""
+        return getattr(self.session, "device_name", None) or "This Device"

@@ -23,7 +23,7 @@ class ChatHistoryManager:
 
         Args:
             chat_tab: ChatPage instance with get_history_lines() method
-            session: Session instance containing username
+            session: Session instance containing device metadata
             parent_widget: Parent widget for dialog boxes
 
         Returns:
@@ -39,9 +39,9 @@ class ChatHistoryManager:
             return False
 
         # Generate default filename
-        username = session.username or 'session'
+        device_label = session.device_name or 'session'
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        default_name = f"locomm_chat_{username}_{timestamp}.txt"
+        default_name = f"locomm_chat_{device_label}_{timestamp}.txt"
 
         # Open save dialog
         path = filedialog.asksaveasfilename(

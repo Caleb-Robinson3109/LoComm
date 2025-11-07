@@ -90,7 +90,7 @@ Features:
 • Secure 5-digit PIN pairing
 • Real-time device communication
 • Simple and user-friendly interface
-• No complex passwords or usernames
+• Credential-free pairing experience
 • Professional LoRa communication platform"""
 
         welcome_label = tk.Label(
@@ -156,7 +156,6 @@ Features:
 
     def refresh_content(self):
         """Refresh the home tab content (called when returning to home tab)."""
-        # Update username if it changed
-        username = self.session.username if hasattr(self.session, 'username') and self.session.username else "User"
-        # In a real implementation, you'd update the labels here
-        # For now, the labels are set once during initialization
+        # Display-friendly device name can be updated here if needed.
+        device_name = getattr(self.session, 'device_name', None) or "Device"
+        # Labels are currently static; hook into this method when dynamic text is required.
