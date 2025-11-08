@@ -6,9 +6,13 @@ network/security teams deliver the production-ready implementation.
 """
 from __future__ import annotations
 
+import random
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
+from services.mock_device_service import MockDevice, get_mock_device_service
+from services.network_simulator import LoRaNetworkSimulator
+from services.transport_contract import PairingContext, TransportMessage
 
 class MockLoCommBackend:
     """Simple in-memory backend that simulates a LoRa link."""
@@ -17,9 +21,12 @@ class MockLoCommBackend:
 
     def __init__(self):
         self._connected = False
-        self._pending_messages: list[Tuple[str, str]] = []
+        self._active_device: Optional[MockDevice] = None
+        self._message_counter = 0
+        self._device_service = get_mock_device_service()
+        self._network = LoRaNetworkSimulator()
 
-    def connect(self, pairing_context: Optional[dict] = None) -> bool:
+    def connect(self, pairing_context: Optional[PairingContext] = None) -> bool:
         """
         Pretend to connect to a device.
 
@@ -27,32 +34,105 @@ class MockLoCommBackend:
             pairing_context: Optional metadata coming from the UI (unused).
         """
         self._connected = True
+        scenario = "default"
+        device_id = None
+        if pairing_context:
+            scenario = pairing_context.metadata.get("scenario", "default")
+            device_id = pairing_context.device_id
+
+        self._network.set_scenario(scenario)
+        self._active_device = None
+        if device_id:
+            self._active_device = self._device_service.get_device(device_id)
+        if self._active_device is None:
+            self._active_device = self._device_service.pick_default()
+
+        self._seed_handshake()
         return True
 
     def disconnect(self) -> bool:
         self._connected = False
+        self._active_device = None
+        self._message_counter = 0
         return True
 
-    def send(self, sender: str, message: str) -> bool:
+    def send(self, message: TransportMessage) -> bool:
         if not self._connected:
             return False
-        # Echo back for demo purposes
-        self._pending_messages.append((sender, message))
+
+        peer_name = self._active_device.name if self._active_device else "Mock Device"
+        telemetry = (self._active_device.telemetry if self._active_device else {}) or {}
+        metadata = {
+            "scenario": self._network.scenario.name,
+            "attempt": self._message_counter + 1,
+            "rssi": telemetry.get("rssi", -80),
+            "snr": telemetry.get("snr", 4.0),
+            "battery": telemetry.get("battery", 75),
+        }
+        self._message_counter += 1
+        response_text = self._build_response_text(message.payload)
+        response = TransportMessage(
+            sender=peer_name,
+            payload=response_text,
+            metadata=metadata,
+        )
+        self._network.queue_message(response)
         return True
 
-    def receive(self) -> Tuple[str, str]:
+    def receive(self) -> Optional[TransportMessage]:
         if not self._connected:
             time.sleep(0.2)
-            return ("", "")
+            return None
 
-        if self._pending_messages:
-            return self._pending_messages.pop(0)
+        message = self._network.next_message()
+        if message:
+            return message
 
+        if random.random() < 0.05:
+            self._queue_heartbeat()
         time.sleep(0.2)
-        return ("", "")
+        return None
 
     def start_pairing(self) -> bool:
         return True
 
     def stop_pairing(self) -> bool:
         return True
+
+    def _seed_handshake(self):
+        if not self._active_device:
+            return
+        metadata = {
+            "scenario": self._network.scenario.name,
+            "rssi": self._active_device.telemetry.get("rssi", -78),
+            "snr": self._active_device.telemetry.get("snr", 4.2),
+            "battery": self._active_device.telemetry.get("battery", 80),
+        }
+        message = TransportMessage(
+            sender=self._active_device.name,
+            payload=f"{self._active_device.name} ready. Firmware {self._active_device.metadata.get('firmware', '1.0.0')}",
+            metadata=metadata,
+        )
+        self._network.queue_message(message)
+
+    def _queue_heartbeat(self):
+        if not self._active_device:
+            return
+        heartbeat = TransportMessage(
+            sender=self._active_device.name,
+            payload="Heartbeat ping",
+            metadata={
+                "scenario": self._network.scenario.name,
+                "heartbeat": True,
+                "rssi": self._active_device.telemetry.get("rssi", -78),
+                "snr": self._active_device.telemetry.get("snr", 4.2),
+            }
+        )
+        self._network.queue_message(heartbeat)
+
+    def _build_response_text(self, payload: str) -> str:
+        if not payload:
+            return "ACK"
+        if len(payload) < 40:
+            return f"Echo: {payload}"
+        return f"ACK ({len(payload)} bytes)"

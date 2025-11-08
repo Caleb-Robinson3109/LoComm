@@ -4,107 +4,21 @@ Provides unified interface for real and mock implementations.
 """
 from __future__ import annotations
 
-import importlib
-import os
-import sys
 import threading
 import time
 import tkinter as tk
-from dataclasses import dataclass
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional
 
-from mock_transport_backend import MockLoCommBackend
+from services.transport_contract import PairingContext, TransportMessage
+from services.transport_registry import BackendBundle, resolve_backend
 
 DEBUG = False  # Set to True for debug output
-
-
-from abc import ABC, abstractmethod
-from typing import Protocol
-
-@dataclass
-class BackendBundle:
-    backend: Any
-    label: str
-    is_mock: bool
-    error: Optional[str] = None
-
-class TransportBackend(Protocol):
-    """Protocol defining the common interface for transport backends."""
-
-    def connect(self, pairing_context: Optional[dict] = None) -> bool: ...
-    def disconnect(self) -> bool: ...
-    def send(self, sender: str, message: str) -> bool: ...
-    def receive(self) -> tuple[str, str]: ...
-    def start_pairing(self) -> bool: ...
-    def stop_pairing(self) -> bool: ...
-
-
-class RealLoCommBackend:
-    """Thin wrapper around the external LoCommAPI module."""
-
-    label = "locomm-api"
-
-    def __init__(self, api_module: Any):
-        self.api = api_module
-
-    def connect(self, pairing_context: Optional[dict] = None) -> bool:
-        connect_fn = getattr(self.api, "connect_to_device", None)
-        if not connect_fn:
-            return False
-        return bool(connect_fn())
-
-    def disconnect(self) -> bool:
-        disconnect_fn = getattr(self.api, "disconnect_from_device", None)
-        if disconnect_fn:
-            return bool(disconnect_fn())
-        return False
-
-    def send(self, sender: str, message: str) -> bool:
-        send_fn = getattr(self.api, "send_message", None)
-        if send_fn:
-            return bool(send_fn(sender, message))
-        return False
-
-    def receive(self) -> Tuple[str, str]:
-        receive_fn = getattr(self.api, "receive_message", None)
-        if receive_fn:
-            return receive_fn()
-        return ("", "")
-
-    def start_pairing(self) -> bool:
-        pair_fn = getattr(self.api, "pair_devices", None)
-        if pair_fn:
-            return bool(pair_fn())
-        return False
-
-    def stop_pairing(self) -> bool:
-        stop_fn = getattr(self.api, "stop_pair", None)
-        if stop_fn:
-            return bool(stop_fn())
-        return False
-
-
-def _load_backend() -> BackendBundle:
-    """Attempt to load the real backend, falling back to the mock implementation."""
-    api_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "api"))
-    if api_path not in sys.path:
-        sys.path.insert(0, api_path)
-
-    try:
-        module = importlib.import_module("LoCommAPI")
-        if DEBUG:
-            print(f"[LoRaTransport] Loaded LoCommAPI backend from {api_path}")
-        return BackendBundle(RealLoCommBackend(module), "LoCommAPI", False)
-    except Exception as exc:  # noqa: BLE001 - we want a broad fallback
-        if DEBUG:
-            print(f"[LoRaTransport] Falling back to mock backend: {exc!r}")
-        return BackendBundle(MockLoCommBackend(), "MockLoCommBackend", True, str(exc))
 
 
 class LoCommTransport:
     """Transport adapter for LoRa communication with unified interface."""
 
-    def __init__(self, ui_root: tk.Misc):
+    def __init__(self, ui_root: tk.Misc, profile: str | None = None):
         self.root = ui_root
         self.on_receive: Optional[Callable[[str, str, float], None]] = None
         self.on_status: Optional[Callable[[str], None]] = None
@@ -112,12 +26,30 @@ class LoCommTransport:
         self._rx_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
-        backend_bundle = _load_backend()
+        backend_bundle = resolve_backend(profile)
         self._backend = backend_bundle.backend
         self._backend_label = backend_bundle.label
+        self._profile_key = backend_bundle.profile
         self._is_mock = backend_bundle.is_mock
+        self._backend_error = backend_bundle.error
 
-    def start(self, pairing_context: Optional[dict] = None) -> bool:
+    @property
+    def profile(self) -> str:
+        return self._profile_key
+
+    @property
+    def profile_label(self) -> str:
+        return self._backend_label
+
+    @property
+    def is_mock(self) -> bool:
+        return self._is_mock
+
+    @property
+    def backend_error(self) -> Optional[str]:
+        return self._backend_error
+
+    def start(self, pairing_context: Optional[PairingContext | dict] = None) -> bool:
         """Connect to a device using the supplied pairing context."""
         current_thread_id = threading.get_ident()
         main_thread_id = threading.main_thread().ident
@@ -127,7 +59,8 @@ class LoCommTransport:
             if DEBUG:
                 print(f"[LoRaTransport] Starting connection via {self._backend_label}")
 
-            success = self._backend.connect(pairing_context)
+            normalized_context = self._normalize_pairing_context(pairing_context)
+            success = self._backend.connect(normalized_context)
             if not success:
                 if self.on_status:
                     # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
@@ -190,15 +123,16 @@ class LoCommTransport:
             # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
             self.root.after(0, lambda: self._safe_status_callback("Disconnected"))
 
-    def send(self, name: str, text: str) -> None:
+    def send(self, name: str, text: str, metadata: Optional[dict] = None) -> None:
         """Send message to connected device."""
         if not self.running:
             if self.on_status:
                 self.on_status("Not connected")
             return
 
+        message = TransportMessage(sender=name, payload=text, metadata=metadata or {})
         try:
-            success = self._backend.send(name, text)
+            success = self._backend.send(message)
             if not success and self.on_status:
                 self.on_status("Send failed")
         except Exception as exc:  # noqa: BLE001
@@ -232,14 +166,17 @@ class LoCommTransport:
 
         while not self._stop_event.is_set():
             try:
-                sender, msg = self._backend.receive()
-                if sender and msg and self.on_receive:
+                message = self._backend.receive()
+                if message and self.on_receive:
                     timestamp = time.time()
                     # Ensure callback is callable before calling
                     callback = self.on_receive
                     if callback:
                         print(f"[LoRaTransport] Scheduling receive callback on main thread from thread {rx_thread_id}")
-                        self.root.after(0, lambda s=sender, m=msg, ts=timestamp: callback(s, m, ts))
+                        self.root.after(
+                            0,
+                            lambda m=message, ts=timestamp: callback(m.sender, m.payload, ts)
+                        )
             except Exception as exc:  # noqa: BLE001
                 if DEBUG:
                     print(f"[LoRaTransport] Receive error: {exc!r}")
@@ -247,3 +184,15 @@ class LoCommTransport:
             time.sleep(0.2)
 
         print(f"[LoRaTransport] _rx_loop ending on thread {rx_thread_id}")
+
+    def _normalize_pairing_context(self, context: Optional[PairingContext | dict]) -> Optional[PairingContext]:
+        if context is None:
+            return None
+        if isinstance(context, PairingContext):
+            return context
+        return PairingContext(
+            device_id=context.get("device_id", ""),
+            device_name=context.get("device_name", ""),
+            mode=context.get("mode", "pin"),
+            metadata=context.get("metadata") or {},
+        )

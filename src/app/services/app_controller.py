@@ -10,11 +10,13 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 from lora_transport_locomm import LoCommTransport
+from services.transport_contract import PairingContext
 from utils.session import Session
 from utils.design_system import AppConfig
 from utils.connection_manager import get_connection_manager
 from utils.status_manager import get_status_manager
 from utils.app_logger import get_logger
+from utils.runtime_settings import get_runtime_settings
 
 MessageCallback = Callable[[str, str, float], None]
 StatusCallback = Callable[[str], None]
@@ -68,7 +70,8 @@ class AppController:
         self.session = Session()
         # CRITICAL FIX: Initialize local device name for proper message attribution
         self.session.local_device_name = "This Device"
-        self.transport = LoCommTransport(ui_root)
+        self.settings = get_runtime_settings()
+        self.transport = LoCommTransport(ui_root, profile=self.settings.transport_profile)
         self.connection_manager = get_connection_manager()
         self.status_manager = get_status_manager()
         self.store = SessionStore()
@@ -76,6 +79,13 @@ class AppController:
         self._message_callbacks: List[MessageCallback] = []
         self._status_callbacks: List[StatusCallback] = []
         self._worker_lock = threading.Lock()
+
+        # Log resolved transport profile for diagnostics
+        resolved_profile = f"{self.transport.profile_label} ({self.transport.profile})"
+        resolved_mode = "mock" if self.transport.is_mock else "hardware"
+        self.logger.info("Transport profile: %s [%s]", resolved_profile, resolved_mode)
+        if self.transport.backend_error:
+            self.logger.warning("Transport fallback reason: %s", self.transport.backend_error)
 
         # Wire transport callbacks
         self.transport.on_receive = self._handle_transport_message
@@ -162,11 +172,16 @@ class AppController:
             timer.start()
 
             try:
-                pairing_context = {
-                    "mode": mode,
-                    "device_id": device_id,
-                    "device_name": device_name,
-                }
+                pairing_context = PairingContext(
+                    mode=mode,
+                    device_id=device_id,
+                    device_name=device_name,
+                    metadata={
+                        "requested_profile": self.settings.transport_profile,
+                        "active_profile": self.transport.profile,
+                    }
+                )
+                self._emit_status(f"Connecting to {device_name} ({device_id})…")
                 self.logger.info("Connecting to %s (%s) via %s mode", device_name, device_id, mode)
                 success = self.transport.start(pairing_context)
 
@@ -214,6 +229,7 @@ class AppController:
             self.connection_manager.disconnect_device()
             self.session.clear()
             self._persist_session()
+            self._emit_status("Disconnected")
 
     def send_message(self, message: str) -> None:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
@@ -236,3 +252,10 @@ class AppController:
                 callback(status_text)
             except Exception:
                 self.logger.exception("Status callback failed")
+
+    def _emit_status(self, text: str):
+        """Push status text through the consolidated status manager."""
+        try:
+            self.status_manager.update_status(text, self.session.device_name)
+        except Exception:
+            self.logger.exception("Status emit failed")

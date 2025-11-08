@@ -1,0 +1,23 @@
+{
+  "default": {
+    "latency_ms": [120, 280],
+    "jitter_ms": 80,
+    "drop_rate": 0.05,
+    "queue_limit": 24,
+    "description": "Balanced profile for day-to-day UI development."
+  },
+  "noisy": {
+    "latency_ms": [250, 600],
+    "jitter_ms": 150,
+    "drop_rate": 0.18,
+    "queue_limit": 32,
+    "description": "Simulates congested spectrum with heavy interference."
+  },
+  "demo": {
+    "latency_ms": [80, 140],
+    "jitter_ms": 20,
+    "drop_rate": 0.0,
+    "queue_limit": 16,
+    "description": "Snappy profile for demos on stage."
+  }
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "DEV001",
+    "name": "Device Alpha",
+    "status": "Available",
+    "last_seen": "Just now",
+    "telemetry": {
+        "rssi": -71,
+        "snr": 5.4,
+        "battery": 88
+    },
+    "metadata": {
+        "firmware": "1.2.0",
+        "region": "EU868"
+    }
+  },
+  {
+    "id": "DEV002",
+    "name": "Device Beta",
+    "status": "Available",
+    "last_seen": "5 min ago",
+    "telemetry": {
+        "rssi": -82,
+        "snr": 3.1,
+        "battery": 63
+    },
+    "metadata": {
+        "firmware": "1.1.5",
+        "region": "US915"
+    }
+  },
+  {
+    "id": "DEV003",
+    "name": "Device Gamma",
+    "status": "Sleeping",
+    "last_seen": "1 hour ago",
+    "telemetry": {
+        "rssi": -95,
+        "snr": 2.0,
+        "battery": 42
+    },
+    "metadata": {
+        "firmware": "1.0.9",
+        "region": "AS923"
+    }
+  }
+]

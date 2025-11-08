@@ -101,6 +101,7 @@ def _setup_default_dependencies(container: DependencyContainer):
     """
     from utils.connection_manager import ConnectionManager
     from utils.status_manager import StatusManager
+    from utils.runtime_settings import RuntimeSettings, get_runtime_settings
 
     # Register managers as singletons
     container.register_factory(ConnectionManager,
@@ -108,6 +109,9 @@ def _setup_default_dependencies(container: DependencyContainer):
                               singleton=True)
     container.register_factory(StatusManager,
                               lambda: StatusManager(),
+                              singleton=True)
+    container.register_factory(RuntimeSettings,
+                              lambda: get_runtime_settings(),
                               singleton=True)
 
 
