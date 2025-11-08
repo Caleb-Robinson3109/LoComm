@@ -7,6 +7,7 @@ from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
+from utils.status_manager import get_status_manager
 from utils.ui_helpers import create_scroll_container
 from .pin_pairing_frame import PINPairingFrame
 
@@ -17,8 +18,8 @@ MOCK_DEVICE_ENTRIES = [
 ]
 
 
-class PairPage(tk.Frame):
-    """Pair page for managing device connections, PIN entry, and trust verification."""
+class DevicesPage(tk.Frame):
+    """Devices page for managing device connections, PIN entry, and trust verification."""
 
     def __init__(self, master, app, controller, session, on_device_paired: Optional[Callable] = None):
         super().__init__(master, bg=Colors.SURFACE)
@@ -28,10 +29,12 @@ class PairPage(tk.Frame):
         self.on_device_paired = on_device_paired
 
         self.connection_manager = get_connection_manager()
+        self.status_manager = get_status_manager()
         self.is_scanning = False
-        self.connection_state = tk.StringVar(value="Not connected")
-        self.status_var = tk.StringVar(value="Select a device to get started")
+        self.connection_state = tk.StringVar(value="Ready to pair")
+        self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
         self.selected_device_var = tk.StringVar(value="No device selected")
+        self._active_device_name: Optional[str] = None
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
 
@@ -48,6 +51,7 @@ class PairPage(tk.Frame):
 
         self._build_status_strip()
         self._build_body()
+        self._set_stage("ready")
 
     # ------------------------------------------------------------------ #
     def _build_status_strip(self):
@@ -121,7 +125,7 @@ class PairPage(tk.Frame):
         if self.is_scanning:
             return
         self.is_scanning = True
-        self.status_var.set("Scanning for devices…")
+        self._set_stage("scanning")
         self.after(2000, self._finish_scan)
 
     def _finish_scan(self):
@@ -131,24 +135,24 @@ class PairPage(tk.Frame):
         ]
         for row in mock_discovered:
             self.device_tree.insert("", tk.END, values=row)
-        self.status_var.set(f"Found {len(mock_discovered)} new devices")
+        self._set_stage("ready")
         self.is_scanning = False
 
     def _connect_selected_device(self):
         selected = self.device_tree.selection()
         if not selected:
-            self.status_var.set("Select a device to pair")
+            self._set_stage("ready")
             return
         device_id, name, *_ = self.device_tree.item(selected[0])["values"]
+        self._active_device_name = name
         self.selected_device_var.set(f"{name} ({device_id})")
-        self.status_var.set(f"Ready to pair {name}")
+        self._set_stage("awaiting_pin", name)
         self._open_pin_modal(device_id, name)
 
     def _handle_pin_pair_success(self, device_id: str, device_name: str):
-        self.status_var.set("Connecting…")
+        self._set_stage("connecting", device_name)
         self.app.start_transport_session(device_id, device_name)
-        self.connection_state.set(f"Connected to {device_name}")
-        self.status_var.set("Secure LoRa session established")
+        self._set_stage("connected", device_name)
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired(device_id, device_name)
@@ -159,13 +163,13 @@ class PairPage(tk.Frame):
             return
         self.controller.stop_session()
         self.connection_manager.disconnect_device()
-        self.status_var.set("Device disconnected")
-        self.connection_state.set("Not connected")
+        last_device = self.selected_device_var.get()
+        self._set_stage("disconnected", last_device if last_device != "No device selected" else None)
 
     def _handle_demo_login(self):
-        self.status_var.set("Connecting to Demo Device…")
+        self._set_stage("connecting", "Demo Device")
         self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
-        self.connection_state.set("Connected to Demo Device")
+        self._set_stage("connected", "Demo Device")
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired("demo-device", "Demo Device")
@@ -183,8 +187,8 @@ class PairPage(tk.Frame):
         modal = tk.Toplevel(self)
         modal.title(f"Pair {device_name}")
         modal.configure(bg=Colors.SURFACE)
-        modal.geometry("520x560")
-        modal.resizable(False, False)
+        modal.geometry("720x640")
+        modal.resizable(True, True)
         modal.transient(self.winfo_toplevel())
         modal.grab_set()
         modal.protocol("WM_DELETE_WINDOW", self._close_pin_modal)
@@ -210,3 +214,56 @@ class PairPage(tk.Frame):
             except Exception:
                 pass
         self._pin_modal = None
+
+    def _set_stage(self, stage: str, device_name: Optional[str] = None):
+        """Update local labels and global status manager for sidebar."""
+        label = device_name or self._active_device_name
+        if stage == "scanning":
+            text = "Scanning nearby devices…"
+            detail = "Looking for LoRa hardware nearby."
+            connection = "Scanning…"
+            label_for_sidebar = None
+        elif stage == "ready":
+            text = "Ready to pair"
+            detail = "Select a device to get started."
+            connection = "Ready to pair"
+            label_for_sidebar = None
+        elif stage == "awaiting_pin":
+            label_for_sidebar = label
+            text = f"Awaiting PIN for {label}" if label else "Awaiting PIN"
+            detail = f"Enter the 8-digit code shown on {label}." if label else "Enter the 8-digit code."
+            connection = "Awaiting PIN"
+        elif stage == "connecting":
+            label_for_sidebar = label
+            text = f"Connecting to {label}…" if label else "Connecting…"
+            detail = "Hang tight while we verify the link."
+            connection = "Connecting…"
+        elif stage == "connected":
+            label_for_sidebar = label
+            text = f"Connected to {label}" if label else "Connected"
+            detail = "Secure LoRa session established."
+            connection = "Connected"
+        elif stage == "disconnected":
+            label_for_sidebar = label
+            text = f"Disconnected ({label})" if label else "Disconnected"
+            detail = "Device disconnected."
+            connection = "Disconnected"
+        else:
+            label_for_sidebar = label
+            text = stage
+            detail = stage
+            connection = stage
+
+        self.status_var.set(detail)
+        self.connection_state.set(connection)
+        if label:
+            self.selected_device_var.set(f"{label}")
+            self._active_device_name = label
+        if stage == "ready":
+            self.selected_device_var.set("No device selected")
+            self._active_device_name = None
+        self.status_manager.update_status(text, label_for_sidebar)
+
+
+# Backwards compatibility
+PairPage = DevicesPage

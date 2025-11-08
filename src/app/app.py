@@ -20,6 +20,7 @@ class App(tk.Tk):
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self._init_fullscreen_window()
+        self.after(0, self._focus_window)
 
         # Business logic is delegated to separate controller
         self.app_controller = AppController(self)
@@ -114,6 +115,16 @@ class App(tk.Tk):
     def _clear_session(self):
         """Clear session data safely."""
         self.app_controller.session.clear()
+
+    def _focus_window(self):
+        """Bring window to front when launching."""
+        try:
+            self.lift()
+            self.attributes("-topmost", True)
+            self.after(200, lambda: self.attributes("-topmost", False))
+            self.focus_force()
+        except tk.TclError:
+            pass
 
     # ------------------------------------------------------------------ #
     # Business logic callback methods

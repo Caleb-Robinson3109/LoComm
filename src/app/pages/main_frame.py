@@ -8,7 +8,7 @@ from utils.status_manager import get_status_manager, DeviceInfo
 from .chat_page import ChatPage
 from .settings_page import SettingsPage
 from .home_page import HomePage
-from .pair_page import PairPage
+from .devices_page import DevicesPage, PairPage
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 
@@ -59,7 +59,7 @@ class MainFrame(ttk.Frame):
             "home": lambda parent: HomePage(parent, self.app, self.session, self),
             "chat": lambda parent: ChatPage(parent, self.controller, self.session,
                                             on_disconnect=self._handle_disconnect),
-            "pair": lambda parent: PairPage(parent, self.app, self.controller, self.session,
+            "devices": lambda parent: DevicesPage(parent, self.app, self.controller, self.session,
                                             on_device_paired=self._handle_device_pairing),
             "settings": lambda parent: SettingsPage(parent, self.app, self.controller, self.session),
         }
@@ -94,7 +94,7 @@ class MainFrame(ttk.Frame):
     def _setup_view_containers(self):
         """Create placeholder containers for each view."""
         pack_opts = {"fill": tk.BOTH, "expand": True, "padx": Spacing.PAGE_PADDING, "pady": Spacing.PAGE_PADDING}
-        for view_name in ("home", "chat", "pair", "settings"):
+        for view_name in ("home", "chat", "devices", "settings"):
             container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
             self._view_containers[view_name] = container
             self._view_manager.register_view(view_name, container, pack_options=pack_opts.copy())
@@ -132,7 +132,7 @@ class MainFrame(ttk.Frame):
 
     def _show_pair_view(self):
         """Switch to the pair view."""
-        self._show_view("pair")
+        self._show_view("devices")
 
     def _show_settings_view(self):
         """Switch to the settings view."""
@@ -194,7 +194,7 @@ class MainFrame(ttk.Frame):
 
     @property
     def pair_page(self):
-        return self._ensure_view("pair")
+        return self._ensure_view("devices")
 
     @property
     def settings_page(self):

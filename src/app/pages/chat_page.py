@@ -46,19 +46,10 @@ class ChatPage(tk.Frame):
 
         left = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        # Use fixed "Conversations" title instead of device-specific naming
-        contact = "Chat"  # Fixed title as requested
+        contact = "Chat"
         self.name_label = tk.Label(left, text=contact, bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
                                    font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
         self.name_label.pack(anchor="w")
-        self.status_badge = DesignUtils.pill(left, "Disconnected", variant="danger")
-        self.status_badge.pack(anchor="w", pady=(Space.XXS, 0))
-
-        actions = tk.Frame(header, bg=Colors.SURFACE_HEADER)
-        actions.pack(side=tk.RIGHT, anchor="e")
-        DesignUtils.button(actions, text="Clear history", variant="ghost", command=self.clear_history).pack(side=tk.LEFT, padx=(0, Space.SM))
-        self.connection_btn = DesignUtils.button(actions, text="Connect", variant="secondary", command=self._handle_connection_button)
-        self.connection_btn.pack(side=tk.LEFT)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -146,27 +137,9 @@ class ChatPage(tk.Frame):
     def _handle_attach(self):
         pass  # Placeholder for future file picker
 
-    def _handle_connection_button(self):
-        """Handle connection button clicks."""
-        if self._connected:
-            self._handle_disconnect()
-        else:
-            # Try to navigate to pair page through main frame using getattr
-            show_pair_method = getattr(self.master, "show_pair_page", None)
-            if show_pair_method and callable(show_pair_method):
-                try:
-                    show_pair_method()
-                except Exception as e:
-                    print(f"Navigation error: {e}")
-                    self.status_badge.configure(text="Navigation error", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
-            else:
-                # Show status that pairing is needed when navigation isn't available
-                self.status_badge.configure(text="Pair device needed", bg=Colors.STATE_INFO, fg=Colors.SURFACE)
-
     def _send_message(self, event=None):
         """Send message - use consolidated status manager to check connectivity."""
         if not self.status_manager.can_send_messages():
-            self.status_badge.configure(text="Not connected", bg=Colors.STATE_WARNING, fg=Colors.SURFACE)
             return
 
         message = self.msg_var.get().strip()
@@ -178,7 +151,6 @@ class ChatPage(tk.Frame):
             # Update connection state after successful send
             self._connected = True
         except Exception as e:
-            self.status_badge.configure(text="Send failed", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
             print(f"Send error: {e}")
             return
 
@@ -195,16 +167,8 @@ class ChatPage(tk.Frame):
 
     def _on_device_change(self, device_info: DeviceInfo):
         """Handle consolidated device/status changes for consistent status display."""
-        status_text = device_info.get_status_summary()
-        status_color = self.status_manager.get_current_status_color()
-
         # Update connection state
         self._connected = device_info.is_connected
-
-        # Update UI elements
-        self.status_badge.configure(text=status_text, bg=status_color, fg=Colors.SURFACE)
-        if hasattr(self, "connection_btn"):
-            self.connection_btn.configure(text="Disconnect" if self._connected else "Connect")
 
     def set_status(self, text: str):
         """
@@ -218,9 +182,7 @@ class ChatPage(tk.Frame):
         self._on_device_change(device_info)
 
         # Update UI elements
-        self.status_badge.configure(text=text)
-        if hasattr(self, "connection_btn"):
-            self.connection_btn.configure(text="Disconnect" if self._connected else "Connect")
+        pass
 
     def clear_history(self):
         self._setup_chat_history()

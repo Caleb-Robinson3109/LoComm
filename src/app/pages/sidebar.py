@@ -193,8 +193,14 @@ class Sidebar(tk.Frame):
             label = device_name or device_id or "Active device"
             self._update_device_summary(status_text="Connected", status_color=Colors.STATE_SUCCESS, device_label=label)
         else:
+            caption = "Pair a LoRa contact to begin chatting securely."
+            if device_name:
+                caption = f"Disconnected ({device_name})"
+            elif device_id:
+                caption = f"Disconnected ({device_id})"
             self._update_device_summary(status_text="Disconnected", status_color=Colors.STATE_ERROR,
-                                        caption="Pair a LoRa contact to begin chatting securely.")
+                                        device_label="No device paired",
+                                        caption=caption)
 
     def _on_device_info_change(self, device_info: Optional[dict]):
         if device_info:
@@ -254,18 +260,29 @@ class Sidebar(tk.Frame):
             caption = f"Secure LoRa link • {device_info.status_text or 'Ready'}"
             self._update_device_summary(device_label=device_label, caption=caption)
         else:
-            self._update_device_summary(device_label="No device paired",
-                                        caption="Pair a LoRa contact to begin chatting securely.")
+            caption = "Pair a LoRa contact to begin chatting securely."
+            if device_info.device_name:
+                caption = f"Disconnected ({device_info.device_name})"
+            elif device_info.device_id:
+                caption = f"Disconnected ({device_info.device_id})"
+            self._update_device_summary(device_label="No device paired", caption=caption)
 
     def _on_connection_change(self, is_connected: bool, device_id: str, device_name: str):
         """Handle connection state changes."""
         # This provides immediate visual feedback for connection changes
         if is_connected:
             label = device_name or device_id or "Active device"
-            self._update_device_summary(status_text="Connected", status_color=Colors.STATE_SUCCESS, device_label=label)
+            self._update_device_summary(status_text="Connected", status_color=Colors.STATE_SUCCESS,
+                                        device_label=label)
         else:
+            caption = "Pair a LoRa contact to begin chatting securely."
+            if device_name:
+                caption = f"Disconnected ({device_name})"
+            elif device_id:
+                caption = f"Disconnected ({device_id})"
             self._update_device_summary(status_text="Disconnected", status_color=Colors.STATE_ERROR,
-                                        caption="No device connected")
+                                        device_label="No device paired",
+                                        caption=caption)
 
     def _update_device_summary(self, status_text: str | None = None, status_color: str | None = None,
                                device_label: str | None = None, caption: str | None = None):
