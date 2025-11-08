@@ -6,44 +6,29 @@ from tkinter import ttk
 from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils, ThemeManager
-from utils.status_manager import get_status_manager, DeviceInfo
+from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 
 
 class Sidebar(tk.Frame):
     """Left sidebar navigation component with connection summary."""
 
-    def __init__(self, master, on_home_click: Optional[Callable] = None,
-                 on_chat_click: Optional[Callable] = None,
-                 on_pair_click: Optional[Callable] = None,
-                 on_settings_click: Optional[Callable] = None,
+    def __init__(self, master, nav_items: list[tuple[str, str]],
+                 on_nav_select: Optional[Callable[[str], None]] = None,
                  on_theme_toggle: Optional[Callable[[bool], None]] = None):
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.SURFACE_SIDEBAR)
-        self.on_home_click = on_home_click
-        self.on_chat_click = on_chat_click
-        self.on_pair_click = on_pair_click
-        self.on_settings_click = on_settings_click
+        self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
-        self.current_view = "home"
+        self.current_view = nav_items[0][0] if nav_items else "home"
+        self.nav_items = nav_items
 
-        # Use consolidated status manager for consistent status display
-        self.status_manager = get_status_manager()
-        from utils.design_system import ThemeManager
+        self.ui_store = get_ui_store()
+        self._device_subscription = None
         self._dark_mode = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
-
-        # Register for consolidated status updates
-        self.status_manager.register_status_callback(self._on_status_change)
-        self.status_manager.register_device_callback(self._on_device_change)
-        self.status_manager.register_connection_callback(self._on_connection_change)
-
-        # CRITICAL FIX: Track registered callbacks for cleanup
-        self._registered_callbacks = [
-            ("status", self.status_manager, self._on_status_change),
-            ("device", self.status_manager, self._on_device_change),
-            ("connection", self.status_manager, self._on_connection_change)
-        ]
 
         self._buttons: dict[str, ttk.Button] = {}
         self._build_ui()
+        self._apply_snapshot(self.ui_store.get_device_status())
+        self._subscribe_to_store()
 
     # ------------------------------------------------------------------ #
     def _build_ui(self):
@@ -57,15 +42,8 @@ class Sidebar(tk.Frame):
         tk.Label(header, text="Secure LoRa Communication", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_SECONDARY,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
-        nav_items = [
-            ("home", "Home", self._on_home_click),
-            ("chat", "Chat", self._on_chat_click),
-            ("pair", "Devices", self._on_pair_click),
-            ("settings", "Settings", self._on_settings_click),
-        ]
-
-        for key, label, handler in nav_items:
-            btn = DesignUtils.create_nav_button(container, label, handler)
+        for key, label in self.nav_items:
+            btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
             btn.pack(fill=tk.X, pady=(0, Spacing.SM))
             self._buttons[key] = btn
 
@@ -116,7 +94,7 @@ class Sidebar(tk.Frame):
         DesignUtils.button(
             action_row,
             text="Pair new device",
-            command=self._on_pair_click,
+            command=lambda: self._handle_nav_click("pair"),
             variant="secondary"
         ).pack(fill=tk.X)
 
@@ -162,25 +140,10 @@ class Sidebar(tk.Frame):
             style = "Locomm.NavActive.TButton" if key == active_view else "Locomm.Nav.TButton"
             button.configure(style=style)
 
-    def _on_home_click(self):
-        self.set_active_view("home")
-        if self.on_home_click:
-            self.on_home_click()
-
-    def _on_chat_click(self):
-        self.set_active_view("chat")
-        if self.on_chat_click:
-            self.on_chat_click()
-
-    def _on_pair_click(self):
-        self.set_active_view("pair")
-        if self.on_pair_click:
-            self.on_pair_click()
-
-    def _on_settings_click(self):
-        self.set_active_view("settings")
-        if self.on_settings_click:
-            self.on_settings_click()
+    def _handle_nav_click(self, route_id: str):
+        self.set_active_view(route_id)
+        if self.on_nav_select:
+            self.on_nav_select(route_id)
 
     def set_active_view(self, view_name: str):
         """Public helper so MainFrame can update selection when switching programmatically."""
@@ -231,83 +194,59 @@ class Sidebar(tk.Frame):
 
     # Public helpers ------------------------------------------------------
     def show_chat(self):
-        self._on_chat_click()
+        self._handle_nav_click("chat")
 
     def show_pair(self):
-        self._on_pair_click()
+        self._handle_nav_click("pair")
 
     def show_home(self):
-        self._on_home_click()
+        self._handle_nav_click("home")
 
     def show_settings(self):
-        self._on_settings_click()
+        self._handle_nav_click("settings")
 
     def set_status(self, status_text: str):
         """Compatibility helper for external callers."""
-        self._update_device_summary(status_text=status_text)
+        self.connection_badge.configure(text=status_text)
 
     # ------------------------------------------------------------------ #
-    # Consolidated status callbacks - these ensure consistent status display
-    def _on_status_change(self, status_text: str, status_color: str):
-        """Handle consolidated status changes."""
-        self._update_device_summary(status_text=status_text, status_color=status_color)
+    def _subscribe_to_store(self):
+        if self._device_subscription is not None:
+            return
 
-    def _on_device_change(self, device_info: DeviceInfo):
-        """Handle device information changes."""
-        # Update device caption based on device info
-        if device_info.is_connected:
-            device_label = device_info.get_display_name()
-            caption = f"Secure LoRa link • {device_info.status_text or 'Ready'}"
-            self._update_device_summary(device_label=device_label, caption=caption)
-        else:
-            caption = "Pair a LoRa contact to begin chatting securely."
-            if device_info.device_name:
-                caption = f"Disconnected ({device_info.device_name})"
-            elif device_info.device_id:
-                caption = f"Disconnected ({device_info.device_id})"
-            self._update_device_summary(device_label="No device paired", caption=caption)
+        def _callback(snapshot: DeviceStatusSnapshot):
+            self._handle_device_snapshot(snapshot)
 
-    def _on_connection_change(self, is_connected: bool, device_id: str, device_name: str):
-        """Handle connection state changes."""
-        # This provides immediate visual feedback for connection changes
-        if is_connected:
-            label = device_name or device_id or "Active device"
-            self._update_device_summary(status_text="Connected", status_color=Colors.STATE_SUCCESS,
-                                        device_label=label)
-        else:
-            caption = "Pair a LoRa contact to begin chatting securely."
-            if device_name:
-                caption = f"Disconnected ({device_name})"
-            elif device_id:
-                caption = f"Disconnected ({device_id})"
-            self._update_device_summary(status_text="Disconnected", status_color=Colors.STATE_ERROR,
-                                        device_label="No device paired",
-                                        caption=caption)
+        self._device_subscription = _callback
+        self.ui_store.subscribe_device_status(_callback)
 
-    def _update_device_summary(self, status_text: str | None = None, status_color: str | None = None,
-                               device_label: str | None = None, caption: str | None = None):
-        """Centralized helper so every callback renders the same UI."""
-        if status_text:
-            self.connection_badge.configure(text=status_text)
-        if status_color:
-            self.connection_badge.configure(bg=status_color, fg=Colors.SURFACE)
-        if device_label:
-            self.device_title.configure(text=device_label)
-        if caption:
-            self.device_caption.configure(text=caption)
+    def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
+        self._apply_snapshot(snapshot)
+
+    def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
+        if snapshot is None:
+            return
+        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
+        self.connection_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
+        device_label = snapshot.device_name or ("No device paired" if snapshot.stage != DeviceStage.CONNECTED else "Active device")
+        self.device_title.configure(text=device_label)
+        caption = snapshot.detail or snapshot.subtitle
+        self.device_caption.configure(text=caption)
+
+    @staticmethod
+    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
+        mapping = {
+            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
+            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
+            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
+            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
+            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
+            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
+        }
+        return mapping.get(stage, mapping[DeviceStage.READY])
 
     def destroy(self):
-        """CRITICAL FIX: Clean up registered callbacks to prevent memory leaks."""
-        try:
-            # Unregister all callbacks to prevent memory leaks
-            for callback_type, manager, callback in self._registered_callbacks:
-                if callback_type == "status" and hasattr(manager, 'unregister_status_callback'):
-                    manager.unregister_status_callback(callback)
-                elif callback_type == "device" and hasattr(manager, 'unregister_device_callback'):
-                    manager.unregister_device_callback(callback)
-                elif callback_type == "connection" and hasattr(manager, 'unregister_connection_callback'):
-                    manager.unregister_connection_callback(callback)
-        except Exception as e:
-            print(f"Error cleaning up sidebar callbacks: {e}")
-        finally:
-            super().destroy()
+        if self._device_subscription is not None:
+            self.ui_store.unsubscribe_device_status(self._device_subscription)
+            self._device_subscription = None
+        super().destroy()

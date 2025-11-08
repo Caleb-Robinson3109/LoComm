@@ -54,6 +54,17 @@ class ViewManager:
         if view_name not in self.view_containers:
             raise ValueError(f"View '{view_name}' not registered")
 
+        previous_view = self.active_view
+        is_same_view = previous_view == view_name
+
+        if previous_view and not is_same_view:
+            prev_component = self.view_components.get(previous_view)
+            if prev_component and hasattr(prev_component, "on_hide"):
+                try:
+                    prev_component.on_hide()
+                except Exception as e:
+                    print(f"Warning: Error during on_hide for view '{previous_view}': {e}")
+
         # Hide all views first
         for container in self.view_containers.values():
             container.pack_forget()
@@ -65,6 +76,14 @@ class ViewManager:
 
         # Update active view
         self.active_view = view_name
+
+        if not is_same_view:
+            component = self.view_components.get(view_name)
+            if component and hasattr(component, "on_show"):
+                try:
+                    component.on_show()
+                except Exception as e:
+                    print(f"Warning: Error during on_show for view '{view_name}': {e}")
 
     def get_active_view(self) -> Optional[str]:
         """Get the currently active view name."""

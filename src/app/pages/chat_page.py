@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import tkinter as tk
 import time
-from services import AppController
-from utils.session import Session
 from utils.design_system import Colors, Typography, DesignUtils, Space
 from utils.status_manager import get_status_manager, DeviceInfo
+from .base_page import BasePage, PageContext
 
 
-class ChatPage(tk.Frame):
+class ChatPage(BasePage):
     """Modern chat UI with fixed composer and scrollable history."""
 
-    def __init__(self, master, controller: AppController, session: Session, on_disconnect=None):
-        super().__init__(master, bg=Colors.SURFACE)
-        self.controller = controller
-        self.session = session
+    def __init__(self, master, context: PageContext, on_disconnect=None):
+        super().__init__(master, context=context, bg=Colors.SURFACE)
+        self.controller = context.controller if context else None
+        self.session = context.session if context else None
+        self.host = context.navigator if context else None
         self.on_disconnect = on_disconnect
         self._connected = False
 

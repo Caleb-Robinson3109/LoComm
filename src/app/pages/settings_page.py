@@ -6,16 +6,17 @@ from tkinter import ttk, messagebox
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.ui_helpers import create_scroll_container
+from .base_page import BasePage, PageContext
 
 
-class SettingsPage(tk.Frame):
+class SettingsPage(BasePage):
     """Application configuration with grouped sections."""
 
-    def __init__(self, master, app, controller, session=None):
-        super().__init__(master, bg=Colors.SURFACE)
-        self.app = app
-        self.controller = controller
-        self.session = session
+    def __init__(self, master, context: PageContext):
+        super().__init__(master, context=context, bg=Colors.SURFACE)
+        self.app = context.app if context else None
+        self.controller = context.controller if context else None
+        self.session = context.session if context else None
 
         self.auto_start_var = tk.BooleanVar(value=False)
         self.desktop_notifications_var = tk.BooleanVar(value=True)
@@ -24,7 +25,6 @@ class SettingsPage(tk.Frame):
 
         self._toggle_controls: list[tuple[tk.Frame, tk.Label, tk.Label, tk.BooleanVar]] = []
 
-        self.pack(fill=tk.BOTH, expand=True)
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
         body = scroll.frame
 

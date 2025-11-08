@@ -9,6 +9,7 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.status_manager import get_status_manager
 from utils.ui_helpers import create_scroll_container
+from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
 
 MOCK_DEVICE_ENTRIES = [
@@ -18,14 +19,14 @@ MOCK_DEVICE_ENTRIES = [
 ]
 
 
-class DevicesPage(tk.Frame):
+class DevicesPage(BasePage):
     """Devices page for managing device connections, PIN entry, and trust verification."""
 
-    def __init__(self, master, app, controller, session, on_device_paired: Optional[Callable] = None):
-        super().__init__(master, bg=Colors.SURFACE)
-        self.app = app
-        self.controller = controller
-        self.session = session
+    def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
+        super().__init__(master, context=context, bg=Colors.SURFACE)
+        self.app = context.app if context else None
+        self.controller = context.controller if context else None
+        self.session = context.session if context else None
         self.on_device_paired = on_device_paired
 
         self.connection_manager = get_connection_manager()
@@ -38,7 +39,6 @@ class DevicesPage(tk.Frame):
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
 
-        self.pack(fill=tk.BOTH, expand=True)
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
         self.main_body = scroll.frame
 

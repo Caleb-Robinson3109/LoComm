@@ -24,7 +24,6 @@ class PINPairingFrame(tk.Frame):
 
     def _create_ui(self):
         """Create the PIN pairing interface."""
-        self.pack(fill=tk.BOTH, expand=True)
         from utils.ui_helpers import create_scroll_container
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.XL, Spacing.XL))
