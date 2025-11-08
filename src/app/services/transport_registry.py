@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Protocol, Tuple
 
 from services.transport_contract import PairingContext, TransportMessage
-from mock_transport_backend import MockLoCommBackend
+from mock.backend import MockLoCommBackend
 
 
 class TransportBackend(Protocol):

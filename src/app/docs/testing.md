@@ -28,7 +28,7 @@ python3 -m pytest tests/test_transport_contract.py tests/test_mock_transport.py
 For quick CLI verification without the UI, run:
 
 ```bash
-python3 tools/mock_workflow.py
+python3 mock/workflow.py
 ```
 
 It will pair using the mock backend, send a message, and dump the response +

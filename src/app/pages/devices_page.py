@@ -9,8 +9,8 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.ui_helpers import create_scroll_container
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from services.mock_device_service import get_mock_device_service, MockDevice
-from services.network_simulator import LoRaNetworkSimulator
+from mock.device_service import get_mock_device_service, MockDevice
+from mock.network_simulator import LoRaNetworkSimulator
 from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
 
@@ -40,6 +40,12 @@ class DevicesPage(BasePage):
             "rssi": tk.StringVar(value="–"),
             "snr": tk.StringVar(value="–"),
             "battery": tk.StringVar(value="–"),
+        }
+        self.detail_vars = {
+            "name": tk.StringVar(value="No device selected"),
+            "firmware": tk.StringVar(value="—"),
+            "region": tk.StringVar(value="—"),
+            "last_seen": tk.StringVar(value="—"),
         }
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
@@ -131,6 +137,7 @@ class DevicesPage(BasePage):
         body.pack(fill=tk.BOTH, expand=True)
 
         self._build_device_card(body)
+        self._refresh_device_table()
 
     def _build_device_card(self, parent):
         card, content = DesignUtils.card(parent, "Scan & select hardware", "Choose the device you want to pair")
@@ -144,7 +151,6 @@ class DevicesPage(BasePage):
             self.device_tree.column(col, anchor="w", width=140)
         self.device_tree.pack(fill=tk.BOTH, expand=True)
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
-        self._refresh_device_table()
 
         controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
@@ -166,6 +172,14 @@ class DevicesPage(BasePage):
         self._add_telemetry_field(telemetry, "SNR", self.telemetry_vars["snr"], 1, 1)
         self._add_telemetry_field(telemetry, "Battery", self.telemetry_vars["battery"], 1, 2)
 
+        detail_card, detail_body = DesignUtils.card(parent, "Selected device details", "Firmware + region details")
+        detail_card.pack(fill=tk.X, pady=(0, Spacing.LG))
+        detail_body.columnconfigure(1, weight=1)
+        self._add_detail_row(detail_body, "Name", self.detail_vars["name"], 0)
+        self._add_detail_row(detail_body, "Firmware", self.detail_vars["firmware"], 1)
+        self._add_detail_row(detail_body, "Region", self.detail_vars["region"], 2)
+        self._add_detail_row(detail_body, "Last seen", self.detail_vars["last_seen"], 3)
+
     def _add_telemetry_field(self, parent, label: str, var: tk.StringVar, row: int, col: int):
         wrapper = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         wrapper.grid(row=row, column=col, padx=Spacing.MD, pady=(Spacing.XXS, 0), sticky="w")
@@ -173,6 +187,12 @@ class DevicesPage(BasePage):
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
         tk.Label(wrapper, textvariable=var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)).pack(anchor="w")
+
+    def _add_detail_row(self, parent, label: str, var: tk.StringVar, row: int):
+        tk.Label(parent, text=label, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).grid(row=row, column=0, sticky="w", pady=(0, Spacing.XXS))
+        tk.Label(parent, textvariable=var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).grid(row=row, column=1, sticky="w")
 
     def _refresh_device_table(self):
         if not hasattr(self, "device_tree"):
@@ -183,7 +203,7 @@ class DevicesPage(BasePage):
         for device in devices:
             self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row())
         if not devices:
-            self.status_var.set("No mock devices defined. Edit mock_data/devices.json to add entries.")
+            self.status_var.set("No mock devices defined. Edit mock/data/devices.json to add entries.")
         self._update_telemetry_panel(None)
 
     # ------------------------------------------------------------------ #
@@ -195,8 +215,12 @@ class DevicesPage(BasePage):
         self.after(2000, self._finish_scan)
 
     def _finish_scan(self):
-        self.device_service.refresh()
+        newly_found = self.device_service.simulate_scan()
+        if not newly_found:
+            self.device_service.refresh()
         self._refresh_device_table()
+        if newly_found:
+            self.status_var.set(f"Discovered {len(newly_found)} new devices.")
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
 
@@ -326,12 +350,20 @@ class DevicesPage(BasePage):
         if not device:
             for var in self.telemetry_vars.values():
                 var.set("–")
+            self.detail_vars["name"].set("No device selected")
+            self.detail_vars["firmware"].set("—")
+            self.detail_vars["region"].set("—")
+            self.detail_vars["last_seen"].set("—")
             return
         telemetry = device.telemetry or {}
         self.telemetry_vars["rssi"].set(f"{telemetry.get('rssi', '–')} dBm")
         self.telemetry_vars["snr"].set(f"{telemetry.get('snr', '–')} dB")
         battery = telemetry.get("battery")
         self.telemetry_vars["battery"].set(f"{battery}%" if battery is not None else "–")
+        self.detail_vars["name"].set(device.name)
+        self.detail_vars["firmware"].set(device.metadata.get("firmware", "—"))
+        self.detail_vars["region"].set(device.metadata.get("region", "—"))
+        self.detail_vars["last_seen"].set(device.last_seen)
 
     # ------------------------------------------------------------------ #
     def on_show(self):

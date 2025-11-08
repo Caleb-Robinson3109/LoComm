@@ -1,6 +1,6 @@
 """
 Mock device catalogue used by the UI and mock transport.
-Loads editable JSON so developers can add/remove devices without code changes.
+All data lives under mock/data so it can be stripped from production builds.
 """
 from __future__ import annotations
 
@@ -25,10 +25,12 @@ class MockDevice:
 
 
 class MockDeviceService:
-    data_path = Path(__file__).resolve().parent.parent / "mock_data" / "devices.json"
+    data_path = Path(__file__).resolve().parent / "data" / "devices.json"
 
     def __init__(self):
         self._devices: Dict[str, MockDevice] = {}
+        self._base_devices: Dict[str, MockDevice] = {}
+        self._dynamic_counter = 0
         self._load()
 
     def _load(self) -> None:
@@ -54,7 +56,8 @@ class MockDeviceService:
             )
             if device.device_id:
                 devices[device.device_id] = device
-        self._devices = devices
+        self._base_devices = devices
+        self._devices = dict(devices)
 
     def refresh(self) -> None:
         self._load()
@@ -67,6 +70,35 @@ class MockDeviceService:
 
     def pick_default(self) -> Optional[MockDevice]:
         return next(iter(self._devices.values()), None)
+
+    def simulate_scan(self) -> List[MockDevice]:
+        """Create synthetic devices so the UI feels dynamic."""
+        templates = [
+            ("Device Delta", "Available"),
+            ("Device Epsilon", "Available"),
+            ("Device Zeta", "Sleeping"),
+        ]
+        discovered: List[MockDevice] = []
+        for name, status in templates:
+            self._dynamic_counter += 1
+            device_id = f"SIM{self._dynamic_counter:03d}"
+            metadata = {"firmware": f"1.3.{self._dynamic_counter}", "region": "EU868"}
+            telemetry = {
+                "rssi": -70 - self._dynamic_counter,
+                "snr": 4.0,
+                "battery": max(30, 95 - self._dynamic_counter * 3),
+            }
+            device = MockDevice(
+                device_id=device_id,
+                name=name,
+                status=status,
+                last_seen="Just found",
+                metadata=metadata,
+                telemetry=telemetry,
+            )
+            self._devices[device_id] = device
+            discovered.append(device)
+        return discovered
 
 
 _SERVICE: Optional[MockDeviceService] = None

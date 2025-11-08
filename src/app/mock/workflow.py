@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import time
 
+from mock.backend import MockLoCommBackend
 from services.transport_contract import PairingContext, TransportMessage
-from mock_transport_backend import MockLoCommBackend
 
 
 def run_workflow(device_id: str = "DEV001", scenario: str = "demo") -> None:

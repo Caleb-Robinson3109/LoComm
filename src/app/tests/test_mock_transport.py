@@ -1,6 +1,6 @@
 import time
 
-from mock_transport_backend import MockLoCommBackend
+from mock.backend import MockLoCommBackend
 from services.transport_contract import PairingContext, TransportMessage
 
 

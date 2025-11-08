@@ -1,6 +1,5 @@
 """
-Lightweight LoRa network simulator that models latency, jitter, drops,
-and queueing so UI flows can be exercised without real hardware.
+Lightweight LoRa network simulator for mock/demo builds.
 """
 from __future__ import annotations
 
@@ -26,7 +25,7 @@ class NetworkScenario:
 
 
 class LoRaNetworkSimulator:
-    scenarios_path = Path(__file__).resolve().parent.parent / "mock_data" / "scenarios.json"
+    scenarios_path = Path(__file__).resolve().parent / "data" / "scenarios.json"
 
     def __init__(self, scenario_name: str = "default"):
         self._queue: Deque[tuple[float, TransportMessage]] = deque()

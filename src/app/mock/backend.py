@@ -1,8 +1,8 @@
 """
 Mock LoRa transport backend used for local development and demos.
 
-This module is intentionally isolated so it can be replaced once the
-network/security teams deliver the production-ready implementation.
+This module is intentionally isolated so it can be removed in production
+builds once the hardware transport is ready.
 """
 from __future__ import annotations
 
@@ -10,9 +10,10 @@ import random
 import time
 from typing import Optional
 
-from services.mock_device_service import MockDevice, get_mock_device_service
-from services.network_simulator import LoRaNetworkSimulator
+from mock.device_service import MockDevice, get_mock_device_service
+from mock.network_simulator import LoRaNetworkSimulator
 from services.transport_contract import PairingContext, TransportMessage
+
 
 class MockLoCommBackend:
     """Simple in-memory backend that simulates a LoRa link."""
@@ -31,7 +32,7 @@ class MockLoCommBackend:
         Pretend to connect to a device.
 
         Args:
-            pairing_context: Optional metadata coming from the UI (unused).
+            pairing_context: Optional metadata coming from the UI.
         """
         self._connected = True
         scenario = "default"
