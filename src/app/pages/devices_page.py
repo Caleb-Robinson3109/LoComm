@@ -7,8 +7,8 @@ from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
-from utils.status_manager import get_status_manager
 from utils.ui_helpers import create_scroll_container
+from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
 
@@ -30,7 +30,8 @@ class DevicesPage(BasePage):
         self.on_device_paired = on_device_paired
 
         self.connection_manager = get_connection_manager()
-        self.status_manager = get_status_manager()
+        self.ui_store = get_ui_store()
+        self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self.connection_state = tk.StringVar(value="Ready to pair")
         self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
@@ -51,7 +52,8 @@ class DevicesPage(BasePage):
 
         self._build_status_strip()
         self._build_body()
-        self._set_stage("ready")
+        self._apply_snapshot(self.ui_store.get_device_status())
+        self._set_stage(DeviceStage.READY)
 
     # ------------------------------------------------------------------ #
     def _build_status_strip(self):
@@ -125,7 +127,7 @@ class DevicesPage(BasePage):
         if self.is_scanning:
             return
         self.is_scanning = True
-        self._set_stage("scanning")
+        self._set_stage(DeviceStage.SCANNING)
         self.after(2000, self._finish_scan)
 
     def _finish_scan(self):
@@ -135,24 +137,24 @@ class DevicesPage(BasePage):
         ]
         for row in mock_discovered:
             self.device_tree.insert("", tk.END, values=row)
-        self._set_stage("ready")
+        self._set_stage(DeviceStage.READY)
         self.is_scanning = False
 
     def _connect_selected_device(self):
         selected = self.device_tree.selection()
         if not selected:
-            self._set_stage("ready")
+            self._set_stage(DeviceStage.READY)
             return
         device_id, name, *_ = self.device_tree.item(selected[0])["values"]
         self._active_device_name = name
         self.selected_device_var.set(f"{name} ({device_id})")
-        self._set_stage("awaiting_pin", name)
+        self._set_stage(DeviceStage.AWAITING_PIN, name)
         self._open_pin_modal(device_id, name)
 
     def _handle_pin_pair_success(self, device_id: str, device_name: str):
-        self._set_stage("connecting", device_name)
+        self._set_stage(DeviceStage.CONNECTING, device_name)
         self.app.start_transport_session(device_id, device_name)
-        self._set_stage("connected", device_name)
+        self._set_stage(DeviceStage.CONNECTED, device_name)
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired(device_id, device_name)
@@ -164,12 +166,13 @@ class DevicesPage(BasePage):
         self.controller.stop_session()
         self.connection_manager.disconnect_device()
         last_device = self.selected_device_var.get()
-        self._set_stage("disconnected", last_device if last_device != "No device selected" else None)
+        label = last_device if last_device != "No device selected" else None
+        self._set_stage(DeviceStage.DISCONNECTED, label)
 
     def _handle_demo_login(self):
-        self._set_stage("connecting", "Demo Device")
+        self._set_stage(DeviceStage.CONNECTING, "Demo Device")
         self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
-        self._set_stage("connected", "Demo Device")
+        self._set_stage(DeviceStage.CONNECTED, "Demo Device")
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired("demo-device", "Demo Device")
@@ -215,54 +218,58 @@ class DevicesPage(BasePage):
                 pass
         self._pin_modal = None
 
-    def _set_stage(self, stage: str, device_name: Optional[str] = None):
-        """Update local labels and global status manager for sidebar."""
+    def _set_stage(self, stage: DeviceStage, device_name: Optional[str] = None):
+        """Update local labels and push consolidated status via the UI store."""
         label = device_name or self._active_device_name
-        if stage == "scanning":
-            text = "Scanning nearby devices…"
-            detail = "Looking for LoRa hardware nearby."
-            connection = "Scanning…"
-            label_for_sidebar = None
-        elif stage == "ready":
-            text = "Ready to pair"
-            detail = "Select a device to get started."
-            connection = "Ready to pair"
-            label_for_sidebar = None
-        elif stage == "awaiting_pin":
-            label_for_sidebar = label
-            text = f"Awaiting PIN for {label}" if label else "Awaiting PIN"
-            detail = f"Enter the 8-digit code shown on {label}." if label else "Enter the 8-digit code."
-            connection = "Awaiting PIN"
-        elif stage == "connecting":
-            label_for_sidebar = label
-            text = f"Connecting to {label}…" if label else "Connecting…"
-            detail = "Hang tight while we verify the link."
-            connection = "Connecting…"
-        elif stage == "connected":
-            label_for_sidebar = label
-            text = f"Connected to {label}" if label else "Connected"
-            detail = "Secure LoRa session established."
-            connection = "Connected"
-        elif stage == "disconnected":
-            label_for_sidebar = label
-            text = f"Disconnected ({label})" if label else "Disconnected"
-            detail = "Device disconnected."
-            connection = "Disconnected"
-        else:
-            label_for_sidebar = label
-            text = stage
-            detail = stage
-            connection = stage
-
-        self.status_var.set(detail)
-        self.connection_state.set(connection)
+        self.ui_store.set_pairing_stage(stage, label)
+        snapshot = self.ui_store.get_device_status()
+        self._apply_snapshot(snapshot)
         if label:
-            self.selected_device_var.set(f"{label}")
+            self.selected_device_var.set(label)
             self._active_device_name = label
-        if stage == "ready":
+        if stage == DeviceStage.READY:
             self.selected_device_var.set("No device selected")
             self._active_device_name = None
-        self.status_manager.update_status(text, label_for_sidebar)
+
+    # ------------------------------------------------------------------ #
+    def on_show(self):
+        self._subscribe_to_store()
+
+    def on_hide(self):
+        self._unsubscribe_from_store()
+
+    def _subscribe_to_store(self):
+        if self._device_subscription is not None:
+            return
+
+        def _callback(snapshot: DeviceStatusSnapshot):
+            self._apply_snapshot(snapshot)
+
+        self._device_subscription = _callback
+        self.ui_store.subscribe_device_status(_callback)
+
+    def _unsubscribe_from_store(self):
+        if self._device_subscription is None:
+            return
+        self.ui_store.unsubscribe_device_status(self._device_subscription)
+        self._device_subscription = None
+
+    def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
+        if not snapshot:
+            return
+        self.connection_state.set(snapshot.title)
+        detail_text = snapshot.detail or snapshot.subtitle or ""
+        self.status_var.set(detail_text)
+        if snapshot.stage == DeviceStage.READY:
+            self.selected_device_var.set("No device selected")
+            self._active_device_name = None
+        elif snapshot.device_name:
+            self.selected_device_var.set(snapshot.device_name)
+            self._active_device_name = snapshot.device_name
+
+    def destroy(self):
+        self._unsubscribe_from_store()
+        return super().destroy()
 
 
 # Backwards compatibility

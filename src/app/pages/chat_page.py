@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import tkinter as tk
 import time
+from typing import Callable, Optional
+
 from utils.design_system import Colors, Typography, DesignUtils, Space
-from utils.status_manager import get_status_manager, DeviceInfo
+from utils.status_manager import get_status_manager
+from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .base_page import BasePage, PageContext
 
 
@@ -18,10 +21,11 @@ class ChatPage(BasePage):
         self.host = context.navigator if context else None
         self.on_disconnect = on_disconnect
         self._connected = False
+        self.ui_store = get_ui_store()
+        self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
 
-        # Use consolidated status manager for consistent status display
+        # Status manager still gates message sending
         self.status_manager = get_status_manager()
-        self.status_manager.register_device_callback(self._on_device_change)
 
         wrapper = tk.Frame(self, bg=Colors.SURFACE, padx=Space.XL, pady=Space.XL)
         wrapper.pack(fill=tk.BOTH, expand=True)
@@ -38,6 +42,7 @@ class ChatPage(BasePage):
 
         self._message_counter = 0
         self._setup_chat_history()
+        self._apply_snapshot(self.ui_store.get_device_status())
 
     # ------------------------------------------------------------------ header
     def _build_header(self):
@@ -50,6 +55,19 @@ class ChatPage(BasePage):
         self.name_label = tk.Label(left, text=contact, bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
                                    font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
         self.name_label.pack(anchor="w")
+
+        right = tk.Frame(header, bg=Colors.SURFACE_HEADER)
+        right.pack(side=tk.RIGHT)
+        self.connection_badge = tk.Label(
+            right,
+            text="Disconnected",
+            bg=Colors.STATE_ERROR,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            padx=Space.MD,
+            pady=int(Space.XS / 2)
+        )
+        self.connection_badge.pack()
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -67,7 +85,9 @@ class ChatPage(BasePage):
         self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
         self.history_frame.bind("<Configure>", lambda e: self._history_canvas.configure(scrollregion=self._history_canvas.bbox("all")))
         self._history_canvas.create_window((0, 0), window=self.history_frame, anchor="nw")
-        self._history_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self._history_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self._history_canvas.bind("<Button-4>", self._on_mousewheel)
+        self._history_canvas.bind("<Button-5>", self._on_mousewheel)
 
     # --------------------------------------------------------------- composer
     def _build_composer(self):
@@ -80,7 +100,8 @@ class ChatPage(BasePage):
         self.entry.grid(row=0, column=0, sticky="ew")
         self.entry.bind("<Return>", self._send_message)
 
-        DesignUtils.button(composer, text="Send", command=self._send_message).grid(row=0, column=1, padx=(Space.SM, 0))
+        self.send_button = DesignUtils.button(composer, text="Send", command=self._send_message)
+        self.send_button.grid(row=0, column=1, padx=(Space.SM, 0))
 
     # ---------------------------------------------------------------- helpers
     def _setup_chat_history(self):
@@ -127,7 +148,14 @@ class ChatPage(BasePage):
             self._message_counter += 1
 
     def _on_mousewheel(self, event):
-        self._history_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        delta = 0
+        if hasattr(event, "delta") and event.delta:
+            delta = -1 * (event.delta / 120)
+        elif event.num == 4:
+            delta = -1
+        elif event.num == 5:
+            delta = 1
+        self._history_canvas.yview_scroll(int(delta), "units")
 
     # ---------------------------------------------------------------- actions
     def _handle_disconnect(self):
@@ -139,6 +167,8 @@ class ChatPage(BasePage):
 
     def _send_message(self, event=None):
         """Send message - use consolidated status manager to check connectivity."""
+        if not self._connected:
+            return
         if not self.status_manager.can_send_messages():
             return
 
@@ -165,24 +195,11 @@ class ChatPage(BasePage):
         contact = self.session.device_name or "Conversation"
         self.name_label.configure(text=contact)
 
-    def _on_device_change(self, device_info: DeviceInfo):
-        """Handle consolidated device/status changes for consistent status display."""
-        # Update connection state
-        self._connected = device_info.is_connected
-
     def set_status(self, text: str):
         """
         Set status using the consolidated status manager for consistency.
         """
-        # Use consolidated status management for consistent state handling
-        device_info = self.status_manager.get_current_device()
-        device_info.status_text = text
-
-        # Trigger consolidated status update
-        self._on_device_change(device_info)
-
-        # Update UI elements
-        pass
+        self.connection_badge.configure(text=text)
 
     def clear_history(self):
         self._setup_chat_history()
@@ -199,3 +216,54 @@ class ChatPage(BasePage):
 
     def _get_local_device_name(self) -> str:
         return getattr(self.session, "device_name", None) or "This Device"
+
+    # ------------------------------------------------------------------ lifecycle & store
+    def on_show(self):
+        self._subscribe_to_store()
+
+    def on_hide(self):
+        self._unsubscribe_from_store()
+
+    def _subscribe_to_store(self):
+        if self._device_subscription is not None:
+            return
+
+        def _callback(snapshot: DeviceStatusSnapshot):
+            self._apply_snapshot(snapshot)
+
+        self._device_subscription = _callback
+        self.ui_store.subscribe_device_status(_callback)
+
+    def _unsubscribe_from_store(self):
+        if self._device_subscription is None:
+            return
+        self.ui_store.unsubscribe_device_status(self._device_subscription)
+        self._device_subscription = None
+
+    def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
+        if not snapshot:
+            return
+        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
+        self.connection_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
+        is_connected = snapshot.stage == DeviceStage.CONNECTED
+        self._connected = is_connected
+        entry_state = tk.NORMAL if is_connected else tk.DISABLED
+        self.entry.configure(state=entry_state)
+        if self.send_button:
+            self.send_button.configure(state="normal" if is_connected else "disabled")
+
+    @staticmethod
+    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
+        mapping = {
+            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
+            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
+            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
+            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
+            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
+            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
+        }
+        return mapping.get(stage, mapping[DeviceStage.READY])
+
+    def destroy(self):
+        self._unsubscribe_from_store()
+        return super().destroy()
