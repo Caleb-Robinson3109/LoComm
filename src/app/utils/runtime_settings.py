@@ -20,6 +20,10 @@ _SETTINGS: RuntimeSettings | None = None
 _CONFIG_PATH = Path.home() / ".locomm" / "runtime.json"
 
 
+def _ensure_dir() -> None:
+    _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
 def _read_config_file() -> Dict[str, Any]:
     if not _CONFIG_PATH.exists():
         return {}
@@ -28,6 +32,15 @@ def _read_config_file() -> Dict[str, Any]:
             return json.load(handle)
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def _write_config_file(data: Dict[str, Any]) -> None:
+    _ensure_dir()
+    try:
+        with _CONFIG_PATH.open("w", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2)
+    except OSError:
+        pass
 
 
 def _load_settings() -> RuntimeSettings:
@@ -51,3 +64,19 @@ def refresh_runtime_settings() -> RuntimeSettings:
     global _SETTINGS
     _SETTINGS = _load_settings()
     return _SETTINGS
+
+
+def save_runtime_settings(settings: RuntimeSettings) -> None:
+    """Persist runtime settings to disk."""
+    payload = {"transport_profile": settings.transport_profile}
+    _write_config_file(payload)
+    global _SETTINGS
+    _SETTINGS = settings
+
+
+def set_transport_profile(profile: str) -> RuntimeSettings:
+    """Helper to update the transport profile and persist to disk."""
+    profile = (profile or "auto").lower()
+    settings = RuntimeSettings(transport_profile=profile)
+    save_runtime_settings(settings)
+    return settings

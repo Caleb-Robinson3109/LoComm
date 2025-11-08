@@ -1,11 +1,14 @@
 """Settings page leveraging the refreshed design system."""
 from __future__ import annotations
 
+import json
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.ui_helpers import create_scroll_container
+from utils.runtime_settings import get_runtime_settings, set_transport_profile
+from utils.diagnostics import read_recent_events, export_diagnostics
 from .base_page import BasePage, PageContext
 
 
@@ -22,6 +25,7 @@ class SettingsPage(BasePage):
         self.desktop_notifications_var = tk.BooleanVar(value=True)
         self.sound_notifications_var = tk.BooleanVar(value=False)
         self.lora_profile_var = tk.StringVar(value="Mock backend")
+        self.transport_profile_var = tk.StringVar(value=get_runtime_settings().transport_profile)
 
         self._toggle_controls: list[tuple[tk.Frame, tk.Label, tk.Label, tk.BooleanVar]] = []
 
@@ -38,8 +42,10 @@ class SettingsPage(BasePage):
         cards.pack(fill=tk.BOTH, expand=True)
 
         self._build_session_card(cards)
+        self._build_transport_card(cards)
         self._build_notifications_card(cards)
         self._build_data_card(cards)
+        self._build_diagnostics_card(cards)
 
     # ------------------------------------------------------------------ #
     def _build_session_card(self, parent):
@@ -65,6 +71,36 @@ class SettingsPage(BasePage):
         DesignUtils.button(actions, text="Regenerate secure PIN", command=self._regenerate_pin).pack(side=tk.LEFT, padx=(0, Spacing.SM))
         DesignUtils.button(actions, text="Forget paired device", command=self._forget_device, variant="secondary").pack(side=tk.LEFT)
 
+    def _build_transport_card(self, parent):
+        card, content = DesignUtils.card(parent, "Transport profiles", "Swap between mock and hardware backends")
+        card.pack(fill=tk.X, pady=(0, Spacing.LG))
+        card.pack_propagate(True)
+
+        profiles = [
+            ("auto", "Auto (prefer hardware, fallback to mock)"),
+            ("mock", "Mock backend only"),
+            ("locomm", "LoComm hardware/API (requires device team build)"),
+        ]
+        for value, label in profiles:
+            row = tk.Frame(content, bg=Colors.SURFACE_ALT)
+            row.pack(fill=tk.X, pady=(Spacing.XXS, 0))
+            ttk.Radiobutton(
+                row,
+                text=label,
+                value=value,
+                variable=self.transport_profile_var,
+                command=self._apply_transport_profile
+            ).pack(anchor="w")
+        tk.Label(
+            content,
+            text="Changes persist immediately, but you must restart the desktop app for the new backend to activate.",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=520,
+            justify="left"
+        ).pack(anchor="w", pady=(Spacing.XXS, 0))
+
     def _build_notifications_card(self, parent):
         card, content = DesignUtils.card(parent, "Notifications", "Desktop, audio, and transport alerts")
         card.pack(fill=tk.X, pady=(0, Spacing.LG))
@@ -83,6 +119,13 @@ class SettingsPage(BasePage):
         DesignUtils.button(content, text="Reset to defaults", command=self._reset_defaults, variant="secondary").pack(anchor="w")
         DesignUtils.button(content, text="Export session logs", command=self._export_logs, variant="ghost").pack(anchor="w", pady=(Spacing.SM, 0))
         DesignUtils.button(content, text="Clear cached session", command=self._clear_cached_session, variant="ghost").pack(anchor="w")
+
+    def _build_diagnostics_card(self, parent):
+        card, content = DesignUtils.card(parent, "Diagnostics", "Inspect recent transport events and export traces")
+        card.pack(fill=tk.X, pady=(0, Spacing.LG))
+        card.pack_propagate(True)
+        DesignUtils.button(content, text="View recent diagnostics", command=self._show_diagnostics_modal).pack(anchor="w", pady=(0, Spacing.SM))
+        DesignUtils.button(content, text="Export diagnostics log", command=self._export_diagnostics_log, variant="ghost").pack(anchor="w")
 
     # ------------------------------------------------------------------ #
     def _save_preferences(self):
@@ -113,6 +156,37 @@ class SettingsPage(BasePage):
         if messagebox.askyesno("Clear cache", "Remove cached session data and conversation previews?"):
             self.controller.session.clear()
             messagebox.showinfo("Cache Cleared", "Cached session artifacts have been removed.")
+
+    def _apply_transport_profile(self):
+        profile = self.transport_profile_var.get() or "auto"
+        set_transport_profile(profile)
+        messagebox.showinfo(
+            "Profile updated",
+            "Transport profile saved. Restart the app to apply the new backend."
+        )
+
+    def _show_diagnostics_modal(self):
+        events = read_recent_events(limit=50)
+        dialog = tk.Toplevel(self)
+        dialog.title("Recent diagnostics")
+        dialog.geometry("640x480")
+        dialog.configure(bg=Colors.SURFACE)
+        text = tk.Text(dialog, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY, wrap="word")
+        text.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        if not events:
+            text.insert("1.0", "No diagnostics recorded yet.")
+        else:
+            for event in events:
+                text.insert(tk.END, json.dumps(event, indent=2))
+                text.insert(tk.END, "\n\n")
+        text.configure(state="disabled")
+
+    def _export_diagnostics_log(self):
+        target = export_diagnostics()
+        if target:
+            messagebox.showinfo("Diagnostics exported", f"Saved to {target}")
+        else:
+            messagebox.showwarning("No data", "No diagnostics to export yet.")
 
     # ------------------------------------------------------------------ #
     def _create_toggle(self, parent, label, var: tk.BooleanVar):

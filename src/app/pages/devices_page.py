@@ -9,14 +9,10 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.ui_helpers import create_scroll_container
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from services.mock_device_service import get_mock_device_service, MockDevice
+from services.network_simulator import LoRaNetworkSimulator
 from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
-
-MOCK_DEVICE_ENTRIES = [
-    ("DEV001", "Device Alpha", "Available", "Just now"),
-    ("DEV002", "Device Beta", "Available", "5 min ago"),
-    ("DEV003", "Device Gamma", "Available", "1 hour ago"),
-]
 
 
 class DevicesPage(BasePage):
@@ -31,12 +27,22 @@ class DevicesPage(BasePage):
 
         self.connection_manager = get_connection_manager()
         self.ui_store = get_ui_store()
+        self.device_service = get_mock_device_service()
+        self.scenario_data = LoRaNetworkSimulator().scenario_summary()
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self.connection_state = tk.StringVar(value="Ready to pair")
         self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
         self.selected_device_var = tk.StringVar(value="No device selected")
+        self.scenario_var = tk.StringVar(value=self.session.mock_scenario or "default")
+        self.scenario_description_var = tk.StringVar(value=self._scenario_description(self.scenario_var.get()))
+        self.telemetry_vars = {
+            "rssi": tk.StringVar(value="–"),
+            "snr": tk.StringVar(value="–"),
+            "battery": tk.StringVar(value="–"),
+        }
         self._active_device_name: Optional[str] = None
+        self._active_device_id: Optional[str] = None
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
 
@@ -87,11 +93,38 @@ class DevicesPage(BasePage):
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
         ).pack(anchor="w")
+        self.scenario_label = tk.Label(
+            labels_frame,
+            textvariable=self.scenario_description_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=360,
+            justify="left"
+        )
+        self.scenario_label.pack(anchor="w", pady=(Spacing.XXS, 0))
 
         action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         action_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
         DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices).pack(side=tk.LEFT, padx=(0, Spacing.SM))
         DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost").pack(side=tk.LEFT)
+        scenario_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
+        scenario_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
+        tk.Label(
+            scenario_row,
+            text="Mock network scenario",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
+        ).pack(anchor="w")
+        scenario_combo = ttk.Combobox(
+            scenario_row,
+            values=list(self.scenario_data.keys()),
+            textvariable=self.scenario_var,
+            state="readonly"
+        )
+        scenario_combo.pack(fill=tk.X, expand=True, pady=(Spacing.XXS, 0))
+        scenario_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_scenario())
 
     def _build_body(self):
         body = tk.Frame(self.main_body, bg=Colors.SURFACE)
@@ -111,9 +144,7 @@ class DevicesPage(BasePage):
             self.device_tree.column(col, anchor="w", width=140)
         self.device_tree.pack(fill=tk.BOTH, expand=True)
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
-
-        for row in MOCK_DEVICE_ENTRIES:
-            self.device_tree.insert("", tk.END, values=row)
+        self._refresh_device_table()
 
         controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
@@ -121,6 +152,39 @@ class DevicesPage(BasePage):
         self.connect_btn = DesignUtils.button(controls, text="Use selected", command=self._connect_selected_device, variant="secondary")
         self.connect_btn.pack(side=tk.LEFT)
         self.connect_btn.configure(state="disabled")
+
+        telemetry = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        telemetry.pack(fill=tk.X, pady=(Spacing.SM, 0))
+        tk.Label(
+            telemetry,
+            text="Live telemetry",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, Spacing.XXS))
+        self._add_telemetry_field(telemetry, "RSSI", self.telemetry_vars["rssi"], 1, 0)
+        self._add_telemetry_field(telemetry, "SNR", self.telemetry_vars["snr"], 1, 1)
+        self._add_telemetry_field(telemetry, "Battery", self.telemetry_vars["battery"], 1, 2)
+
+    def _add_telemetry_field(self, parent, label: str, var: tk.StringVar, row: int, col: int):
+        wrapper = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        wrapper.grid(row=row, column=col, padx=Spacing.MD, pady=(Spacing.XXS, 0), sticky="w")
+        tk.Label(wrapper, text=label, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        tk.Label(wrapper, textvariable=var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)).pack(anchor="w")
+
+    def _refresh_device_table(self):
+        if not hasattr(self, "device_tree"):
+            return
+        for row in self.device_tree.get_children():
+            self.device_tree.delete(row)
+        devices = self.device_service.list_devices()
+        for device in devices:
+            self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row())
+        if not devices:
+            self.status_var.set("No mock devices defined. Edit mock_data/devices.json to add entries.")
+        self._update_telemetry_panel(None)
 
     # ------------------------------------------------------------------ #
     def _scan_for_devices(self):
@@ -131,12 +195,8 @@ class DevicesPage(BasePage):
         self.after(2000, self._finish_scan)
 
     def _finish_scan(self):
-        mock_discovered = [
-            ("DEV004", "New Device Delta", "Available", "Just found"),
-            ("DEV005", "New Device Epsilon", "Available", "Just found"),
-        ]
-        for row in mock_discovered:
-            self.device_tree.insert("", tk.END, values=row)
+        self.device_service.refresh()
+        self._refresh_device_table()
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
 
@@ -145,8 +205,14 @@ class DevicesPage(BasePage):
         if not selected:
             self._set_stage(DeviceStage.READY)
             return
-        device_id, name, *_ = self.device_tree.item(selected[0])["values"]
+        node_id = selected[0]
+        device = self.device_service.get_device(node_id)
+        if not device:
+            return
+        device_id = device.device_id
+        name = device.name
         self._active_device_name = name
+        self._active_device_id = device_id
         self.selected_device_var.set(f"{name} ({device_id})")
         self._set_stage(DeviceStage.AWAITING_PIN, name)
         self._open_pin_modal(device_id, name)
@@ -181,8 +247,12 @@ class DevicesPage(BasePage):
         if not self.device_tree.selection():
             self.connect_btn.configure(state="disabled")
             return
-        device_id, name, *_ = self.device_tree.item(self.device_tree.selection()[0])["values"]
-        self.selected_device_var.set(f"{name} ({device_id})")
+        selection = self.device_tree.selection()[0]
+        device = self.device_service.get_device(selection)
+        if not device:
+            return
+        self.selected_device_var.set(f"{device.name} ({device.device_id})")
+        self._update_telemetry_panel(device)
         self.connect_btn.configure(state="normal")
 
     def _open_pin_modal(self, device_id: str, device_name: str):
@@ -230,6 +300,38 @@ class DevicesPage(BasePage):
         if stage == DeviceStage.READY:
             self.selected_device_var.set("No device selected")
             self._active_device_name = None
+            self._active_device_id = None
+        if self._active_device_id:
+            device = self.device_service.get_device(self._active_device_id)
+            self._update_telemetry_panel(device)
+        else:
+            self._update_telemetry_panel(None)
+
+    def _apply_scenario(self):
+        scenario = self.scenario_var.get() or "default"
+        if hasattr(self.controller, "set_mock_scenario"):
+            self.controller.set_mock_scenario(scenario)
+        self.session.mock_scenario = scenario
+        desc = self._scenario_description(scenario)
+        self.scenario_description_var.set(desc)
+        self.status_var.set(f"Scenario: {scenario} • {desc}")
+
+    def _scenario_description(self, scenario: str) -> str:
+        info = self.scenario_data.get(scenario)
+        if not info:
+            return "Custom mock scenario"
+        return info.get("description", "Mock network simulation profile.")
+
+    def _update_telemetry_panel(self, device: MockDevice | None):
+        if not device:
+            for var in self.telemetry_vars.values():
+                var.set("–")
+            return
+        telemetry = device.telemetry or {}
+        self.telemetry_vars["rssi"].set(f"{telemetry.get('rssi', '–')} dBm")
+        self.telemetry_vars["snr"].set(f"{telemetry.get('snr', '–')} dB")
+        battery = telemetry.get("battery")
+        self.telemetry_vars["battery"].set(f"{battery}%" if battery is not None else "–")
 
     # ------------------------------------------------------------------ #
     def on_show(self):

@@ -101,6 +101,7 @@ def _setup_default_dependencies(container: DependencyContainer):
     """
     from utils.connection_manager import ConnectionManager
     from utils.status_manager import StatusManager
+    from utils.mock_config import MockConfig, get_mock_config
     from utils.runtime_settings import RuntimeSettings, get_runtime_settings
 
     # Register managers as singletons
@@ -112,6 +113,9 @@ def _setup_default_dependencies(container: DependencyContainer):
                               singleton=True)
     container.register_factory(RuntimeSettings,
                               lambda: get_runtime_settings(),
+                              singleton=True)
+    container.register_factory(MockConfig,
+                              lambda: get_mock_config(),
                               singleton=True)
 
 
