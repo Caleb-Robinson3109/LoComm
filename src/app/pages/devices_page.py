@@ -46,9 +46,54 @@ class DevicesPage(BasePage):
             title="Devices",
             subtitle="Pair LoRa hardware, confirm PINs face-to-face, and monitor secure sessions."
         )
+        self._build_status_card(self.main_body)
         self._build_body()
+        # Reflect whatever the store currently knows about the connection state
+        # instead of force-resetting everyone back to READY. This keeps the chat
+        # composer enabled after a successful demo/mock connect.
         self._apply_snapshot(self.ui_store.get_device_status())
-        self._set_stage(DeviceStage.READY)
+
+    def _build_status_card(self, parent):
+        card, content = DesignUtils.card(
+            parent,
+            "Pairing status",
+            "Stay aware of your current session before selecting a new device.",
+        )
+        card.pack(fill=tk.X, pady=(0, Spacing.LG))
+
+        tk.Label(
+            content,
+            textvariable=self.connection_state,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
+
+        tk.Label(
+            content,
+            textvariable=self.status_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            justify="left",
+            wraplength=520,
+        ).pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
+
+        footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        footer.pack(fill=tk.X)
+        tk.Label(
+            footer,
+            text="Selected device",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
+        tk.Label(
+            footer,
+            textvariable=self.selected_device_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
 
     def _build_body(self):
         body = tk.Frame(self.main_body, bg=Colors.SURFACE)
@@ -175,13 +220,7 @@ class DevicesPage(BasePage):
         self._set_stage(DeviceStage.CONNECTING, device_name)
         if self.app:
             self.app.start_transport_session(device_id, device_name)
-        self._set_stage(DeviceStage.CONNECTED, device_name)
         self._close_pin_modal()
-        if self.on_device_paired:
-            self.on_device_paired(device_id, device_name)
-        navigator = getattr(self, "navigator", None)
-        if navigator and hasattr(navigator, "show_chat_page"):
-            navigator.show_chat_page()
 
     def _disconnect_device(self):
         if not self.connection_manager.is_connected():
@@ -190,20 +229,23 @@ class DevicesPage(BasePage):
         if self.controller:
             self.controller.stop_session()
         if self.app:
-            self.app.clear_chat_history()
+            self.app.clear_chat_history(confirm=False)
         self.connection_manager.disconnect_device()
         last_device = self.selected_device_var.get()
         label = last_device if last_device != "No device selected" else None
         self._set_stage(DeviceStage.DISCONNECTED, label)
 
     def _handle_demo_login(self):
-        self._set_stage(DeviceStage.CONNECTING, "Demo Device")
+        label = self._active_device_name or self.selected_device_var.get()
+        if label == "No device selected" or not label:
+            label = "Demo Device"
+        self._set_stage(DeviceStage.CONNECTING, label)
         if self.app:
-            self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
-        self._set_stage(DeviceStage.CONNECTED, "Demo Device")
+            self.app.start_transport_session("demo-device", label, mode="demo")
+        self._set_stage(DeviceStage.CONNECTED, label)
         self._close_pin_modal()
         if self.on_device_paired:
-            self.on_device_paired("demo-device", "Demo Device")
+            self.on_device_paired("demo-device", label)
 
     def _on_device_select(self, _event):
         if not self.device_tree.selection():
@@ -214,14 +256,17 @@ class DevicesPage(BasePage):
         if not device:
             return
         self.selected_device_var.set(f"{device.name} ({device.device_id})")
-        self.connect_btn.configure(state="normal")
+        self._active_device_name = device.name
+        self._active_device_id = device.device_id
+        self._sync_connect_button_state()
 
     def _open_pin_modal(self, device_id: str, device_name: str):
         self._close_pin_modal()
         modal = tk.Toplevel(self)
         modal.title(f"Pair {device_name}")
         modal.configure(bg=Colors.SURFACE)
-        modal.geometry("720x640")
+        modal.geometry("540x650")
+        modal.minsize(480, 600)
         modal.resizable(True, True)
         modal.transient(self.winfo_toplevel())
         modal.grab_set()
@@ -264,6 +309,7 @@ class DevicesPage(BasePage):
             self._active_device_id = None
         if hasattr(self, "disconnect_btn"):
             self.disconnect_btn.configure(state="normal" if stage == DeviceStage.CONNECTED else "disabled")
+        self._sync_connect_button_state()
         if self._active_device_id:
             device = self.device_service.get_device(self._active_device_id)
             if device:
@@ -309,6 +355,22 @@ class DevicesPage(BasePage):
         is_connected = snapshot.stage == DeviceStage.CONNECTED
         if hasattr(self, "disconnect_btn"):
             self.disconnect_btn.configure(state="normal" if is_connected else "disabled")
+        self._sync_connect_button_state()
+
+    def _sync_connect_button_state(self):
+        if not hasattr(self, "connect_btn"):
+            return
+        if not hasattr(self, "device_tree"):
+            self.connect_btn.configure(state="disabled")
+            return
+        selection = self.device_tree.selection()
+        if not selection:
+            self.connect_btn.configure(state="disabled")
+            return
+        if self.connection_manager.is_connected():
+            self.connect_btn.configure(state="disabled")
+            return
+        self.connect_btn.configure(state="normal")
 
     def destroy(self):
         self._unsubscribe_from_store()

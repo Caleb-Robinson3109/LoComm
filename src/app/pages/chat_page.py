@@ -219,11 +219,6 @@ class ChatPage(BasePage):
         for widget in self.history_frame.winfo_children():
             widget.destroy()
         self._message_counter = 0
-        self._add_message(
-            "System",
-            "Welcome to Locomm Desktop! This is a secure chat interface.",
-            is_system=True,
-        )
 
     def _scroll_to_bottom(self):
         self._history_canvas.update_idletasks()
@@ -238,6 +233,8 @@ class ChatPage(BasePage):
     ):
         if timestamp is None:
             timestamp = time.time()
+        if sender and sender.lower() == "system":
+            is_system = True
 
         # -------- System messages: full-width bar, centered text ----------
         if is_system:
@@ -406,15 +403,15 @@ class ChatPage(BasePage):
     def _handle_disconnect(self):
         if self.on_disconnect:
             self.on_disconnect()
-        self._clear_chat_contents()
+        self._clear_chat_contents(confirm=False)
 
     def _handle_connect(self):
         # Placeholder for connect action - implement based on controller
         pass
 
-    def _clear_chat_contents(self):
+    def _clear_chat_contents(self, *, confirm: bool = True):
         if self.context and hasattr(self.context.app, "clear_chat_history"):
-            self.context.app.clear_chat_history()
+            self.context.app.clear_chat_history(confirm=confirm)
         else:
             self.clear_history()
 
@@ -455,8 +452,10 @@ class ChatPage(BasePage):
         sender: str,
         message: str,
         timestamp: Optional[float] = None,
+        *,
+        is_system: bool = False,
     ):
-        self._add_message(sender, message, timestamp=timestamp)
+        self._add_message(sender, message, is_system=is_system, timestamp=timestamp)
 
     def sync_session_info(self):
         if self.session:
@@ -520,7 +519,11 @@ class ChatPage(BasePage):
         )
 
         is_connected = snapshot.stage == DeviceStage.CONNECTED
+        was_connected = self._connected
         self._connected = is_connected
+        if was_connected and not is_connected:
+            # Peer disconnected; wipe local transcript automatically.
+            self._clear_chat_contents(confirm=False)
 
         if hasattr(self, "disconnect_button"):
             # Disconnect is available only when connected

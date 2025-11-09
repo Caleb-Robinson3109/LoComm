@@ -3,11 +3,17 @@ PIN Pairing Frame - Replaces traditional login with secure PIN authentication.
 Users enter an 8-digit PIN to pair and connect devices with rate limiting protection.
 """
 import tkinter as tk
-from tkinter import ttk, messagebox
 from typing import Callable, Optional
-from utils.design_system import Colors, Typography, Spacing, DesignUtils, AppConfig
+
+from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.ui_helpers import create_scroll_container
-from utils.pin_authentication import generate_pairing_pin, verify_pairing_pin, validate_pin_format, get_pin_auth, get_security_status
+from utils.pin_authentication import (
+    generate_pairing_pin,
+    verify_pairing_pin,
+    validate_pin_format,
+    get_pin_auth,
+    get_security_status,
+)
 
 
 class PINPairingFrame(tk.Frame):
@@ -19,20 +25,24 @@ class PINPairingFrame(tk.Frame):
         self.on_demo_login = on_demo_login
         self.pin_auth = get_pin_auth()
         self.device_context_var = tk.StringVar(value="Select a device to begin")
+        self.pin_vars: list[tk.StringVar] = []
+        self.pin_entries: list[tk.Entry] = []
 
         self._create_ui()
 
     def _create_ui(self):
         """Create the PIN pairing interface."""
-        from utils.ui_helpers import create_scroll_container
-
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
+        scroll = create_scroll_container(
+            self,
+            bg=Colors.SURFACE,
+            padding=(Spacing.MD, Spacing.LG),
+        )
         content = scroll.frame
 
         DesignUtils.hero_header(
             content,
             title="Device pairing",
-            subtitle="Enter the 8-digit secure PIN shared by your peer to begin a protected session."
+            subtitle="",
         )
 
         tk.Label(
@@ -43,71 +53,61 @@ class PINPairingFrame(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
         ).pack(anchor="w", pady=(0, Spacing.SM))
 
-        section, body = DesignUtils.section(content, "Secure PIN authentication", "Codes expire after 10 minutes, max 5 attempts")
+        section, body = DesignUtils.section(
+            content,
+            "Secure PIN entry",
+            "Codes expire in 10 minutes. Five attempts max.",
+        )
 
-        # PIN input field
-        pin_label = tk.Label(
+        inputs_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
+        inputs_row.pack(anchor="w", pady=(Spacing.XS, Spacing.SM))
+        self._build_pin_inputs(inputs_row)
+
+        DesignUtils.button(
             body,
-            text="Enter 8-digit PIN",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
-        )
-        pin_label.pack(anchor="w", pady=(0, Spacing.XS))
+            text="Clear PIN",
+            command=self._clear_pin,
+            variant="ghost",
+        ).pack(anchor="w", pady=(0, Spacing.SM))
 
-        # PIN entry with validation
-        pin_input_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        pin_input_frame.pack(fill=tk.X, pady=(0, Spacing.LG))
-
-        self.pin_var = tk.StringVar()
-        self.pin_entry = DesignUtils.create_chat_entry(
-            pin_input_frame,
-            textvariable=self.pin_var,
-            justify='center',
-            width=12  # Increased width for 8 digits
-        )
-        self.pin_entry.pack(side=tk.LEFT, padx=(0, Spacing.MD))
-        self.pin_entry.bind('<KeyRelease>', self._on_pin_change)
-        self.pin_entry.bind('<Return>', self._on_submit_pin)
-
-        clear_btn = DesignUtils.button(pin_input_frame, text="Clear", command=self._clear_pin, variant="ghost")
-        clear_btn.pack(side=tk.LEFT)
-
-        # Security status display
         self.security_label = tk.Label(
             body,
             text="",
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
             fg=Colors.STATE_INFO,
-            bg=Colors.SURFACE_ALT
+            bg=Colors.SURFACE_ALT,
         )
-        self.security_label.pack(anchor="w", pady=(0, Spacing.XS))
+        self.security_label.pack(anchor="w", pady=(0, Spacing.XXS))
 
-        # Error message
         self.error_label = tk.Label(
             body,
             text="",
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
             fg=Colors.STATE_ERROR,
-            bg=Colors.SURFACE_ALT
+            bg=Colors.SURFACE_ALT,
         )
-        self.error_label.pack(anchor="w")
+        self.error_label.pack(anchor="w", pady=(0, Spacing.XXS))
 
-        # Action buttons
         button_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        button_frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
+        button_frame.pack(fill=tk.X, pady=(Spacing.MD, 0))
 
-        # Pair button
-        self.pair_btn = DesignUtils.button(button_frame, text="Pair device", command=self._on_submit_pin)
+        self.pair_btn = DesignUtils.button(
+            button_frame,
+            text="Pair device",
+            command=self._on_submit_pin,
+        )
         self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
 
-        # Demo login button
         if self.on_demo_login:
-            DesignUtils.button(button_frame, text="Demo access (skip pairing)", command=self._on_demo_login, variant="secondary").pack(fill=tk.X)
+            DesignUtils.button(
+                button_frame,
+                text="Mock",
+                command=self._on_demo_login,
+                variant="secondary",
+            ).pack(fill=tk.X)
 
-        # Info section
-        # Set initial focus
-        self.after(100, lambda: self.pin_entry.focus_set())
+        # Set initial focus after widgets are laid out
+        self.after(100, self.focus_input)
 
         # Update security status display
         self._update_security_status()
@@ -120,8 +120,35 @@ class PINPairingFrame(tk.Frame):
         self.device_context_var.set(f"Pairing with {label}")
 
     def focus_input(self):
-        """Focus the PIN entry field."""
-        self.pin_entry.focus_set()
+        """Focus the first PIN box."""
+        if self.pin_entries:
+            self._focus_box(0)
+
+    def _build_pin_inputs(self, parent: tk.Frame):
+        self.pin_vars.clear()
+        self.pin_entries.clear()
+        for idx in range(8):
+            var = tk.StringVar()
+            entry = tk.Entry(
+                parent,
+                width=2,
+                textvariable=var,
+                justify="center",
+                font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+                bg=Colors.SURFACE,
+                fg=Colors.TEXT_PRIMARY,
+                relief="flat",
+                highlightthickness=1,
+                highlightbackground=Colors.BORDER,
+                highlightcolor=Colors.BUTTON_PRIMARY_BG,
+                insertwidth=0,
+            )
+            entry.pack(side=tk.LEFT, padx=(Spacing.XXS, Spacing.XXS), pady=(0, Spacing.XXS))
+            entry.bind("<KeyRelease>", lambda e, i=idx: self._handle_digit_key(e, i))
+            entry.bind("<KeyPress>", lambda e, i=idx: self._handle_digit_press(e, i))
+            entry.bind("<Return>", self._on_submit_pin)
+            self.pin_vars.append(var)
+            self.pin_entries.append(entry)
 
     def _update_security_status(self):
         """CRITICAL FIX: Update security status display."""
@@ -147,26 +174,73 @@ class PINPairingFrame(tk.Frame):
         except Exception:
             self.security_label.configure(text="")
 
-    def _on_pin_change(self, event):
-        """Handle PIN input changes with validation."""
-        pin = self.pin_var.get()
+    def _handle_digit_press(self, event, index: int):
+        if event.keysym == "Left" and index > 0:
+            self._focus_box(index - 1)
+            return "break"
+        if event.keysym == "Right" and index < len(self.pin_entries) - 1:
+            self._focus_box(index + 1)
+            return "break"
+        return None
 
-        # CRITICAL FIX: Limit to 8 digits
-        if len(pin) > 8:
-            self.pin_var.set(pin[:8])
+    def _handle_digit_key(self, event, index: int):
+        if not self.pin_entries:
+            return
+        value = self.pin_vars[index].get()
+        keys_to_ignore = {"Shift_L", "Shift_R", "Tab"}
+        if event.keysym in keys_to_ignore:
+            return
 
-        # Validate format
-        if len(pin) == 8:
-            if not validate_pin_format(pin):
-                self._show_error("PIN must be 8 digits only")
-            else:
-                self._clear_error()
+        if event.keysym == "BackSpace":
+            if value:
+                self.pin_vars[index].set("")
+            elif index > 0:
+                self.pin_vars[index - 1].set("")
+                self._focus_box(index - 1)
+            return
+
+        if len(value) > 1:
+            self._apply_paste(value, index)
+            return
+
+        if not value:
+            return
+
+        if not value.isdigit():
+            self.pin_vars[index].set("")
+            return
+
+        self.pin_vars[index].set(value)
+        if index < len(self.pin_entries) - 1:
+            self._focus_box(index + 1)
+
+    def _apply_paste(self, text: str, start_index: int):
+        digits = [c for c in text if c.isdigit()]
+        if not digits:
+            self.pin_vars[start_index].set("")
+            return
+        idx = start_index
+        for digit in digits:
+            if idx >= len(self.pin_entries):
+                break
+            self.pin_vars[idx].set(digit)
+            idx += 1
+        if idx < len(self.pin_entries):
+            self._focus_box(idx)
         else:
-            self._clear_error()
+            self.pin_entries[-1].focus_set()
+
+    def _collect_pin(self) -> str:
+        return "".join(var.get() for var in self.pin_vars)
+
+    def _focus_box(self, index: int):
+        entry = self.pin_entries[index]
+        entry.focus_set()
+        entry.icursor(tk.END)
 
     def _on_submit_pin(self, event=None):
         """CRITICAL FIX: Handle PIN submission with security measures."""
-        pin = self.pin_var.get().strip()
+        pin = self._collect_pin().strip()
 
         if not pin:
             self._show_error("Please enter a PIN")
@@ -234,8 +308,7 @@ class PINPairingFrame(tk.Frame):
             self.pair_btn.configure(state="disabled", text=f"Wait {wait_seconds}s...")
             self.after(int(wait_time * 1000), lambda: self._set_waiting(False))
 
-        self.pin_entry.focus_set()
-        self.pin_entry.select_range(0, tk.END)
+        self.focus_input()
 
     def _on_demo_login(self):
         """Handle demo login button."""
@@ -244,9 +317,10 @@ class PINPairingFrame(tk.Frame):
 
     def _clear_pin(self):
         """Clear the PIN input field."""
-        self.pin_var.set("")
+        for var in self.pin_vars:
+            var.set("")
         self._clear_error()
-        self.pin_entry.focus_set()
+        self.focus_input()
 
     def _show_error(self, message):
         """Show error message."""
@@ -260,10 +334,13 @@ class PINPairingFrame(tk.Frame):
         """Set waiting state for UI elements."""
         if waiting:
             self.pair_btn.configure(state="disabled", text="Pairing...")
-            self.pin_entry.configure(state="disabled")
+            for entry in self.pin_entries:
+                entry.configure(state="disabled")
         else:
-            self.pair_btn.configure(state="normal", text="Pair Device")
-            self.pin_entry.configure(state="normal")
+            self.pair_btn.configure(state="normal", text="Pair device")
+            for entry in self.pin_entries:
+                entry.configure(state="normal")
+            self.focus_input()
 
     def generate_new_pin(self):
         """Generate a new PIN for display (for debugging/testing)."""

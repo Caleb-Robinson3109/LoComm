@@ -40,16 +40,30 @@ class MockLoCommBackend:
         self._connected = True
         scenario = "default"
         device_id = None
+        provided_name = None
         if pairing_context:
             scenario = pairing_context.metadata.get("scenario", "default")
             device_id = pairing_context.device_id
+            provided_name = pairing_context.device_name
 
         self._network.set_scenario(scenario)
+        self._bridge.register_backend(self)
         self._active_device = None
         if device_id:
             self._active_device = self._device_service.get_device(device_id)
+        if self._active_device is None and provided_name:
+            self._active_device = MockDevice(
+                device_id=device_id or "MOCK",
+                name=provided_name,
+                status="Available",
+                last_seen="Just paired",
+                metadata={"source": pairing_context.mode if pairing_context else "mock"},
+                telemetry={"rssi": -70, "snr": 4.0, "battery": 80},
+            )
         if self._active_device is None:
             self._active_device = self._device_service.pick_default()
+        if self._active_device and provided_name:
+            self._active_device.name = provided_name
 
         self._seed_handshake()
         return True
@@ -65,24 +79,8 @@ class MockLoCommBackend:
         if not self._connected:
             return False
 
-        peer_name = self._active_device.name if self._active_device else "Mock Device"
-        telemetry = (self._active_device.telemetry if self._active_device else {}) or {}
-        metadata = {
-            "scenario": self._network.scenario.name,
-            "attempt": self._message_counter + 1,
-            "rssi": telemetry.get("rssi", -80),
-            "snr": telemetry.get("snr", 4.0),
-            "battery": telemetry.get("battery", 75),
-        }
         self._message_counter += 1
-        response_text = self._build_response_text(message.payload)
-        response = TransportMessage(
-            sender=peer_name,
-            payload=response_text,
-            metadata=metadata,
-        )
-        self._network.queue_message(response)
-        self._bridge.notify_peer("Desktop", message.payload)
+        self._bridge.notify_peer(message.sender or "Desktop", message.payload)
         return True
 
     def receive(self) -> Optional[TransportMessage]:
@@ -115,39 +113,15 @@ class MockLoCommBackend:
             "snr": self._active_device.telemetry.get("snr", 4.2),
             "battery": self._active_device.telemetry.get("battery", 80),
         }
-        message = TransportMessage(
-            sender=self._active_device.name,
-            payload=f"{self._active_device.name} ready. Firmware {self._active_device.metadata.get('firmware', '1.0.0')}",
-            metadata=metadata,
+        text = (
+            f"{self._active_device.name} ready. Firmware "
+            f"{self._active_device.metadata.get('firmware', '1.0.0')}"
         )
-        self._network.queue_message(message)
-        self._bridge.notify_peer("System", message.payload)
+        self._emit_system_message(text, metadata)
+        self._bridge.notify_peer("System", text)
 
     def _queue_heartbeat(self):
         return  # Heartbeats disabled for mock testing
-
-    def _build_response_text(self, payload: str) -> str:
-        if not payload:
-            return "ACK"
-
-        # Special handling for Mock device communication
-        if self._active_device and self._active_device.device_id == "MOCK":
-            # Mock device responds with technical/analytical responses
-            if "hello" in payload.lower() or "hi" in payload.lower():
-                return "Mock device online. Ready for testing protocols."
-            elif "status" in payload.lower():
-                return f"Mock status: Connected, RSSI={self._active_device.telemetry.get('rssi', -25)}dBm, Battery={self._active_device.telemetry.get('battery', 100)}%"
-            elif "test" in payload.lower():
-                return "Test message received. Echoing back: " + payload
-            elif "ping" in payload.lower():
-                return "Pong! Mock device responding."
-            else:
-                return f"Mock received: '{payload}' (length: {len(payload)} chars)"
-
-        # Default echo behavior for other devices
-        if len(payload) < 40:
-            return f"Echo: {payload}"
-        return f"ACK ({len(payload)} bytes)"
 
     def inject_peer_message(self, text: str) -> None:
         if not self._connected or not self._active_device:
@@ -163,5 +137,19 @@ class MockLoCommBackend:
             sender=self._active_device.name,
             payload=text,
             metadata=metadata,
+        )
+        self._network.queue_message(message)
+
+    def _emit_system_message(self, text: str, metadata: Optional[dict] = None):
+        payload_metadata = metadata or {
+            "scenario": self._network.scenario.name,
+            "rssi": -78,
+            "snr": 4.0,
+            "battery": 80,
+        }
+        message = TransportMessage(
+            sender="System",
+            payload=text,
+            metadata=payload_metadata,
         )
         self._network.queue_message(message)

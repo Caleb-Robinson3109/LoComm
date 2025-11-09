@@ -252,6 +252,8 @@ class MainFrame(ttk.Frame):
         """Handle disconnect request from chat tab."""
         self.controller.stop_session()
         self.update_status("Disconnected")
+        if hasattr(self.app, "clear_chat_history"):
+            self.app.clear_chat_history(confirm=False)
 
     def set_peer_name(self, name: str):
         """Set the peer name (for compatibility with existing code)."""

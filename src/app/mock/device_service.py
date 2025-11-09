@@ -49,7 +49,7 @@ class MockDeviceService:
             device = MockDevice(
                 device_id=entry.get("id", ""),
                 name=entry.get("name", "Unnamed device"),
-                status=entry.get("status", "Unknown"),
+                status="Available",
                 last_seen=entry.get("last_seen", "Unknown"),
                 metadata=entry.get("metadata") or {},
                 telemetry=entry.get("telemetry") or {},
@@ -79,13 +79,11 @@ class MockDeviceService:
             "Zenith", "Aurora", "Comet", "Vega", "Juno", "Sierra", "Ranger", "Harbor",
             "Sentinel", "Vertex", "Photon", "Falcon", "Iris", "Mint", "Summit"
         ]
-        statuses = ["Available", "Sleeping", "Busy"]
         discovered: List[MockDevice] = []
         for _ in range(2):
             self._dynamic_counter += 1
             device_id = f"SIM{self._dynamic_counter:03d}"
             name = name_pool[self._dynamic_counter % len(name_pool)]
-            status = statuses[self._dynamic_counter % len(statuses)]
             metadata = {"firmware": f"1.3.{self._dynamic_counter}", "region": "EU868"}
             telemetry = {
                 "rssi": -70 - self._dynamic_counter,
@@ -95,7 +93,7 @@ class MockDeviceService:
             device = MockDevice(
                 device_id=device_id,
                 name=name,
-                status=status,
+                status="Available",
                 last_seen="Just found",
                 metadata=metadata,
                 telemetry=telemetry,

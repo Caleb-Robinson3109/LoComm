@@ -72,7 +72,12 @@ class App(tk.Tk):
         if self._ui_pending_messages:
             for sender, msg, _ in self._ui_pending_messages:
                 display_name = sender or "Peer"
-                self.current_frame.chat_page.append_line(display_name, msg)
+                is_system = bool(sender and sender.lower() == "system")
+                self.current_frame.chat_page.append_line(
+                    display_name,
+                    msg,
+                    is_system=is_system,
+                )
             self._ui_pending_messages.clear()
 
     def show_login(self):
@@ -90,7 +95,8 @@ class App(tk.Tk):
 
         def on_complete(success: bool, error_msg: str | None):
             if success:
-                self.show_main(device_id, device_name)
+                # Jump straight into chat once transport succeeds.
+                self.show_main(device_id, device_name, route_id="chat")
             else:
                 messagebox.showerror(failure_title, error_msg or failure_message)
                 self._clear_session()
@@ -136,9 +142,14 @@ class App(tk.Tk):
     # Business logic callback methods
     def _handle_business_message(self, sender: str, msg: str, ts: float):
         """Handle incoming messages from business logic layer."""
+        is_system = bool(sender and sender.lower() == "system")
         if isinstance(self.current_frame, MainFrame):
             display_name = sender or "Peer"
-            self.current_frame.chat_page.append_line(display_name, msg)
+            self.current_frame.chat_page.append_line(
+                display_name,
+                msg,
+                is_system=is_system,
+            )
         else:
             self._ui_pending_messages.append((sender, msg, ts))
 
@@ -161,13 +172,18 @@ class App(tk.Tk):
     # ------------------------------------------------------------------ #
     def notify_incoming_message(self, sender: str, msg: str):
         """Notify user of incoming messages."""
-        self.bell()
+        # Audible chimes disabled per request
+        pass
 
-    def clear_chat_history(self):
-        """Clear chat history with user confirmation."""
-        if isinstance(self.current_frame, MainFrame):
-            if messagebox.askyesno("Clear Chat", "Are you sure you want to clear the current chat log?"):
-                self.current_frame.chat_page.clear_history()
+    def clear_chat_history(self, *, confirm: bool = True):
+        """Clear chat history, optionally skipping confirmation."""
+        if not isinstance(self.current_frame, MainFrame):
+            return
+        proceed = True
+        if confirm:
+            proceed = messagebox.askyesno("Clear Chat", "Are you sure you want to clear the current chat log?")
+        if proceed:
+            self.current_frame.chat_page.clear_history()
 
     def toggle_theme(self, use_dark: bool):
         """Toggle between light and dark themes."""

@@ -19,6 +19,7 @@ from utils.app_logger import get_logger
 from utils.runtime_settings import get_runtime_settings
 from utils.mock_config import get_mock_config, set_mock_scenario
 from utils.diagnostics import log_transport_event
+from mock.peer_chat_window import ensure_mock_peer_window, close_mock_peer_window
 
 MessageCallback = Callable[[str, str, float], None]
 StatusCallback = Callable[[str], None]
@@ -180,8 +181,14 @@ class AppController:
                         "mode": mode,
                     })
                     if self.transport.is_mock:
-                        from mock.peer_chat_window import ensure_mock_peer_window
-                        self.root.after(0, lambda: ensure_mock_peer_window(self.root))
+                        self.root.after(
+                            0,
+                            lambda: ensure_mock_peer_window(
+                                self.root,
+                                peer_name=device_name,
+                                on_disconnect=lambda: self.root.after(0, self.stop_session)
+                            )
+                        )
                 else:
                     # CRITICAL FIX: Stop transport first to prevent resource leaks
                     self.transport.stop()
@@ -327,6 +334,7 @@ class AppController:
         try:
             self.transport.stop()
         finally:
+            close_mock_peer_window()
             self.connection_manager.disconnect_device()
             self.session.clear()
             self._persist_session()
