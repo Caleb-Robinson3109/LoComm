@@ -112,7 +112,7 @@ class DevicesPage(BasePage):
 
         action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         action_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices).pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices, variant="secondary").pack(side=tk.LEFT, padx=(0, Spacing.SM))
         DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost").pack(side=tk.LEFT)
         scenario_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         scenario_row.pack(fill=tk.X, pady=(Spacing.SM, 0))

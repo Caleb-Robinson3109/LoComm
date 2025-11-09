@@ -49,18 +49,30 @@ class ChatPage(BasePage):
         header = tk.Frame(self.shell, bg=Colors.SURFACE_HEADER, padx=Space.LG, pady=Space.MD)
         header.grid(row=0, column=0, sticky="ew")
 
-        left = tk.Frame(header, bg=Colors.SURFACE_HEADER)
-        left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        contact = "Chat"
-        self.name_label = tk.Label(left, text=contact, bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
-                                   font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
-        self.name_label.pack(anchor="w")
+        clear_btn = DesignUtils.button(
+            header,
+            text="Clear Chat",
+            command=self._handle_clear_chat,
+            variant="secondary",
+            width=12
+        )
+        clear_btn.pack(side=tk.LEFT, padx=(0, Space.SM))
 
-        right = tk.Frame(header, bg=Colors.SURFACE_HEADER)
-        right.pack(side=tk.RIGHT)
+        self.disconnect_button = DesignUtils.button(
+            header,
+            text="Disconnect",
+            command=self._handle_disconnect,
+            variant="secondary",
+            width=16
+        )
+        self.disconnect_button.pack(side=tk.LEFT)
+
+        self.name_label = tk.Label(header, text="Chat", bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
+                                   font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
+        self.name_label.pack(side=tk.LEFT, expand=True, padx=Space.LG)
 
         self.connection_badge = tk.Label(
-            right,
+            header,
             text="Disconnected",
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
@@ -70,23 +82,6 @@ class ChatPage(BasePage):
         )
         self.connection_badge.pack(side=tk.RIGHT, padx=(Space.SM, 0))
 
-        button_row = tk.Frame(right, bg=Colors.SURFACE_HEADER)
-        button_row.pack(side=tk.RIGHT, padx=(0, Space.SM))
-        DesignUtils.button(
-            button_row,
-            text="Clear Chat",
-            command=self._handle_clear_chat,
-            variant="ghost",
-            width=12
-        ).pack(side=tk.RIGHT, padx=(Space.SM, 0))
-        DesignUtils.button(
-            button_row,
-            text="Disconnect",
-            command=self._handle_disconnect,
-            variant="secondary",
-            width=12
-        ).pack(side=tk.RIGHT)
-
     # ---------------------------------------------------------------- history area
     def _build_history(self):
         container = tk.Frame(self.shell, bg=Colors.SURFACE_ALT)
@@ -94,7 +89,7 @@ class ChatPage(BasePage):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self._history_canvas = tk.Canvas(container, bg=Colors.SURFACE_ALT, highlightthickness=0)
+        self._history_canvas = tk.Canvas(container, bg=Colors.SURFACE_ALT, highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(container, orient="vertical", command=self._history_canvas.yview)
         self._history_canvas.configure(yscrollcommand=scrollbar.set)
         self._history_canvas.grid(row=0, column=0, sticky="nsew")
@@ -140,24 +135,33 @@ class ChatPage(BasePage):
         if is_system:
             bubble_bg = Colors.MESSAGE_BUBBLE_SYSTEM_BG
             fg = Colors.TEXT_PRIMARY
+            anchor = "w"
+            pad = (0, 0)
         elif is_self:
-            bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG
+            bubble_bg = Colors.BUTTON_PRIMARY_BG
             fg = Colors.SURFACE
+            anchor = "e"
+            pad = (Space.LG, 0)
         else:
-            bubble_bg = Colors.MESSAGE_BUBBLE_OTHER_BG
-            fg = Colors.TEXT_PRIMARY
-        anchor = "e" if is_self else "w"
-        bubble = tk.Frame(bubble_row, bg=Colors.SURFACE_ALT)
-        bubble.pack(anchor=anchor, fill=tk.X if is_system else tk.NONE)
-        inner = tk.Frame(bubble, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
-        inner.pack(anchor=anchor, padx=(0 if is_self else Space.LG, Space.LG if is_self else 0))
-        tk.Label(inner, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
+            bubble_bg = Colors.STATE_SUCCESS
+            fg = Colors.SURFACE
+            anchor = "w"
+            pad = (0, Space.LG)
+
+        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
+        bubble.pack(anchor=anchor, padx=pad)
+
+        caption_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
+        tk.Label(bubble, text=sender, bg=bubble_bg, fg=caption_fg,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        tk.Label(inner, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
-                 wraplength=520, justify="left",
-                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
-        tk.Label(inner, text=time.strftime("%H:%M"), bg=bubble_bg, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e")
+        msg_anchor = "e" if is_self else "w"
+        msg_justify = "right" if is_self else "left"
+        tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
+                 wraplength=520, justify=msg_justify,
+                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor=msg_anchor, pady=(Space.XXS, 0))
+        timestamp_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
+        tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=timestamp_fg,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor=msg_anchor)
 
         self._scroll_to_bottom()
         if not is_system:
@@ -264,6 +268,8 @@ class ChatPage(BasePage):
         self.connection_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
         is_connected = snapshot.stage == DeviceStage.CONNECTED
         self._connected = is_connected
+        if hasattr(self, "disconnect_button"):
+            self.disconnect_button.configure(text="Disconnect" if is_connected else "Connect")
         entry_state = tk.NORMAL if is_connected else tk.DISABLED
         self.entry.configure(state=entry_state)
         if self.send_button:

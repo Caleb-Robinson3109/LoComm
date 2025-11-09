@@ -93,7 +93,7 @@ class Sidebar(tk.Frame):
         action_row.pack(fill=tk.X, padx=Spacing.MD, pady=(0, Spacing.MD))
         DesignUtils.button(
             action_row,
-            text="Pair new device",
+            text="Devices",
             command=lambda: self._handle_nav_click("pair"),
             variant="secondary"
         ).pack(fill=tk.X)

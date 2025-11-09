@@ -80,8 +80,6 @@ class LoCommTransport:
             status_text = "Connected"
             if raw_mode == "demo":
                 status_text = "Connected (demo mode)"
-            elif self._is_mock:
-                status_text = "Connected (mock backend)"
 
             if self.on_status:
                 # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
