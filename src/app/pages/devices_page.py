@@ -59,7 +59,7 @@ class DevicesPage(BasePage):
             self.main_body,
             title="Devices & Trust",
             subtitle="Pair LoRa hardware, confirm PINs face-to-face, and monitor secure sessions.",
-            actions=[{"text": "Scan now", "command": self._scan_for_devices}]
+            actions=[{"text": "Scan", "command": self._scan_for_devices}]
         )
 
         self._build_status_strip()
@@ -112,8 +112,11 @@ class DevicesPage(BasePage):
 
         action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         action_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices, variant="secondary").pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost").pack(side=tk.LEFT)
+        self.scan_btn = DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices, variant="secondary")
+        self.scan_btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        self.disconnect_btn = DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost")
+        self.disconnect_btn.pack(side=tk.LEFT)
+        self.disconnect_btn.configure(state="disabled")
         scenario_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
         scenario_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
         tk.Label(
@@ -162,10 +165,13 @@ class DevicesPage(BasePage):
 
         controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        DesignUtils.button(controls, text="Scan again", command=self._scan_for_devices, variant="ghost").pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        self.connect_btn = DesignUtils.button(controls, text="Use selected", command=self._connect_selected_device, variant="secondary")
-        self.connect_btn.pack(side=tk.LEFT)
+        DesignUtils.button(controls, text="Scan", command=self._scan_for_devices, variant="primary").pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        self.connect_btn = DesignUtils.button(controls, text="Connect", command=self._connect_selected_device, variant="secondary")
+        self.connect_btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
         self.connect_btn.configure(state="disabled")
+        self.disconnect_btn = DesignUtils.button(controls, text="Disconnect", command=self._disconnect_device, variant="danger")
+        self.disconnect_btn.pack(side=tk.LEFT)
+        self.disconnect_btn.configure(state="disabled")
 
         telemetry = tk.Frame(content, bg=Colors.SURFACE_ALT)
         telemetry.pack(fill=tk.X, pady=(Spacing.SM, 0))
@@ -425,6 +431,11 @@ class DevicesPage(BasePage):
         elif snapshot.device_name:
             self.selected_device_var.set(snapshot.device_name)
             self._active_device_name = snapshot.device_name
+
+        # Update disconnect button state based on connection status
+        is_connected = snapshot.stage == DeviceStage.CONNECTED
+        if hasattr(self, "disconnect_btn"):
+            self.disconnect_btn.configure(state="normal" if is_connected else "disabled")
 
     def destroy(self):
         self._unsubscribe_from_store()

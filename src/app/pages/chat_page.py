@@ -50,28 +50,6 @@ class ChatPage(BasePage):
         header = tk.Frame(self.shell, bg=Colors.SURFACE_HEADER, padx=Space.LG, pady=Space.MD)
         header.grid(row=0, column=0, sticky="ew")
 
-        clear_btn = DesignUtils.button(
-            header,
-            text="Clear Chat",
-            command=self._handle_clear_chat,
-            variant="secondary",
-            width=12
-        )
-        clear_btn.pack(side=tk.LEFT, padx=(0, Space.SM))
-
-        self.disconnect_button = DesignUtils.button(
-            header,
-            text="Disconnect",
-            command=self._handle_disconnect,
-            variant="secondary",
-            width=16
-        )
-        self.disconnect_button.pack(side=tk.LEFT)
-
-        self.name_label = tk.Label(header, text="Chat", bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
-                                   font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
-        self.name_label.pack(side=tk.LEFT, expand=True, padx=Space.LG)
-
         self.connection_badge = tk.Label(
             header,
             text="Disconnected",
@@ -81,7 +59,29 @@ class ChatPage(BasePage):
             padx=Space.MD,
             pady=int(Space.XS / 2)
         )
-        self.connection_badge.pack(side=tk.RIGHT, padx=(Space.SM, 0))
+        self.connection_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
+
+        self.name_label = tk.Label(header, text="Chat", bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
+                                    font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD))
+        self.name_label.pack(side=tk.LEFT, expand=True, padx=Space.LG)
+
+        self.disconnect_button = DesignUtils.button(
+            header,
+            text="Disconnect",
+            command=self._handle_disconnect,
+            variant="secondary",
+            width=16
+        )
+        self.disconnect_button.pack(side=tk.RIGHT, padx=(0, Space.SM))
+
+        clear_btn = DesignUtils.button(
+            header,
+            text="Clear Chat",
+            command=self._handle_clear_chat,
+            variant="secondary",
+            width=12
+        )
+        clear_btn.pack(side=tk.RIGHT)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
