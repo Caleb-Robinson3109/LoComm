@@ -1,0 +1,18 @@
+[
+  {
+    "id": "MOCK",
+    "name": "Mock Device",
+    "status": "Available",
+    "last_seen": "Always online",
+    "metadata": {
+      "firmware": "2.0.0",
+      "region": "TEST",
+      "type": "mock"
+    },
+    "telemetry": {
+      "rssi": -25,
+      "snr": 15.0,
+      "battery": 100
+    }
+  }
+]

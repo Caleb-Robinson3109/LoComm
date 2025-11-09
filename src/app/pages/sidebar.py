@@ -43,6 +43,9 @@ class Sidebar(tk.Frame):
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
         for key, label in self.nav_items:
+            if key == "mock":
+                # Add divider before Mock button
+                tk.Frame(container, bg=Colors.DIVIDER, height=1).pack(fill=tk.X, pady=(Spacing.LG, Spacing.SM))
             btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
             btn.pack(fill=tk.X, pady=(0, Spacing.SM))
             self._buttons[key] = btn

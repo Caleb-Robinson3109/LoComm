@@ -134,6 +134,22 @@ class MockLoCommBackend:
     def _build_response_text(self, payload: str) -> str:
         if not payload:
             return "ACK"
+
+        # Special handling for Mock device communication
+        if self._active_device and self._active_device.device_id == "MOCK":
+            # Mock device responds with technical/analytical responses
+            if "hello" in payload.lower() or "hi" in payload.lower():
+                return "Mock device online. Ready for testing protocols."
+            elif "status" in payload.lower():
+                return f"Mock status: Connected, RSSI={self._active_device.telemetry.get('rssi', -25)}dBm, Battery={self._active_device.telemetry.get('battery', 100)}%"
+            elif "test" in payload.lower():
+                return "Test message received. Echoing back: " + payload
+            elif "ping" in payload.lower():
+                return "Pong! Mock device responding."
+            else:
+                return f"Mock received: '{payload}' (length: {len(payload)} chars)"
+
+        # Default echo behavior for other devices
         if len(payload) < 40:
             return f"Echo: {payload}"
         return f"ACK ({len(payload)} bytes)"

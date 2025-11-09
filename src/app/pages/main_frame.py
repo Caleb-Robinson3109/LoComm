@@ -9,6 +9,7 @@ from .chat_page import ChatPage
 from .settings_page import SettingsPage
 from .home_page import HomePage
 from .devices_page import DevicesPage, PairPage
+from .mock_page import MockPage
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -71,6 +72,8 @@ class MainFrame(ttk.Frame):
                                                                         on_disconnect=self._handle_disconnect)),
             RouteConfig("pair", "Devices", lambda parent, ctx=ctx: DevicesPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
+            RouteConfig("mock", "Mock", lambda parent, ctx=ctx: MockPage(parent, ctx,
+                                                                        on_disconnect=self._handle_disconnect)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
         ]
         return routes
@@ -207,6 +210,10 @@ class MainFrame(ttk.Frame):
     @property
     def settings_page(self):
         return self._ensure_view("settings")
+
+    @property
+    def mock_page(self):
+        return self._ensure_view("mock")
 
     @property
     def about_page(self):
