@@ -8,6 +8,7 @@ from typing import Callable, Optional
 from utils.design_system import Colors, Typography, DesignUtils, Space
 from utils.status_manager import get_status_manager
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from utils.ui_helpers import enable_global_mousewheel
 from .base_page import BasePage, PageContext
 
 
@@ -98,9 +99,7 @@ class ChatPage(BasePage):
         self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
         self.history_frame.bind("<Configure>", lambda e: self._history_canvas.configure(scrollregion=self._history_canvas.bbox("all")))
         self._history_canvas.create_window((0, 0), window=self.history_frame, anchor="nw")
-        self._history_canvas.bind("<MouseWheel>", self._on_mousewheel)
-        self._history_canvas.bind("<Button-4>", self._on_mousewheel)
-        self._history_canvas.bind("<Button-5>", self._on_mousewheel)
+        enable_global_mousewheel(self._history_canvas)
 
     # --------------------------------------------------------------- composer
     def _build_composer(self):
@@ -141,7 +140,7 @@ class ChatPage(BasePage):
             bubble_bg = Colors.BUTTON_PRIMARY_BG
             fg = Colors.SURFACE
             anchor = "e"
-            pad = (Space.LG, 0)
+            pad = (0, 0)  # Align to right edge
         else:
             bubble_bg = Colors.STATE_SUCCESS
             fg = Colors.SURFACE
@@ -149,6 +148,7 @@ class ChatPage(BasePage):
             pad = (0, Space.LG)
 
         bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
+        bubble.configure(width=300)
         bubble.pack(anchor=anchor, padx=pad)
 
         caption_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
@@ -157,7 +157,7 @@ class ChatPage(BasePage):
         msg_anchor = "e" if is_self else "w"
         msg_justify = "right" if is_self else "left"
         tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
-                 wraplength=520, justify=msg_justify,
+                 wraplength=820, justify=msg_justify,
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor=msg_anchor, pady=(Space.XXS, 0))
         timestamp_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
         tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=timestamp_fg,
@@ -166,16 +166,6 @@ class ChatPage(BasePage):
         self._scroll_to_bottom()
         if not is_system:
             self._message_counter += 1
-
-    def _on_mousewheel(self, event):
-        delta = 0
-        if hasattr(event, "delta") and event.delta:
-            delta = -1 * (event.delta / 120)
-        elif event.num == 4:
-            delta = -1
-        elif event.num == 5:
-            delta = 1
-        self._history_canvas.yview_scroll(int(delta), "units")
 
     # ---------------------------------------------------------------- actions
     def _handle_disconnect(self):

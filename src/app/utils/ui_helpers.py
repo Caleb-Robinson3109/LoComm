@@ -96,3 +96,8 @@ def _bind_mousewheel(canvas: tk.Canvas) -> None:
     """Attach consistent mousewheel handlers to a canvas."""
     manager = GlobalMousewheelManager.get_instance()
     manager.register_canvas(canvas)
+
+
+def enable_global_mousewheel(widget: tk.Canvas) -> None:
+    """Public helper to enable shared mousewheel behavior on any scrollable canvas."""
+    _bind_mousewheel(widget)

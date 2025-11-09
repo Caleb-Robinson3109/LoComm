@@ -73,15 +73,19 @@ class MockDeviceService:
 
     def simulate_scan(self) -> List[MockDevice]:
         """Create synthetic devices so the UI feels dynamic."""
-        templates = [
-            ("Device Delta", "Available"),
-            ("Device Epsilon", "Available"),
-            ("Device Zeta", "Sleeping"),
+        name_pool = [
+            "Orion", "Luna", "Nova", "Aria", "Atlas", "Beacon", "Nimbus", "Echo",
+            "Vertex", "Helio", "Cobalt", "Quasar", "Drift", "Pulse", "Solstice",
+            "Zenith", "Aurora", "Comet", "Vega", "Juno", "Sierra", "Ranger", "Harbor",
+            "Sentinel", "Vertex", "Photon", "Falcon", "Iris", "Mint", "Summit"
         ]
+        statuses = ["Available", "Sleeping", "Busy"]
         discovered: List[MockDevice] = []
-        for name, status in templates:
+        for _ in range(2):
             self._dynamic_counter += 1
             device_id = f"SIM{self._dynamic_counter:03d}"
+            name = name_pool[self._dynamic_counter % len(name_pool)]
+            status = statuses[self._dynamic_counter % len(statuses)]
             metadata = {"firmware": f"1.3.{self._dynamic_counter}", "region": "EU868"}
             telemetry = {
                 "rssi": -70 - self._dynamic_counter,

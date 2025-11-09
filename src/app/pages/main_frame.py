@@ -93,6 +93,7 @@ class MainFrame(ttk.Frame):
             on_theme_toggle=self.on_theme_toggle
         )
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)
 
         # ---------- Right Content Area ---------- #
         self.content_frame = tk.Frame(main_container, bg=Colors.SURFACE)
