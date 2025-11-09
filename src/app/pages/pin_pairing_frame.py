@@ -26,7 +26,7 @@ class PINPairingFrame(tk.Frame):
         """Create the PIN pairing interface."""
         from utils.ui_helpers import create_scroll_container
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.XL, Spacing.XL))
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         content = scroll.frame
 
         DesignUtils.hero_header(

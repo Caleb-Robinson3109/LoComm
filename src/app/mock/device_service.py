@@ -19,9 +19,9 @@ class MockDevice:
     metadata: Dict[str, Any]
     telemetry: Dict[str, Any]
 
-    def to_table_row(self) -> tuple[str, str, str, str]:
+    def to_table_row(self) -> tuple[str, str, str]:
         """Convenience helper for ttk tree usage."""
-        return (self.device_id, self.name, self.status, self.last_seen)
+        return (self.name, self.device_id, self.status)
 
 
 class MockDeviceService:

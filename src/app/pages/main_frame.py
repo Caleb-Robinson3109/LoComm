@@ -84,10 +84,12 @@ class MainFrame(ttk.Frame):
 
         # Main container - sidebar + content
         main_container = tk.Frame(self, bg=Colors.SURFACE)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.PAGE_MARGIN, pady=Spacing.PAGE_MARGIN)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=(int(Spacing.SM / 4), 0))
+
+        self.top_bar = self._build_top_bar(main_container)
 
         body = tk.Frame(main_container, bg=Colors.SURFACE)
-        body.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
+        body.pack(fill=tk.BOTH, expand=True, pady=(int(Spacing.SM / 4), 0))
 
         # ---------- Left Sidebar ---------- #
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
@@ -102,16 +104,16 @@ class MainFrame(ttk.Frame):
 
         # ---------- Right Content Area ---------- #
         self.content_frame = tk.Frame(body, bg=Colors.SURFACE)
-        self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(Spacing.TAB_PADDING, 0), pady=(Spacing.TAB_PADDING, Spacing.TAB_PADDING))
+        content_pad = int(Spacing.PAGE_PADDING / 2)
+        self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(content_pad, 0), pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING))
 
         # Initialize view containers
         self._setup_view_containers()
 
-        self.top_bar = self._build_top_bar(main_container)
 
     def _setup_view_containers(self):
         """Create placeholder containers for each view."""
-        pack_opts = {"fill": tk.BOTH, "expand": True, "padx": Spacing.PAGE_PADDING, "pady": Spacing.PAGE_PADDING}
+        pack_opts = {"fill": tk.BOTH, "expand": True, "padx": Spacing.SM, "pady": Spacing.SM}
         for route in self.routes:
             container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
             self._view_containers[route.route_id] = container
@@ -132,38 +134,29 @@ class MainFrame(ttk.Frame):
         return component
 
     def _build_top_bar(self, parent):
-        pad_x = int(Spacing.LG * 0.75)
-        pad_y = int(Spacing.SM * 0.75)
-        bar = tk.Frame(parent, bg=Colors.SURFACE_HEADER, padx=pad_x, pady=pad_y)
-        bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.SM, 0))
+        pad_x = Spacing.XS
+        pad_y = int(Spacing.XXS / 1.5)
+        bar = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR, padx=pad_x, pady=pad_y)
+        bar.pack(fill=tk.X, side=tk.TOP, pady=(0, int(Spacing.XXS / 2)))
 
-        bar.grid_columnconfigure(3, weight=1)
+        bar.grid_columnconfigure(1, weight=1)
 
-        # Left-aligned device name and status
         initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
         self._default_local_device_name = initial_name
+
+        brand_label = tk.Label(bar, text="Locomm", bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
+                               font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD))
+        brand_label.grid(row=0, column=0, sticky="w")
+
         self.local_device_label = tk.Label(bar, text=initial_name, bg=Colors.SURFACE_HEADER,
                                            fg=Colors.TEXT_PRIMARY,
                                            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD))
-        self.local_device_label.grid(row=0, column=0, sticky="w")
+        self.local_device_label.grid(row=0, column=2, sticky="e", padx=(0, Spacing.XS))
 
-        # Status badge next to device name
         self.status_badge = tk.Label(bar, text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE,
                                      font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-                                     padx=Spacing.MD, pady=int(Spacing.XS/2))
-        self.status_badge.grid(row=0, column=1, sticky="w", padx=(Spacing.SM, Spacing.SM))
-
-        # Peer device info (left of spacer)
-        self.remote_device_label = tk.Label(bar, text="None", bg=Colors.SURFACE_HEADER,
-                                            fg=Colors.TEXT_PRIMARY,
-                                            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM))
-        self.remote_device_label.grid(row=0, column=2, sticky="w")
-
-        devices_btn = DesignUtils.button(bar, text="Devices", command=self.show_pair_page, variant="secondary", width=12)
-        devices_btn.grid(row=0, column=8, sticky="e", padx=(Spacing.SM, 0))
-
-        clear_btn = DesignUtils.button(bar, text="Clear Chat", command=self.app.clear_chat_history, variant="secondary", width=12)
-        clear_btn.grid(row=0, column=9, sticky="e", padx=(Spacing.SM, 0))
+                                     padx=Spacing.SM, pady=int(Spacing.XS / 2))
+        self.status_badge.grid(row=0, column=3, sticky="e", padx=(Spacing.XS, 0))
         return bar
 
     def _show_view(self, view_name: str):
@@ -223,8 +216,6 @@ class MainFrame(ttk.Frame):
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
         if not snapshot:
             return
-        remote_label = snapshot.device_name if snapshot.stage == DeviceStage.CONNECTED else "None"
-        self.remote_device_label.configure(text=remote_label)
         badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
         self.status_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
         local_name = getattr(self.session, "local_device_name", None) or self._default_local_device_name

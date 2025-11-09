@@ -226,7 +226,7 @@ class Spacing:
     MESSAGE_GROUP_GAP = Space.XXS
     MESSAGE_MARGIN = (Space.SM, Space.XXS)
     CHAT_AREA_PADDING = Space.MD
-    SIDEBAR_WIDTH = 260
+    SIDEBAR_WIDTH = int(260 * 0.85)
     HEADER_HEIGHT = 64
     XXS = Space.XXS
     XS = Space.XXS
@@ -512,10 +512,10 @@ class DesignUtils:
 
     @staticmethod
     def hero_header(parent, title: str, subtitle: str, actions: list | None = None):
-        container = tk.Frame(parent, bg=Colors.SURFACE, pady=Space.LG)
-        container.pack(fill=tk.X, pady=(0, Space.LG))
+        container = tk.Frame(parent, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.XXS)
+        container.pack(fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS))
         text_wrap = tk.Frame(container, bg=Colors.SURFACE)
-        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, Space.XL))
+        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         tk.Label(text_wrap, text=title, bg=Colors.SURFACE, fg=Colors.TEXT_PRIMARY,
                  font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD)).pack(anchor="w")
@@ -594,7 +594,7 @@ class AppConfig:
     WINDOW_HEIGHT = 820
     MIN_WINDOW_WIDTH = 1024
     MIN_WINDOW_HEIGHT = 720
-    APP_TITLE = "LoRa Chat Desktop"
+    APP_TITLE = "Locomm"
 
     STATUS_UPDATE_DELAY = 2000
     RX_THREAD_SLEEP_INTERVAL = 0.2

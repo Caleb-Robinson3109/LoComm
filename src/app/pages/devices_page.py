@@ -7,7 +7,6 @@ from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
-from utils.ui_helpers import create_scroll_container
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from mock.device_service import get_mock_device_service, MockDevice
 from mock.network_simulator import LoRaNetworkSimulator
@@ -37,104 +36,22 @@ class DevicesPage(BasePage):
         self.selected_device_var = tk.StringVar(value="No device selected")
         self.scenario_var = tk.StringVar(value=getattr(self.session, "mock_scenario", None) or "default")
         self.scenario_description_var = tk.StringVar(value=self._scenario_description(self.scenario_var.get()))
-        self.telemetry_vars = {
-            "rssi": tk.StringVar(value="–"),
-            "snr": tk.StringVar(value="–"),
-            "battery": tk.StringVar(value="–"),
-        }
-        self.detail_vars = {
-            "name": tk.StringVar(value="No device selected"),
-            "firmware": tk.StringVar(value="—"),
-            "region": tk.StringVar(value="—"),
-            "last_seen": tk.StringVar(value="—"),
-        }
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
-        self.main_body = scroll.frame
+        self.main_body = tk.Frame(self, bg=Colors.SURFACE)
+        self.main_body.pack(fill=tk.BOTH, expand=True)
 
         DesignUtils.hero_header(
             self.main_body,
-            title="Devices & Trust",
-            subtitle="Pair LoRa hardware, confirm PINs face-to-face, and monitor secure sessions.",
-            actions=[{"text": "Scan", "command": self._scan_for_devices}]
+            title="Devices",
+            subtitle="Pair LoRa hardware, confirm PINs face-to-face, and monitor secure sessions."
         )
-
-        self._build_status_strip()
         self._build_body()
         self._apply_snapshot(self.ui_store.get_device_status())
         self._set_stage(DeviceStage.READY)
-
-    # ------------------------------------------------------------------ #
-    def _build_status_strip(self):
-        card, body = DesignUtils.card(
-            self.main_body,
-            "Current session status",
-            "Live overview of your hardware link"
-        )
-        card.pack(fill=tk.X, pady=(0, Spacing.LG))
-        labels_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        labels_frame.pack(fill=tk.X)
-
-        tk.Label(
-            labels_frame,
-            textvariable=self.connection_state,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD)
-        ).pack(anchor="w")
-        tk.Label(
-            labels_frame,
-            textvariable=self.status_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)
-        ).pack(anchor="w", pady=(Spacing.XXS, 0))
-        tk.Label(
-            labels_frame,
-            textvariable=self.selected_device_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
-        ).pack(anchor="w")
-        self.scenario_label = tk.Label(
-            labels_frame,
-            textvariable=self.scenario_description_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=360,
-            justify="left"
-        )
-        self.scenario_label.pack(anchor="w", pady=(Spacing.XXS, 0))
-
-        action_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        action_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        self.scan_btn = DesignUtils.button(action_row, text="Scan for devices", command=self._scan_for_devices, variant="secondary")
-        self.scan_btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        self.disconnect_btn = DesignUtils.button(action_row, text="Disconnect", command=self._disconnect_device, variant="ghost")
-        self.disconnect_btn.pack(side=tk.LEFT)
-        self.disconnect_btn.configure(state="disabled")
-        scenario_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        scenario_row.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        tk.Label(
-            scenario_row,
-            text="Mock network scenario",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
-        ).pack(anchor="w")
-        scenario_combo = ttk.Combobox(
-            scenario_row,
-            values=list(self.scenario_data.keys()),
-            textvariable=self.scenario_var,
-            state="readonly"
-        )
-        scenario_combo.pack(fill=tk.X, expand=True, pady=(Spacing.XXS, 0))
-        scenario_combo.bind("<<ComboboxSelected>>", lambda _e: self._apply_scenario())
 
     def _build_body(self):
         body = tk.Frame(self.main_body, bg=Colors.SURFACE)
@@ -145,18 +62,10 @@ class DevicesPage(BasePage):
 
     def _build_device_card(self, parent):
         card, content = DesignUtils.card(parent, "Scan & select hardware", "Choose the device you want to pair")
-        card.pack(fill=tk.X, pady=(0, Spacing.LG))
+        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.LG))
         card.pack_propagate(True)
 
-        if not hasattr(self, "detail_vars"):
-            self.detail_vars = {
-                "name": tk.StringVar(value="No device selected"),
-                "firmware": tk.StringVar(value="—"),
-                "region": tk.StringVar(value="—"),
-                "last_seen": tk.StringVar(value="—"),
-            }
-
-        columns = ("Device ID", "Name", "Status", "Last Seen")
+        columns = ("Device ID", "Name", "Status")
         self.device_tree = ttk.Treeview(content, columns=columns, show="headings", height=10)
         for col in columns:
             self.device_tree.heading(col, text=col)
@@ -166,48 +75,16 @@ class DevicesPage(BasePage):
 
         controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        DesignUtils.button(controls, text="Scan", command=self._scan_for_devices, variant="primary").pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        self.connect_btn = DesignUtils.button(controls, text="Connect", command=self._connect_selected_device, variant="secondary")
-        self.connect_btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        self.connect_btn.configure(state="disabled")
-        self.disconnect_btn = DesignUtils.button(controls, text="Disconnect", command=self._disconnect_device, variant="danger")
-        self.disconnect_btn.pack(side=tk.LEFT)
+        button_group = tk.Frame(controls, bg=Colors.SURFACE_ALT)
+        button_group.pack(side=tk.RIGHT)
+        scan_btn = DesignUtils.button(button_group, text="Scan", command=self._scan_for_devices, variant="primary")
+        scan_btn.pack(side=tk.RIGHT, padx=(Spacing.XS, 0))
+        self.disconnect_btn = DesignUtils.button(button_group, text="Disconnect", command=self._disconnect_device, variant="danger")
+        self.disconnect_btn.pack(side=tk.RIGHT, padx=(Spacing.XS, 0))
         self.disconnect_btn.configure(state="disabled")
-
-        telemetry = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        telemetry.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        tk.Label(
-            telemetry,
-            text="Live telemetry",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, Spacing.XXS))
-        self._add_telemetry_field(telemetry, "RSSI", self.telemetry_vars["rssi"], 1, 0)
-        self._add_telemetry_field(telemetry, "SNR", self.telemetry_vars["snr"], 1, 1)
-        self._add_telemetry_field(telemetry, "Battery", self.telemetry_vars["battery"], 1, 2)
-
-        detail_card, detail_body = DesignUtils.card(parent, "Selected device details", "Firmware + region details")
-        detail_card.pack(fill=tk.X, pady=(0, Spacing.LG))
-        detail_body.columnconfigure(1, weight=1)
-        self._add_detail_row(detail_body, "Name", self.detail_vars["name"], 0)
-        self._add_detail_row(detail_body, "Firmware", self.detail_vars["firmware"], 1)
-        self._add_detail_row(detail_body, "Region", self.detail_vars["region"], 2)
-        self._add_detail_row(detail_body, "Last seen", self.detail_vars["last_seen"], 3)
-
-    def _add_telemetry_field(self, parent, label: str, var: tk.StringVar, row: int, col: int):
-        wrapper = tk.Frame(parent, bg=Colors.SURFACE_ALT)
-        wrapper.grid(row=row, column=col, padx=Spacing.MD, pady=(Spacing.XXS, 0), sticky="w")
-        tk.Label(wrapper, text=label, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        tk.Label(wrapper, textvariable=var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)).pack(anchor="w")
-
-    def _add_detail_row(self, parent, label: str, var: tk.StringVar, row: int):
-        tk.Label(parent, text=label, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).grid(row=row, column=0, sticky="w", pady=(0, Spacing.XXS))
-        tk.Label(parent, textvariable=var, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).grid(row=row, column=1, sticky="w")
+        self.connect_btn = DesignUtils.button(button_group, text="Connect", command=self._connect_selected_device, variant="secondary")
+        self.connect_btn.pack(side=tk.RIGHT)
+        self.connect_btn.configure(state="disabled")
 
     def _refresh_device_table(self):
         if not hasattr(self, "device_tree"):
@@ -219,7 +96,6 @@ class DevicesPage(BasePage):
             self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row())
         if not devices:
             self.status_var.set("No mock devices defined. Edit mock/data/devices.json to add entries.")
-        self._update_telemetry_panel(None)
 
     # ------------------------------------------------------------------ #
     def _scan_for_devices(self):
@@ -317,7 +193,6 @@ class DevicesPage(BasePage):
         if not device:
             return
         self.selected_device_var.set(f"{device.name} ({device.device_id})")
-        self._update_telemetry_panel(device)
         self.connect_btn.configure(state="normal")
 
     def _open_pin_modal(self, device_id: str, device_name: str):
@@ -370,9 +245,8 @@ class DevicesPage(BasePage):
             self.disconnect_btn.configure(state="normal" if stage == DeviceStage.CONNECTED else "disabled")
         if self._active_device_id:
             device = self.device_service.get_device(self._active_device_id)
-            self._update_telemetry_panel(device)
-        else:
-            self._update_telemetry_panel(None)
+            if device:
+                self.selected_device_var.set(f"{device.name} ({device.device_id})")
 
     def _apply_scenario(self):
         scenario = self.scenario_var.get() or "default"
@@ -389,25 +263,6 @@ class DevicesPage(BasePage):
         if not info:
             return "Custom mock scenario"
         return info.get("description", "Mock network simulation profile.")
-
-    def _update_telemetry_panel(self, device: MockDevice | None):
-        if not device:
-            for var in self.telemetry_vars.values():
-                var.set("–")
-            self.detail_vars["name"].set("No device selected")
-            self.detail_vars["firmware"].set("—")
-            self.detail_vars["region"].set("—")
-            self.detail_vars["last_seen"].set("—")
-            return
-        telemetry = device.telemetry or {}
-        self.telemetry_vars["rssi"].set(f"{telemetry.get('rssi', '–')} dBm")
-        self.telemetry_vars["snr"].set(f"{telemetry.get('snr', '–')} dB")
-        battery = telemetry.get("battery")
-        self.telemetry_vars["battery"].set(f"{battery}%" if battery is not None else "–")
-        self.detail_vars["name"].set(device.name)
-        self.detail_vars["firmware"].set(device.metadata.get("firmware", "—"))
-        self.detail_vars["region"].set(device.metadata.get("region", "—"))
-        self.detail_vars["last_seen"].set(device.last_seen)
 
     # ------------------------------------------------------------------ #
     def on_show(self):

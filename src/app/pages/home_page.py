@@ -25,7 +25,7 @@ class HomePage(BasePage):
         self.connection_badge_var = tk.StringVar(value="Disconnected")
         self.connection_detail_var = tk.StringVar(value="Awaiting secure PIN handoff")
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
         DesignUtils.hero_header(
@@ -34,61 +34,9 @@ class HomePage(BasePage):
             subtitle="Pair LoRa hardware, verify trust, and jump back into chats from a single dashboard.",
             actions=[]
         )
-        self._build_status_card(body)
         # Apply the latest snapshot immediately so the UI reflects the current store state.
         self._apply_snapshot(self.ui_store.get_device_status())
 
-    def _build_status_card(self, parent):
-        card, content = DesignUtils.card(
-            parent,
-            "Current status",
-            "Live view of your device connection state"
-        )
-        card.pack(fill=tk.X, pady=(Spacing.LG, 0))
-        card.pack_propagate(False)
-        content.configure(height=180)
-
-        self.status_badge = tk.Label(
-            content,
-            textvariable=self.connection_badge_var,
-            bg=Colors.STATE_ERROR,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
-            padx=Spacing.LG,
-            pady=Spacing.SM
-        )
-        self.status_badge.pack(anchor="w", pady=(0, Spacing.SM))
-
-        self.status_title = tk.Label(
-            content,
-            textvariable=self.connection_title_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD)
-        )
-        self.status_title.pack(anchor="w")
-
-        self.status_subtitle = tk.Label(
-            content,
-            textvariable=self.connection_subtitle_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=520,
-            justify="left"
-        )
-        self.status_subtitle.pack(anchor="w", pady=(Spacing.XXS, 0))
-
-        self.status_detail = tk.Label(
-            content,
-            textvariable=self.connection_detail_var,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)
-        )
-        self.status_detail.pack(anchor="w", pady=(Spacing.SM, 0))
-
-    # ------------------------------------------------------------------ #
     def on_show(self):
         """Start listening to store updates when the page is visible."""
         self._subscribe_to_store()
@@ -125,7 +73,7 @@ class HomePage(BasePage):
         self.connection_title_var.set(snapshot.title)
         self.connection_subtitle_var.set(snapshot.subtitle)
         self.connection_detail_var.set(snapshot.detail)
-        self.status_badge.configure(bg=badge_color)
+        # badge removed from UI
 
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:

@@ -18,7 +18,7 @@ class AboutPage(BasePage):
         self.controller = context.controller if context else None
         self.session = context.session if context else None
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(Spacing.LG, Spacing.LG))
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
         DesignUtils.hero_header(
@@ -32,7 +32,7 @@ class AboutPage(BasePage):
 
     def _build_version_card(self, parent):
         card, content = DesignUtils.card(parent, "Version", "Internal preview build")
-        card.pack(fill=tk.X, pady=(0, Spacing.SM))
+        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
         info = [
             ("Desktop build", "v2.1 redesign"),
             ("Transport backend", "Mock LoComm API"),

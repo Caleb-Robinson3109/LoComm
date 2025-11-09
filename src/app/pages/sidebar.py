@@ -32,15 +32,26 @@ class Sidebar(tk.Frame):
 
         header = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
         header.pack(fill=tk.X, pady=(0, Spacing.LG))
-        tk.Label(header, text="Locomm", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD)).pack(anchor="w")
-        tk.Label(header, text="Secure LoRa Communication", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_SECONDARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
 
+        top_keys = []
+        bottom_keys = []
         for key, label in self.nav_items:
+            if key in ("settings", "about"):
+                bottom_keys.append((key, label))
+            else:
+                top_keys.append((key, label))
+
+        for key, label in top_keys:
             if key == "mock":
-                # Add divider before Mock button
                 tk.Frame(container, bg=Colors.DIVIDER, height=1).pack(fill=tk.X, pady=(Spacing.LG, Spacing.SM))
+            btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
+            btn.pack(fill=tk.X, pady=(0, Spacing.SM))
+            self._buttons[key] = btn
+
+        spacer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
+        spacer.pack(fill=tk.BOTH, expand=True)
+
+        for key, label in bottom_keys:
             btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
             btn.pack(fill=tk.X, pady=(0, Spacing.SM))
             self._buttons[key] = btn
@@ -68,6 +79,7 @@ class Sidebar(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)
         )
         self.theme_icon.pack(side=tk.LEFT, padx=(0, Spacing.XXS))
+        self.theme_icon.bind("<Button-1>", self._handle_theme_toggle)
         self.theme_label = tk.Label(
             self.theme_button,
             text="",
@@ -77,6 +89,7 @@ class Sidebar(tk.Frame):
             padx=Spacing.SM
         )
         self.theme_label.pack(side=tk.LEFT)
+        self.theme_label.bind("<Button-1>", self._handle_theme_toggle)
         self._refresh_theme_button()
         tk.Label(footer, text="v2.1 Desktop", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")

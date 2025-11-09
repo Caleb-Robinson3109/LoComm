@@ -8,7 +8,7 @@ from typing import Callable, Optional
 from utils.design_system import Colors, Typography, DesignUtils, Space, Spacing
 from utils.status_manager import get_status_manager
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from utils.ui_helpers import enable_global_mousewheel
+from utils.ui_helpers import create_scroll_container, enable_global_mousewheel
 from .base_page import BasePage, PageContext
 
 
@@ -28,11 +28,13 @@ class ChatPage(BasePage):
         # Status manager still gates message sending
         self.status_manager = get_status_manager()
 
-        wrapper = tk.Frame(self, bg=Colors.SURFACE, padx=Space.XL, pady=Space.XL)
-        wrapper.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
+        body = scroll.frame
+
+        self._build_title(body)
 
         self.shell = tk.Frame(
-            wrapper,
+            body,
             bg=Colors.SURFACE_ALT,
             highlightbackground=Colors.BORDER,
             highlightthickness=1,
@@ -41,7 +43,6 @@ class ChatPage(BasePage):
         self.shell.pack(fill=tk.BOTH, expand=True)
         self.shell.grid_rowconfigure(1, weight=1)
         self.shell.grid_columnconfigure(0, weight=1)
-
         self._build_header()
         self._build_history()
         self._build_composer()
@@ -49,6 +50,33 @@ class ChatPage(BasePage):
         self._message_counter = 0
         self._setup_chat_history()
         self._apply_snapshot(self.ui_store.get_device_status())
+
+    def _build_title(self, parent):
+        """Render the page title plus description and divider."""
+        title_wrap = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Space.LG,
+        )
+        title_wrap.pack(fill=tk.X, pady=(int(Space.LG), int(Space.SM)))
+        tk.Label(
+            title_wrap,
+            text="Chat",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
+        tk.Label(
+            title_wrap,
+            text="Secure LoRa conversations stay local; pair once, keep trusting devices, and clear history with a single tap.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=640,
+            justify="left",
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
 
     # ------------------------------------------------------------------ header
     def _build_header(self):
@@ -88,8 +116,11 @@ class ChatPage(BasePage):
         )
         self.name_label.pack(side=tk.LEFT, expand=True, padx=Space.LG)
 
+        action_wrap = tk.Frame(header, bg=Colors.SURFACE_HEADER)
+        action_wrap.pack(side=tk.RIGHT)
+
         self.disconnect_button = DesignUtils.button(
-            header,
+            action_wrap,
             text="Disconnect",
             command=self._handle_disconnect,
             variant="secondary",
@@ -98,13 +129,13 @@ class ChatPage(BasePage):
         self.disconnect_button.pack(side=tk.RIGHT, padx=(0, Space.SM))
 
         clear_btn = DesignUtils.button(
-            header,
+            action_wrap,
             text="Clear Chat",
             command=self._handle_clear_chat,
             variant="secondary",
             width=12,
         )
-        clear_btn.pack(side=tk.RIGHT, padx=(0, Space.SM))
+        clear_btn.pack(side=tk.RIGHT)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -329,7 +360,11 @@ class ChatPage(BasePage):
         pass
 
     def _handle_clear_chat(self):
-        self.clear_history()
+        """Delegate to the app-level clear action so the confirmation matches the footer."""
+        if self.context and hasattr(self.context.app, "clear_chat_history"):
+            self.context.app.clear_chat_history()
+        else:
+            self.clear_history()
 
     def _handle_attach(self):
         # Placeholder for future file picker
