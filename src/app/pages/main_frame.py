@@ -10,6 +10,8 @@ from .chat_page import ChatPage
 from .settings_page import SettingsPage
 from .home_page import HomePage
 from .devices_page import DevicesPage, PairPage
+from .about_page import AboutPage
+from .help_page import HelpPage
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -74,6 +76,8 @@ class MainFrame(ttk.Frame):
             RouteConfig("pair", "Devices", lambda parent, ctx=ctx: DevicesPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
+            RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
+            RouteConfig("help", "Help", lambda parent, ctx=ctx: HelpPage(parent, ctx)),
         ]
         return routes
 

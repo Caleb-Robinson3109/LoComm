@@ -8,8 +8,8 @@ from typing import Optional, Callable
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from utils.ui_helpers import create_scroll_container
 from mock.device_service import get_mock_device_service, MockDevice
-from mock.network_simulator import LoRaNetworkSimulator
 from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
 
@@ -28,21 +28,18 @@ class DevicesPage(BasePage):
         self.connection_manager = get_connection_manager()
         self.ui_store = get_ui_store()
         self.device_service = get_mock_device_service()
-        self.scenario_data = LoRaNetworkSimulator().scenario_summary()
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self.connection_state = tk.StringVar(value="Ready to pair")
         self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
         self.selected_device_var = tk.StringVar(value="No device selected")
-        self.scenario_var = tk.StringVar(value=getattr(self.session, "mock_scenario", None) or "default")
-        self.scenario_description_var = tk.StringVar(value=self._scenario_description(self.scenario_var.get()))
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
 
-        self.main_body = tk.Frame(self, bg=Colors.SURFACE)
-        self.main_body.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
+        self.main_body = scroll.frame
 
         DesignUtils.hero_header(
             self.main_body,
@@ -64,21 +61,62 @@ class DevicesPage(BasePage):
         card, content = DesignUtils.card(parent, "Scan & select hardware", "Choose the device you want to pair")
         card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.LG))
         card.pack_propagate(True)
+        header_bar = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        header_bar.pack(fill=tk.X, pady=(0, Spacing.SM))
+        tk.Label(
+            header_bar,
+            text="Available devices",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        ).pack(side=tk.LEFT)
+        DesignUtils.button(
+            header_bar,
+            text="Scan",
+            command=self._scan_for_devices,
+            variant="primary"
+        ).pack(side=tk.RIGHT)
 
-        columns = ("Device ID", "Name", "Status")
-        self.device_tree = ttk.Treeview(content, columns=columns, show="headings", height=10)
-        for col in columns:
-            self.device_tree.heading(col, text=col)
-            self.device_tree.column(col, anchor="w", width=140)
-        self.device_tree.pack(fill=tk.BOTH, expand=True)
+        columns = ("Name", "Device ID", "Status")
+        style = ttk.Style()
+        style.configure(
+            "Devices.Treeview",
+            background=Colors.SURFACE_ALT,
+            fieldbackground=Colors.SURFACE_ALT,
+            foreground=Colors.TEXT_PRIMARY,
+            rowheight=30,
+            bordercolor=Colors.SURFACE_ALT,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        )
+        style.configure(
+            "Devices.Treeview.Heading",
+            background=Colors.SURFACE_HEADER,
+            foreground=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+        )
+        style.map(
+            "Devices.Treeview",
+            background=[("selected", Colors.SURFACE_HEADER)],
+            foreground=[("selected", Colors.TEXT_PRIMARY)],
+        )
+
+        self.device_tree = ttk.Treeview(
+            content,
+            columns=columns,
+            show="headings",
+            height=10,
+            style="Devices.Treeview",
+        )
+        for col, width in zip(columns, (220, 180, 140)):
+            self.device_tree.heading(col, text=col, anchor="w")
+            self.device_tree.column(col, anchor="w", width=width, stretch=True)
+        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=(Spacing.SM, 0))
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
 
         controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
         controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
         button_group = tk.Frame(controls, bg=Colors.SURFACE_ALT)
         button_group.pack(side=tk.RIGHT)
-        scan_btn = DesignUtils.button(button_group, text="Scan", command=self._scan_for_devices, variant="primary")
-        scan_btn.pack(side=tk.RIGHT, padx=(Spacing.XS, 0))
         self.disconnect_btn = DesignUtils.button(button_group, text="Disconnect", command=self._disconnect_device, variant="danger")
         self.disconnect_btn.pack(side=tk.RIGHT, padx=(Spacing.XS, 0))
         self.disconnect_btn.configure(state="disabled")
@@ -130,25 +168,6 @@ class DevicesPage(BasePage):
         self._active_device_id = device_id
         self.selected_device_var.set(f"{name} ({device_id})")
 
-        transport = getattr(self.controller, "transport", None)
-        if transport and getattr(transport, "is_mock", False):
-            self._set_stage(DeviceStage.CONNECTING, name)
-            if hasattr(self.controller, "start_mock_session") and self.controller:
-                success = self.controller.start_mock_session(device_id, name)
-            else:
-                success = False
-            if success:
-                self._set_stage(DeviceStage.CONNECTED, name)
-                if self.on_device_paired:
-                    self.on_device_paired(device_id, name)
-                navigator = getattr(self, "navigator", None)
-                if navigator and hasattr(navigator, "show_chat_page"):
-                    navigator.show_chat_page()
-            else:
-                messagebox.showerror("Mock Connection Failed", "Unable to connect to mock device.")
-                self._set_stage(DeviceStage.DISCONNECTED, name)
-            return
-
         self._set_stage(DeviceStage.AWAITING_PIN, name)
         self._open_pin_modal(device_id, name)
 
@@ -170,6 +189,8 @@ class DevicesPage(BasePage):
             return
         if self.controller:
             self.controller.stop_session()
+        if self.app:
+            self.app.clear_chat_history()
         self.connection_manager.disconnect_device()
         last_device = self.selected_device_var.get()
         label = last_device if last_device != "No device selected" else None
@@ -247,22 +268,6 @@ class DevicesPage(BasePage):
             device = self.device_service.get_device(self._active_device_id)
             if device:
                 self.selected_device_var.set(f"{device.name} ({device.device_id})")
-
-    def _apply_scenario(self):
-        scenario = self.scenario_var.get() or "default"
-        if hasattr(self.controller, "set_mock_scenario") and self.controller:
-            self.controller.set_mock_scenario(scenario)
-        if self.session:
-            self.session.mock_scenario = scenario
-        desc = self._scenario_description(scenario)
-        self.scenario_description_var.set(desc)
-        self.status_var.set(f"Scenario: {scenario} • {desc}")
-
-    def _scenario_description(self, scenario: str) -> str:
-        info = self.scenario_data.get(scenario)
-        if not info:
-            return "Custom mock scenario"
-        return info.get("description", "Mock network simulation profile.")
 
     # ------------------------------------------------------------------ #
     def on_show(self):

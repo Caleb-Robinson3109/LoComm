@@ -36,7 +36,7 @@ class Sidebar(tk.Frame):
         top_keys = []
         bottom_keys = []
         for key, label in self.nav_items:
-            if key in ("settings", "about"):
+            if key in ("settings", "about", "help"):
                 bottom_keys.append((key, label))
             else:
                 top_keys.append((key, label))

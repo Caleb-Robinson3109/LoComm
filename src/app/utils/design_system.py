@@ -605,6 +605,8 @@ class AppConfig:
 
     CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{device}.txt"
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
+    WINDOW_WIDTH_RATIO = 0.7
+    WINDOW_HEIGHT_RATIO = 0.9
 
 
 # Legacy exports for compatibility

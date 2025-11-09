@@ -43,6 +43,7 @@ class ChatPage(BasePage):
         self.shell.pack(fill=tk.BOTH, expand=True)
         self.shell.grid_rowconfigure(1, weight=1)
         self.shell.grid_columnconfigure(0, weight=1)
+
         self._build_header()
         self._build_history()
         self._build_composer()
@@ -51,6 +52,7 @@ class ChatPage(BasePage):
         self._setup_chat_history()
         self._apply_snapshot(self.ui_store.get_device_status())
 
+    # ------------------------------------------------------------------ title
     def _build_title(self, parent):
         """Render the page title plus description and divider."""
         title_wrap = tk.Frame(
@@ -59,6 +61,7 @@ class ChatPage(BasePage):
             padx=Space.LG,
         )
         title_wrap.pack(fill=tk.X, pady=(int(Space.LG), int(Space.SM)))
+
         tk.Label(
             title_wrap,
             text="Chat",
@@ -66,15 +69,20 @@ class ChatPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
+
         tk.Label(
             title_wrap,
-            text="Secure LoRa conversations stay local; pair once, keep trusting devices, and clear history with a single tap.",
+            text=(
+                "Secure LoRa conversations stay local; pair once, keep trusting "
+                "devices, and clear history with a single tap."
+            ),
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
             wraplength=640,
             justify="left",
         ).pack(anchor="w", pady=(Space.XXS, 0))
+
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
 
@@ -119,23 +127,16 @@ class ChatPage(BasePage):
         action_wrap = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         action_wrap.pack(side=tk.RIGHT)
 
+        # Only disconnect button remains for safety-critical action
         self.disconnect_button = DesignUtils.button(
             action_wrap,
             text="Disconnect",
             command=self._handle_disconnect,
-            variant="secondary",
+            variant="danger",
             width=16,
         )
-        self.disconnect_button.pack(side=tk.RIGHT, padx=(0, Space.SM))
-
-        clear_btn = DesignUtils.button(
-            action_wrap,
-            text="Clear Chat",
-            command=self._handle_clear_chat,
-            variant="secondary",
-            width=12,
-        )
-        clear_btn.pack(side=tk.RIGHT)
+        self.disconnect_button.pack(side=tk.RIGHT, padx=(0, Space.XL))
+        self.disconnect_button.configure(state=tk.DISABLED)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -160,7 +161,7 @@ class ChatPage(BasePage):
         self._history_canvas.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
-        # Frame that will contain all message bubbles
+        # Frame that will contain all message rows
         self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
 
         # Keep scrollregion updated when contents change
@@ -178,14 +179,9 @@ class ChatPage(BasePage):
             anchor="nw",
         )
 
-        # IMPORTANT:
-        # Make the embedded history_frame always match the canvas width,
-        # so right-aligned bubbles go all the way to the right edge.
+        # Ensure embedded frame always matches canvas width
         def _resize_inner(event):
-            self._history_canvas.itemconfig(
-                self._history_window,
-                width=event.width,
-            )
+            self._history_canvas.itemconfig(self._history_window, width=event.width)
 
         self._history_canvas.bind("<Configure>", _resize_inner)
 
@@ -243,103 +239,160 @@ class ChatPage(BasePage):
         if timestamp is None:
             timestamp = time.time()
 
+        # -------- System messages: full-width bar, centered text ----------
+        if is_system:
+            row = tk.Frame(
+                self.history_frame,
+                bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG,
+                padx=Space.LG,
+                pady=Space.XS,
+            )
+            row.pack(fill=tk.X, padx=Space.MD, pady=(Space.SM, Space.XXS))
+
+            tk.Label(
+                row,
+                text=message,
+                bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG,
+                fg=Colors.TEXT_SECONDARY,
+                wraplength=720,
+                justify="center",
+                font=(
+                    Typography.FONT_UI,
+                    Typography.SIZE_12,
+                    Typography.WEIGHT_REGULAR,
+                ),
+            ).pack(fill=tk.X, pady=(0, Space.XXS))
+
+            tk.Label(
+                row,
+                text=time.strftime("%H:%M", time.localtime(timestamp)),
+                bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG,
+                fg=Colors.TEXT_MUTED,
+                anchor="e",
+                font=(
+                    Typography.FONT_UI,
+                    Typography.SIZE_12,
+                    Typography.WEIGHT_REGULAR,
+                ),
+            ).pack(fill=tk.X)
+
+            self._history_canvas.configure(
+                scrollregion=self._history_canvas.bbox("all")
+            )
+            self._scroll_to_bottom()
+            return
+
+        # -------- Regular messages (self / peer) --------------------------
+        is_self = sender == self._get_local_device_name()
+
         bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
-        # symmetric horizontal padding so right-align has breathing room
+        # Outer padding gives a consistent page margin; left messages hug left,
+        # right messages hug right inside that margin.
         bubble_row.pack(
             fill=tk.X,
             expand=True,
-            pady=(Space.XXS, 0),
+            pady=(Space.XXS, Space.XXS),
             padx=(Space.MD, Space.MD),
         )
         bubble_row.grid_columnconfigure(0, weight=1)
+        bubble_row.grid_columnconfigure(1, weight=1)
 
-        is_self = sender == self._get_local_device_name() and not is_system
-
-        bubble_bg = (
-            Colors.MESSAGE_BUBBLE_SYSTEM_BG
-            if is_system
-            else Colors.BUTTON_PRIMARY_BG
-            if is_self
-            else Colors.STATE_SUCCESS
-        )
-        fg = (
-            Colors.TEXT_PRIMARY
-            if is_system
-            else Colors.SURFACE
-            if is_self
-            else Colors.SURFACE
-        )
-
-        pad_x = max(4, int(Space.MD * 0.7))
-        pad_y = max(2, int(Space.XS * 0.7))
-
-        # Dynamic wrap length based on canvas width, with fallback
-        canvas_width = self._history_canvas.winfo_width()
-        wrap_length = (
-            max(300, int(canvas_width * 0.7)) if canvas_width > 1 else 360
-        )
-
-        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=pad_x, pady=pad_y)
-
+        # Style per side
         if is_self:
-            bubble.grid(
-                row=0,
-                column=0,
-                sticky="e",
-                padx=(0, 0),
-                pady=(0, 0),
-            )
+            text_anchor = "e"
+            bubble_bg = Colors.BUTTON_PRIMARY_BG
+            text_fg = Colors.SURFACE
+            name_fg = Colors.TEXT_MUTED  # distinguish from bubble
+            name_padx = (0, Space.MD)
+            bubble_padx = (0, Space.MD)
+            msg_justify = "right"
         else:
-            bubble.grid(
-                row=0,
-                column=0,
-                sticky="w",
-                padx=(Spacing.LG, 0),
-                pady=(0, 0),
-            )
+            text_anchor = "w"
+            bubble_bg = Colors.STATE_SUCCESS
+            text_fg = Colors.SURFACE
+            name_fg = Colors.TEXT_PRIMARY
+            name_padx = (Spacing.LG, 0)
+            bubble_padx = (Spacing.LG, 0)
+            msg_justify = "left"
 
-        caption_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
-        sender_anchor = "e" if is_self else "w"
+        # Slightly tighter bubbles
+        pad_x = int(Space.MD * 0.75)
+        pad_y = int(Space.XS * 0.8)
+
+        # Dynamic wrap length (kept modest so bubbles don't feel huge)
+        canvas_width = self._history_canvas.winfo_width()
+        if canvas_width > 1:
+            wrap_length = int(canvas_width * 0.6)
+        else:
+            wrap_length = 340
+        wrap_length = max(260, min(420, wrap_length))
+
+        # Sender name (above bubble)
+        col_idx = 1 if is_self else 0
         tk.Label(
-            bubble,
+            bubble_row,
             text=sender,
-            bg=bubble_bg,
-            fg=caption_fg,
+            bg=Colors.SURFACE_ALT,
+            fg=name_fg,
             font=(
                 Typography.FONT_UI,
                 Typography.SIZE_12,
                 Typography.WEIGHT_MEDIUM,
             ),
-        ).pack(anchor=sender_anchor)
+        ).grid(
+            row=0,
+            column=col_idx,
+            sticky=text_anchor,
+            padx=name_padx,
+            pady=(0, 1),
+        )
 
-        msg_anchor = "e" if is_self else "w"
-        msg_justify = "right" if is_self else "left"
+        # Bubble
+        bubble = tk.Frame(
+            bubble_row,
+            bg=bubble_bg,
+            padx=pad_x,
+            pady=pad_y,
+        )
+        bubble.grid(
+            row=1,
+            column=col_idx,
+            sticky=text_anchor,
+            padx=bubble_padx,
+        )
+
         tk.Label(
             bubble,
             text=message,
             bg=bubble_bg,
-            fg=fg if not is_system else Colors.TEXT_SECONDARY,
+            fg=text_fg,
             wraplength=wrap_length,
             justify=msg_justify,
-            font=(
-                Typography.FONT_UI,
-                Typography.SIZE_14,
-                Typography.WEIGHT_REGULAR,
-            ),
-        ).pack(anchor=msg_anchor, pady=(Space.XXS, 0))
-
-        timestamp_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
-        tk.Label(
-            bubble,
-            text=time.strftime("%H:%M", time.localtime(timestamp)),
-            bg=bubble_bg,
-            fg=timestamp_fg,
             font=(
                 Typography.FONT_UI,
                 Typography.SIZE_12,
                 Typography.WEIGHT_REGULAR,
             ),
-        ).pack(anchor=msg_anchor)
+        ).pack()
+
+        # Timestamp below bubble
+        tk.Label(
+            bubble_row,
+            text=time.strftime("%H:%M", time.localtime(timestamp)),
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_REGULAR,
+            ),
+        ).grid(
+            row=2,
+            column=col_idx,
+            sticky=text_anchor,
+            padx=name_padx,
+            pady=(2, 0),
+        )
 
         # Update scroll region and scroll to bottom
         self._history_canvas.configure(
@@ -347,20 +400,19 @@ class ChatPage(BasePage):
         )
         self._scroll_to_bottom()
 
-        if not is_system:
-            self._message_counter += 1
+        self._message_counter += 1
 
     # ---------------------------------------------------------------- actions
     def _handle_disconnect(self):
         if self.on_disconnect:
             self.on_disconnect()
+        self._clear_chat_contents()
 
     def _handle_connect(self):
         # Placeholder for connect action - implement based on controller
         pass
 
-    def _handle_clear_chat(self):
-        """Delegate to the app-level clear action so the confirmation matches the footer."""
+    def _clear_chat_contents(self):
         if self.context and hasattr(self.context.app, "clear_chat_history"):
             self.context.app.clear_chat_history()
         else:
@@ -382,7 +434,6 @@ class ChatPage(BasePage):
         if self.controller:
             try:
                 self.controller.send_message(message)
-                # Connection state is managed by _apply_snapshot, not here
             except Exception as e:
                 print(f"Send error: {e}")
                 return "break"
@@ -390,7 +441,11 @@ class ChatPage(BasePage):
             print("Warning: No controller available for sending message")
             return "break"
 
-        self._add_message(self._get_local_device_name(), message, timestamp=time.time())
+        self._add_message(
+            self._get_local_device_name(),
+            message,
+            timestamp=time.time(),
+        )
         self.msg_var.set("")
         return "break"
 
@@ -419,8 +474,8 @@ class ChatPage(BasePage):
 
     def get_history_lines(self) -> list[str]:
         lines = []
-        for bubble in self.history_frame.winfo_children():
-            for child in bubble.winfo_children():
+        for row in self.history_frame.winfo_children():
+            for child in row.winfo_children():
                 if isinstance(child, tk.Frame):
                     for inner in child.winfo_children():
                         if isinstance(inner, tk.Label):
@@ -468,14 +523,9 @@ class ChatPage(BasePage):
         self._connected = is_connected
 
         if hasattr(self, "disconnect_button"):
-            self.disconnect_button.configure(
-                text="Disconnect" if is_connected else "Connect",
-                command=(
-                    self._handle_disconnect
-                    if is_connected
-                    else self._handle_connect
-                ),
-            )
+            # Disconnect is available only when connected
+            state = tk.NORMAL if is_connected else tk.DISABLED
+            self.disconnect_button.configure(state=state)
 
         entry_state = tk.NORMAL if is_connected else tk.DISABLED
         self.entry.configure(state=entry_state)

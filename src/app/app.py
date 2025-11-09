@@ -186,8 +186,8 @@ class App(tk.Tk):
         self.update_idletasks()
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
-        target_w = int(screen_w * 0.7)
-        target_h = int(screen_h * 0.9)
+        target_w = int(screen_w * AppConfig.WINDOW_WIDTH_RATIO)
+        target_h = int(screen_h * AppConfig.WINDOW_HEIGHT_RATIO)
         offset_x = max(screen_w - target_w, 0)
         offset_y = 0
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")

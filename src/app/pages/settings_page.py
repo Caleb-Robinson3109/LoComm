@@ -19,5 +19,29 @@ class SettingsPage(BasePage):
         DesignUtils.hero_header(
             body,
             title="Locomm Desktop Settings",
-            subtitle="Settings are handled elsewhere for now."
+            subtitle="Configure notifications and diagnostics."
         )
+
+        card, content = DesignUtils.card(body, "Notifications & diagnostics", "Basic controls")
+        card.pack(fill=tk.BOTH, expand=True)
+        self._build_toggle(content, "Desktop notifications", True)
+        self._build_toggle(content, "Sound alerts", False)
+        DesignUtils.button(content, text="Export diagnostics", variant="secondary").pack(anchor="w", pady=(Spacing.SM, 0))
+
+    def _build_toggle(self, parent, label, initial):
+        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        row.pack(fill=tk.X, pady=(Spacing.XS, 0))
+        tk.Label(
+            row,
+            text=label,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=("TkDefaultFont", 11, "bold"),
+        ).pack(side=tk.LEFT)
+        var = tk.BooleanVar(value=initial)
+        btn = DesignUtils.button(row, text="On" if initial else "Off", variant="ghost")
+        btn.pack(side=tk.RIGHT)
+        def toggle():
+            var.set(not var.get())
+            btn.configure(text="On" if var.get() else "Off")
+        btn.configure(command=toggle)

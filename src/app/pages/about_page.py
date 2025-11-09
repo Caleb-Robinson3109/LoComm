@@ -29,6 +29,8 @@ class AboutPage(BasePage):
 
         self._build_version_card(body)
         self._build_specs(body)
+        self._build_support_card(body)
+        self._build_mission_card(body)
 
     def _build_version_card(self, parent):
         card, content = DesignUtils.card(parent, "Version", "Internal preview build")
@@ -56,3 +58,25 @@ class AboutPage(BasePage):
                      font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
             tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
                      font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
+
+    def _build_support_card(self, parent):
+        card, content = DesignUtils.card(parent, "Support & feedback", "Need help? Reach the LoComm team")
+        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
+        support = [
+            ("Documentation", "https://docs.locomm.dev"),
+            ("Status & updates", "status.locomm.dev"),
+            ("Email support", "support@locomm.dev"),
+        ]
+        for title, value in support:
+            DesignUtils.create_message_row(content, title, value)
+
+    def _build_mission_card(self, parent):
+        card, content = DesignUtils.card(parent, "Mission + privacy", "What we do and how we protect your data")
+        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
+        paragraphs = [
+            "Locomm keeps LoRa conversations private by encrypting every message locally and never storing keys outside the device.",
+            "We commit to open telemetry, so the desktop app only records pairing metadata that you can reset at any time.",
+        ]
+        for text in paragraphs:
+            tk.Label(content, text=text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
+                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w", pady=(Spacing.XXS, 0))

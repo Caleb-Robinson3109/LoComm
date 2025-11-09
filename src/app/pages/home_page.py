@@ -28,14 +28,20 @@ class HomePage(BasePage):
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
-        DesignUtils.hero_header(
+        hero = DesignUtils.hero_header(
             body,
-            title="Secure conversations, Signal-level polish",
-            subtitle="Pair LoRa hardware, verify trust, and jump back into chats from a single dashboard.",
+            title="Welcome to Locomm Desktop",
+            subtitle="Secure LoRa messaging starts by pairing a device—let's get you connected.",
             actions=[]
         )
+        DesignUtils.button(hero, text="Start pairing", command=self._go_to_devices, variant="primary").pack(anchor="w", pady=(Spacing.SM, 0))
         # Apply the latest snapshot immediately so the UI reflects the current store state.
         self._apply_snapshot(self.ui_store.get_device_status())
+        self._go_to_devices()
+
+    def _go_to_devices(self):
+        if self.host and hasattr(self.host, "show_pair_page"):
+            self.host.show_pair_page()
 
     def on_show(self):
         """Start listening to store updates when the page is visible."""
