@@ -27,7 +27,6 @@ class Sidebar(tk.Frame):
 
         self._buttons: dict[str, ttk.Button] = {}
         self._build_ui()
-        self._apply_snapshot(self.ui_store.get_device_status())
         self._subscribe_to_store()
 
     # ------------------------------------------------------------------ #
@@ -51,55 +50,6 @@ class Sidebar(tk.Frame):
             self._buttons[key] = btn
 
         tk.Frame(container, bg=Colors.DIVIDER, height=1).pack(fill=tk.X, pady=(Spacing.LG, Spacing.MD))
-
-        # Connection summary card
-        card = tk.Frame(container, bg=Colors.SURFACE_ALT, highlightbackground=Colors.DIVIDER, highlightthickness=1, bd=0)
-        card.pack(fill=tk.X, pady=(0, Spacing.LG))
-
-        card_header = tk.Frame(card, bg=Colors.SURFACE_ALT)
-        card_header.pack(fill=tk.X, padx=Spacing.MD, pady=(Spacing.MD, Spacing.SM))
-        tk.Label(card_header, text="Active Device", bg=Colors.SURFACE_ALT, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(side=tk.LEFT, anchor="w")
-        self.connection_badge = tk.Label(
-            card_header,
-            text="Disconnected",
-            bg=Colors.STATE_ERROR,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-            padx=Spacing.SM,
-            pady=int(Spacing.XS / 2)
-        )
-        self.connection_badge.pack(side=tk.RIGHT)
-
-        info = tk.Frame(card, bg=Colors.SURFACE_ALT)
-        info.pack(fill=tk.X, padx=Spacing.MD, pady=(0, Spacing.MD))
-        self.device_title = tk.Label(
-            info,
-            text="No device paired",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD)
-        )
-        self.device_title.pack(anchor="w")
-        self.device_caption = tk.Label(
-            info,
-            text="Pair a LoRa contact to begin chatting securely.",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=220,
-            justify="left"
-        )
-        self.device_caption.pack(anchor="w", pady=(Spacing.XXS, 0))
-
-        action_row = tk.Frame(card, bg=Colors.SURFACE_ALT)
-        action_row.pack(fill=tk.X, padx=Spacing.MD, pady=(0, Spacing.MD))
-        DesignUtils.button(
-            action_row,
-            text="Devices",
-            command=lambda: self._handle_nav_click("pair"),
-            variant="secondary"
-        ).pack(fill=tk.X)
 
         footer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.LG, 0))
@@ -224,17 +174,10 @@ class Sidebar(tk.Frame):
         self.ui_store.subscribe_device_status(_callback)
 
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
-        self._apply_snapshot(snapshot)
+        pass
 
     def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
-        if snapshot is None:
-            return
-        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
-        self.connection_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
-        device_label = snapshot.device_name or ("No device paired" if snapshot.stage != DeviceStage.CONNECTED else "Active device")
-        self.device_title.configure(text=device_label)
-        caption = snapshot.detail or snapshot.subtitle
-        self.device_caption.configure(text=caption)
+        pass
 
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:

@@ -140,15 +140,18 @@ class ChatPage(BasePage):
             bubble_bg = Colors.BUTTON_PRIMARY_BG
             fg = Colors.SURFACE
             anchor = "e"
-            pad = (0, 0)  # Align to right edge
+            pad = (Space.LG, 0)
         else:
             bubble_bg = Colors.STATE_SUCCESS
             fg = Colors.SURFACE
             anchor = "w"
             pad = (0, Space.LG)
 
-        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
-        bubble.configure(width=300)
+        pad_x = max(4, int(Space.MD * 0.7))
+        pad_y = max(2, int(Space.XS * 0.7))
+        wrap_length = 360
+
+        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=pad_x, pady=pad_y)
         bubble.pack(anchor=anchor, padx=pad)
 
         caption_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
@@ -157,7 +160,7 @@ class ChatPage(BasePage):
         msg_anchor = "e" if is_self else "w"
         msg_justify = "right" if is_self else "left"
         tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
-                 wraplength=820, justify=msg_justify,
+                 wraplength=wrap_length, justify=msg_justify,
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor=msg_anchor, pady=(Space.XXS, 0))
         timestamp_fg = Colors.SURFACE if is_self else Colors.TEXT_MUTED
         tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=timestamp_fg,

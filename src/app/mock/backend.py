@@ -12,6 +12,7 @@ from typing import Optional
 
 from mock.device_service import MockDevice, get_mock_device_service
 from mock.network_simulator import LoRaNetworkSimulator
+from mock.peer_bridge import get_peer_bridge
 from services.transport_contract import PairingContext, TransportMessage
 
 
@@ -26,6 +27,8 @@ class MockLoCommBackend:
         self._message_counter = 0
         self._device_service = get_mock_device_service()
         self._network = LoRaNetworkSimulator()
+        self._bridge = get_peer_bridge()
+        self._bridge.register_backend(self)
 
     def connect(self, pairing_context: Optional[PairingContext] = None) -> bool:
         """
@@ -55,6 +58,7 @@ class MockLoCommBackend:
         self._connected = False
         self._active_device = None
         self._message_counter = 0
+        self._bridge.unregister_backend(self)
         return True
 
     def send(self, message: TransportMessage) -> bool:
@@ -78,6 +82,7 @@ class MockLoCommBackend:
             metadata=metadata,
         )
         self._network.queue_message(response)
+        self._bridge.notify_peer("Desktop", message.payload)
         return True
 
     def receive(self) -> Optional[TransportMessage]:
@@ -89,8 +94,9 @@ class MockLoCommBackend:
         if message:
             return message
 
-        if random.random() < 0.05:
-            self._queue_heartbeat()
+        # Heartbeat disabled for cleaner mock conversations
+        # if random.random() < 0.05:
+        #     self._queue_heartbeat()
         time.sleep(0.2)
         return None
 
@@ -115,21 +121,10 @@ class MockLoCommBackend:
             metadata=metadata,
         )
         self._network.queue_message(message)
+        self._bridge.notify_peer("System", message.payload)
 
     def _queue_heartbeat(self):
-        if not self._active_device:
-            return
-        heartbeat = TransportMessage(
-            sender=self._active_device.name,
-            payload="Heartbeat ping",
-            metadata={
-                "scenario": self._network.scenario.name,
-                "heartbeat": True,
-                "rssi": self._active_device.telemetry.get("rssi", -78),
-                "snr": self._active_device.telemetry.get("snr", 4.2),
-            }
-        )
-        self._network.queue_message(heartbeat)
+        return  # Heartbeats disabled for mock testing
 
     def _build_response_text(self, payload: str) -> str:
         if not payload:
@@ -153,3 +148,20 @@ class MockLoCommBackend:
         if len(payload) < 40:
             return f"Echo: {payload}"
         return f"ACK ({len(payload)} bytes)"
+
+    def inject_peer_message(self, text: str) -> None:
+        if not self._connected or not self._active_device:
+            return
+        telemetry = self._active_device.telemetry or {}
+        metadata = {
+            "scenario": self._network.scenario.name,
+            "rssi": telemetry.get("rssi", -78),
+            "snr": telemetry.get("snr", 4.0),
+            "battery": telemetry.get("battery", 80),
+        }
+        message = TransportMessage(
+            sender=self._active_device.name,
+            payload=text,
+            metadata=metadata,
+        )
+        self._network.queue_message(message)

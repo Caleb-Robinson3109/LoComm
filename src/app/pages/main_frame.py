@@ -3,13 +3,13 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import Colors, Spacing
+from utils.design_system import Colors, Spacing, Typography, DesignUtils
+from utils.ui_store import DeviceStage, DeviceStatusSnapshot
 
 from .chat_page import ChatPage
 from .settings_page import SettingsPage
 from .home_page import HomePage
 from .devices_page import DevicesPage, PairPage
-from .mock_page import MockPage
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -56,6 +56,7 @@ class MainFrame(ttk.Frame):
         # Pre-register factories so we can lazy-load heavy views
         # ---------- Modern Sidebar Layout ---------- #
         self._create_layout()
+        self.ui_store.subscribe_device_status(self._handle_device_snapshot)
 
         # Start with home view
         self._show_home_view()
@@ -72,8 +73,6 @@ class MainFrame(ttk.Frame):
                                                                         on_disconnect=self._handle_disconnect)),
             RouteConfig("pair", "Devices", lambda parent, ctx=ctx: DevicesPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
-            RouteConfig("mock", "Mock", lambda parent, ctx=ctx: MockPage(parent, ctx,
-                                                                        on_disconnect=self._handle_disconnect)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
         ]
         return routes
@@ -87,10 +86,13 @@ class MainFrame(ttk.Frame):
         main_container = tk.Frame(self, bg=Colors.SURFACE)
         main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.PAGE_MARGIN, pady=Spacing.PAGE_MARGIN)
 
+        body = tk.Frame(main_container, bg=Colors.SURFACE)
+        body.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
+
         # ---------- Left Sidebar ---------- #
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
         self.sidebar = Sidebar(
-            main_container,
+            body,
             nav_items=nav_items,
             on_nav_select=self.navigate_to,
             on_theme_toggle=self.on_theme_toggle
@@ -99,11 +101,13 @@ class MainFrame(ttk.Frame):
         self.sidebar.pack_propagate(False)
 
         # ---------- Right Content Area ---------- #
-        self.content_frame = tk.Frame(main_container, bg=Colors.SURFACE)
-        self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(Spacing.TAB_PADDING, 0), pady=(0, Spacing.TAB_PADDING))
+        self.content_frame = tk.Frame(body, bg=Colors.SURFACE)
+        self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(Spacing.TAB_PADDING, 0), pady=(Spacing.TAB_PADDING, Spacing.TAB_PADDING))
 
         # Initialize view containers
         self._setup_view_containers()
+
+        self.top_bar = self._build_top_bar(main_container)
 
     def _setup_view_containers(self):
         """Create placeholder containers for each view."""
@@ -126,6 +130,37 @@ class MainFrame(ttk.Frame):
         self._view_manager.attach_component(view_name, component)
         self._view_instances[view_name] = component
         return component
+
+    def _build_top_bar(self, parent):
+        pad_x = int(Spacing.LG * 0.75)
+        pad_y = int(Spacing.SM * 0.75)
+        bar = tk.Frame(parent, bg=Colors.SURFACE_HEADER, padx=pad_x, pady=pad_y)
+        bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.SM, 0))
+
+        bar.grid_columnconfigure(2, weight=1)
+
+        initial_name = getattr(self.session, "local_device_name", "Orion")
+        self.local_device_label = tk.Label(bar, text=initial_name, bg=Colors.SURFACE_HEADER,
+                                           fg=Colors.TEXT_PRIMARY,
+                                           font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD))
+        self.local_device_label.grid(row=0, column=0, sticky="w", padx=(0, Spacing.SM))
+
+        self.status_badge = tk.Label(bar, text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE,
+                                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+                                     padx=Spacing.MD, pady=int(Spacing.XS/2))
+        self.status_badge.grid(row=0, column=1, sticky="w", padx=(0, Spacing.SM))
+
+        self.remote_device_label = tk.Label(bar, text="Remote device: —", bg=Colors.SURFACE_HEADER,
+                                            fg=Colors.TEXT_PRIMARY,
+                                            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM))
+        self.remote_device_label.grid(row=0, column=2, sticky="w")
+
+        devices_btn = DesignUtils.button(bar, text="Devices", command=self.show_pair_page, variant="secondary", width=12)
+        devices_btn.grid(row=0, column=3, sticky="e", padx=(Spacing.SM, 0))
+
+        clear_btn = DesignUtils.button(bar, text="Clear Chat", command=self.app.clear_chat_history, variant="secondary", width=12)
+        clear_btn.grid(row=0, column=4, sticky="e")
+        return bar
 
     def _show_view(self, view_name: str):
         """Ensure the view exists, then show it."""
@@ -173,6 +208,36 @@ class MainFrame(ttk.Frame):
         """Show the pair page."""
         self.navigate_to("pair")
 
+    def destroy(self):
+        try:
+            self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
+        except Exception:
+            pass
+        return super().destroy()
+
+    # ------------------------------------------------------------------ #
+    def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
+        if not snapshot:
+            return
+        remote_label = snapshot.device_name or "—"
+        self.remote_device_label.configure(text=f"Remote device: {remote_label}")
+        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
+        self.status_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
+        local_name = getattr(self.session, "local_device_name", "This Device")
+        self.local_device_label.configure(text=local_name)
+
+    @staticmethod
+    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
+        mapping = {
+            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
+            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
+            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
+            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
+            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
+            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
+        }
+        return mapping.get(stage, ("Status", Colors.STATE_ERROR))
+
     # ------------------------------------------------------------------ #
     def update_status(self, text: str):
         """Update status in both chat tab and sidebar."""
@@ -210,10 +275,6 @@ class MainFrame(ttk.Frame):
     @property
     def settings_page(self):
         return self._ensure_view("settings")
-
-    @property
-    def mock_page(self):
-        return self._ensure_view("mock")
 
     @property
     def about_page(self):

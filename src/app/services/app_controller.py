@@ -171,7 +171,11 @@ class AppController:
                         "device_name": device_name,
                         "profile": self.transport.profile,
                         "scenario": self.mock_config.scenario,
+                        "mode": mode,
                     })
+                    if self.transport.is_mock:
+                        from mock.peer_chat_window import ensure_mock_peer_window
+                        self.root.after(0, lambda: ensure_mock_peer_window(self.root))
                 else:
                     # CRITICAL FIX: Stop transport first to prevent resource leaks
                     self.transport.stop()

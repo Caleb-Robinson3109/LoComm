@@ -21,6 +21,7 @@ class SettingsPage(BasePage):
         self.controller = context.controller if context else None
         self.session = context.session if context else None
 
+        self.device_name_var = tk.StringVar(value=getattr(self.session, "local_device_name", "Orion"))
         self.auto_start_var = tk.BooleanVar(value=False)
         self.desktop_notifications_var = tk.BooleanVar(value=True)
         self.sound_notifications_var = tk.BooleanVar(value=False)
@@ -52,6 +53,12 @@ class SettingsPage(BasePage):
         card, content = DesignUtils.card(parent, "Session & trust", "Control LoRa profile and paired devices")
         card.pack(fill=tk.X, pady=(0, Spacing.LG))
         card.pack_propagate(True)
+
+        name_block = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        name_block.pack(fill=tk.X, pady=(0, Spacing.SM))
+        tk.Label(name_block, text="My device name", bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
+                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        ttk.Entry(name_block, textvariable=self.device_name_var).pack(fill=tk.X, expand=True, pady=(Spacing.XXS, 0))
 
         self._create_toggle(content, "Auto-start Locomm on login", self.auto_start_var)
 
@@ -130,11 +137,16 @@ class SettingsPage(BasePage):
     # ------------------------------------------------------------------ #
     def _save_preferences(self):
         try:
+            new_name = self.device_name_var.get().strip() or "Orion"
+            self.session.local_device_name = new_name
+            if self.context and hasattr(self.context.navigator, "local_device_label"):
+                self.context.navigator.local_device_label.configure(text=new_name)
             messagebox.showinfo("Preferences Saved", "Settings have been saved to your local configuration.")
         except Exception as exc:  # pragma: no cover - UI alert fallback
             messagebox.showerror("Error", f"Failed to save preferences: {exc}")
 
     def _reset_defaults(self):
+        self.device_name_var.set("Orion")
         self.auto_start_var.set(False)
         self.desktop_notifications_var.set(True)
         self.sound_notifications_var.set(False)

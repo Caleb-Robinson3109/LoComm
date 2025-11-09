@@ -63,13 +63,7 @@ class MockDeviceService:
         self._load()
 
     def list_devices(self) -> List[MockDevice]:
-        devices = list(self._devices.values())
-        # Ensure Mock device is always first
-        mock_device = next((d for d in devices if d.device_id == "MOCK"), None)
-        if mock_device:
-            devices.remove(mock_device)
-            devices.insert(0, mock_device)
-        return devices
+        return list(self._devices.values())
 
     def get_device(self, device_id: str) -> Optional[MockDevice]:
         return self._devices.get(device_id)

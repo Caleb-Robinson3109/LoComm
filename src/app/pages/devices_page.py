@@ -264,6 +264,8 @@ class DevicesPage(BasePage):
                 self._set_stage(DeviceStage.CONNECTED, name)
                 if self.on_device_paired:
                     self.on_device_paired(device_id, name)
+                if self.host and hasattr(self.host, "show_chat_page"):
+                    self.host.show_chat_page()
             else:
                 messagebox.showerror("Mock Connection Failed", "Unable to connect to mock device.")
                 self._set_stage(DeviceStage.DISCONNECTED, name)
@@ -279,6 +281,8 @@ class DevicesPage(BasePage):
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired(device_id, device_name)
+        if self.host and hasattr(self.host, "show_chat_page"):
+            self.host.show_chat_page()
 
     def _disconnect_device(self):
         if not self.connection_manager.is_connected():
@@ -356,6 +360,8 @@ class DevicesPage(BasePage):
             self.selected_device_var.set("No device selected")
             self._active_device_name = None
             self._active_device_id = None
+        if hasattr(self, "disconnect_btn"):
+            self.disconnect_btn.configure(state="normal" if stage == DeviceStage.CONNECTED else "disabled")
         if self._active_device_id:
             device = self.device_service.get_device(self._active_device_id)
             self._update_telemetry_panel(device)

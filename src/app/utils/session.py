@@ -7,7 +7,7 @@ class Session:
 
     device_name: str = ""      # Peer device name
     device_id: str = ""        # Peer device ID
-    local_device_name: str = ""  # Local device name for proper message attribution
+    local_device_name: str = "Orion"  # Local device name for proper message attribution
     paired_at: float = 0.0
     transport_profile: str = "auto"
     mock_scenario: str = "default"

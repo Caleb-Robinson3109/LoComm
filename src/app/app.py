@@ -186,12 +186,14 @@ class App(tk.Tk):
         self.update_idletasks()
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
-        target_w = int(screen_w * 0.95)
-        target_h = int(screen_h * 0.95)
+        target_w = int(screen_w * 0.85)
+        target_h = int(screen_h * 0.85)
         offset_x = max((screen_w - target_w) // 2, 0)
         offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(target_w, target_h)
+        min_w = max(900, int(screen_w * 0.6))
+        min_h = max(580, int(screen_h * 0.55))
+        self.minsize(min_w, min_h)
         self.resizable(True, True)
 
 
