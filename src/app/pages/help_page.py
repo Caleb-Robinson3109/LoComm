@@ -53,7 +53,7 @@ class HelpPage(BasePage):
                 text=title,
                 bg=Colors.SURFACE_ALT,
                 fg=Colors.TEXT_PRIMARY,
-                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+                font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             ).pack(anchor="w", pady=(Spacing.SM, Spacing.XXS))
             for bullet in bullets:
                 tk.Label(
@@ -61,7 +61,7 @@ class HelpPage(BasePage):
                     text=f"• {bullet}",
                     bg=Colors.SURFACE_ALT,
                     fg=Colors.TEXT_SECONDARY,
-                    font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+                    font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
                     wraplength=720,
                     justify="left",
                 ).pack(anchor="w")

@@ -4,9 +4,9 @@ Users enter an 8-digit PIN to pair and connect devices with rate limiting protec
 """
 import tkinter as tk
 from typing import Callable, Optional
+from tkinter import messagebox
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
-from utils.ui_helpers import create_scroll_container
 from utils.pin_authentication import (
     generate_pairing_pin,
     verify_pairing_pin,
@@ -24,7 +24,6 @@ class PINPairingFrame(tk.Frame):
         self.on_pair_success = on_pair_success
         self.on_demo_login = on_demo_login
         self.pin_auth = get_pin_auth()
-        self.device_context_var = tk.StringVar(value="Select a device to begin")
         self.pin_vars: list[tk.StringVar] = []
         self.pin_entries: list[tk.Entry] = []
 
@@ -32,64 +31,53 @@ class PINPairingFrame(tk.Frame):
 
     def _create_ui(self):
         """Create the PIN pairing interface."""
-        scroll = create_scroll_container(
-            self,
+        content = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.SM)
+        content.pack(fill=tk.BOTH, expand=True)
+
+        header_frame = tk.Frame(content, bg=Colors.SURFACE)
+        header_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+
+        self.title_label = tk.Label(
+            header_frame,
+            text="Pair with the device",
             bg=Colors.SURFACE,
-            padding=(Spacing.MD, Spacing.LG),
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         )
-        content = scroll.frame
+        self.title_label.pack(anchor="w")
 
-        DesignUtils.hero_header(
-            content,
-            title="Device pairing",
-            subtitle="",
-        )
-
-        tk.Label(
-            content,
-            textvariable=self.device_context_var,
+        self.subtitle_label = tk.Label(
+            header_frame,
+            text="Enter the 8-character code shared during pairing.",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-
-        section, body = DesignUtils.section(
-            content,
-            "Secure PIN entry",
-            "Codes expire in 10 minutes. Five attempts max.",
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR),
         )
+        self.subtitle_label.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
 
-        inputs_row = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        inputs_row.pack(anchor="w", pady=(Spacing.XS, Spacing.SM))
+        inputs_row = tk.Frame(content, bg=Colors.SURFACE)
+        inputs_row.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
         self._build_pin_inputs(inputs_row)
 
+        control_row = tk.Frame(content, bg=Colors.SURFACE)
+        control_row.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        control_row.grid_columnconfigure(1, weight=1)
+        if self.on_demo_login:
+            DesignUtils.button(
+                control_row,
+                text="Mock",
+                command=self._on_demo_login,
+                variant="secondary",
+            ).grid(row=0, column=0, sticky="w")
         DesignUtils.button(
-            body,
+            control_row,
             text="Clear PIN",
             command=self._clear_pin,
             variant="ghost",
-        ).pack(anchor="w", pady=(0, Spacing.SM))
+        ).grid(row=0, column=2, sticky="e")
 
-        self.security_label = tk.Label(
-            body,
-            text="",
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-            fg=Colors.STATE_INFO,
-            bg=Colors.SURFACE_ALT,
-        )
-        self.security_label.pack(anchor="w", pady=(0, Spacing.XXS))
-
-        self.error_label = tk.Label(
-            body,
-            text="",
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            fg=Colors.STATE_ERROR,
-            bg=Colors.SURFACE_ALT,
-        )
-        self.error_label.pack(anchor="w", pady=(0, Spacing.XXS))
-
-        button_frame = tk.Frame(body, bg=Colors.SURFACE_ALT)
-        button_frame.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        button_frame = tk.Frame(content, bg=Colors.SURFACE)
+        button_frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
         self.pair_btn = DesignUtils.button(
             button_frame,
@@ -98,26 +86,18 @@ class PINPairingFrame(tk.Frame):
         )
         self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
 
-        if self.on_demo_login:
-            DesignUtils.button(
-                button_frame,
-                text="Mock",
-                command=self._on_demo_login,
-                variant="secondary",
-            ).pack(fill=tk.X)
-
         # Set initial focus after widgets are laid out
         self.after(100, self.focus_input)
 
-        # Update security status display
-        self._update_security_status()
+        # No inline security status label
 
     def set_pending_device(self, device_name: str, device_id: str | None = None):
         """Expose context to the host pairing page."""
-        label = device_name
         if device_id:
-            label = f"{device_name} ({device_id})"
-        self.device_context_var.set(f"Pairing with {label}")
+            label = f"{device_name} - {device_id}"
+        else:
+            label = device_name
+        self.title_label.configure(text=f"Pair {label}")
 
     def focus_input(self):
         """Focus the first PIN box."""
@@ -127,52 +107,22 @@ class PINPairingFrame(tk.Frame):
     def _build_pin_inputs(self, parent: tk.Frame):
         self.pin_vars.clear()
         self.pin_entries.clear()
+        pin_spacing = max(int(Spacing.XXS * 0.95), 1)
         for idx in range(8):
             var = tk.StringVar()
-            entry = tk.Entry(
+            entry = DesignUtils.create_pin_entry(
                 parent,
-                width=2,
                 textvariable=var,
                 justify="center",
-                font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-                bg=Colors.SURFACE,
-                fg=Colors.TEXT_PRIMARY,
-                relief="flat",
-                highlightthickness=1,
-                highlightbackground=Colors.BORDER,
-                highlightcolor=Colors.BUTTON_PRIMARY_BG,
-                insertwidth=0,
+                width=2,
+                font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             )
-            entry.pack(side=tk.LEFT, padx=(Spacing.XXS, Spacing.XXS), pady=(0, Spacing.XXS))
+            entry.pack(side=tk.LEFT, padx=(pin_spacing, pin_spacing), pady=(0, pin_spacing))
             entry.bind("<KeyRelease>", lambda e, i=idx: self._handle_digit_key(e, i))
             entry.bind("<KeyPress>", lambda e, i=idx: self._handle_digit_press(e, i))
             entry.bind("<Return>", self._on_submit_pin)
             self.pin_vars.append(var)
             self.pin_entries.append(entry)
-
-    def _update_security_status(self):
-        """CRITICAL FIX: Update security status display."""
-        try:
-            status = get_security_status("desktop-client")
-            if status['is_locked']:
-                minutes_remaining = int(status['lockout_remaining_seconds'] // 60)
-                self.security_label.configure(
-                    text=f"🔒 Account locked for {minutes_remaining} more minutes",
-                    fg=Colors.STATE_ERROR
-                )
-            elif status['recent_failed_attempts'] > 0:
-                remaining = status['attempts_remaining']
-                self.security_label.configure(
-                    text=f"⚠️ {status['recent_failed_attempts']} failed attempts. {remaining} remaining.",
-                    fg=Colors.STATE_WARNING
-                )
-            else:
-                self.security_label.configure(
-                    text="🔐 Secure 8-digit PIN authentication",
-                    fg=Colors.STATE_INFO
-                )
-        except Exception:
-            self.security_label.configure(text="")
 
     def _handle_digit_press(self, event, index: int):
         if event.keysym == "Left" and index > 0:
@@ -206,7 +156,7 @@ class PINPairingFrame(tk.Frame):
         if not value:
             return
 
-        if not value.isdigit():
+        if not value.isalnum():
             self.pin_vars[index].set("")
             return
 
@@ -215,7 +165,7 @@ class PINPairingFrame(tk.Frame):
             self._focus_box(index + 1)
 
     def _apply_paste(self, text: str, start_index: int):
-        digits = [c for c in text if c.isdigit()]
+        digits = [c for c in text if c.isalnum()]
         if not digits:
             self.pin_vars[start_index].set("")
             return
@@ -246,13 +196,12 @@ class PINPairingFrame(tk.Frame):
             self._show_error("Please enter a PIN")
             return
 
-        # CRITICAL FIX: Validate 8-digit format
         if len(pin) != 8:
-            self._show_error("PIN must be exactly 8 digits")
+            self._show_error("PIN must be exactly 8 characters")
             return
 
         if not validate_pin_format(pin):
-            self._show_error("PIN must contain only numbers")
+            self._show_error("PIN must contain only letters A-Z and numbers")
             return
 
         # Check security status before allowing attempt
@@ -282,7 +231,7 @@ class PINPairingFrame(tk.Frame):
                 self.after(0, lambda: self._on_pair_failed(f"Pairing error: {str(e)}"))
             finally:
                 # Always update security status display
-                self.after(0, self._update_security_status)
+                self.after(0, lambda: None)
 
         import threading
         threading.Thread(target=verify_worker, daemon=True).start()
@@ -300,7 +249,7 @@ class PINPairingFrame(tk.Frame):
         """CRITICAL FIX: Handle failed PIN pairing with security measures."""
         self._set_waiting(False)
         self._show_error(error_msg)
-        self._update_security_status()  # Update security display
+        # No inline security display anymore
 
         if wait_time > 0:
             # If there's a wait time, disable the button temporarily
@@ -324,11 +273,11 @@ class PINPairingFrame(tk.Frame):
 
     def _show_error(self, message):
         """Show error message."""
-        self.error_label.configure(text=message)
+        messagebox.showerror("Pairing Failed", message)
 
     def _clear_error(self):
-        """Clear error message."""
-        self.error_label.configure(text="")
+        """No inline error label—no action required."""
+        return
 
     def _set_waiting(self, waiting):
         """Set waiting state for UI elements."""

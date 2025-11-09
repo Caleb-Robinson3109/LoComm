@@ -19,8 +19,6 @@ from utils.app_logger import get_logger
 from utils.runtime_settings import get_runtime_settings
 from utils.mock_config import get_mock_config, set_mock_scenario
 from utils.diagnostics import log_transport_event
-from mock.peer_chat_window import ensure_mock_peer_window, close_mock_peer_window
-
 MessageCallback = Callable[[str, str, float], None]
 StatusCallback = Callable[[str], None]
 ResultCallback = Optional[Callable[[bool, Optional[str]], None]]
@@ -181,6 +179,8 @@ class AppController:
                         "mode": mode,
                     })
                     if self.transport.is_mock:
+                        from mock.peer_chat_window import ensure_mock_peer_window
+
                         local_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
                         self.root.after(
                             0,
@@ -335,7 +335,12 @@ class AppController:
         try:
             self.transport.stop()
         finally:
-            close_mock_peer_window()
+            try:
+                from mock.peer_chat_window import close_mock_peer_window
+            except ImportError:
+                close_mock_peer_window = None
+            if close_mock_peer_window:
+                close_mock_peer_window()
             self.connection_manager.disconnect_device()
             self.session.clear()
             self._persist_session()

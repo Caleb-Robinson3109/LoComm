@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import Colors, DesignUtils, Spacing, Typography
-from utils.ui_helpers import create_scroll_container
+from utils.design_system import Colors, DesignUtils, Spacing
+from utils.ui_helpers import create_page_scaffold
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .base_page import BasePage, PageContext
 
@@ -25,16 +25,20 @@ class HomePage(BasePage):
         self.connection_badge_var = tk.StringVar(value="Disconnected")
         self.connection_detail_var = tk.StringVar(value="Awaiting secure PIN handoff")
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
-        body = scroll.frame
-
-        hero = DesignUtils.hero_header(
-            body,
+        self.scaffold = create_page_scaffold(
+            self,
             title="Welcome to Locomm Desktop",
-            subtitle="Secure LoRa messaging starts by pairing a device—let's get you connected.",
-            actions=[]
+            subtitle="Secure LoRa messaging starts by pairing a device.",
+            padding=(0, Spacing.LG),
         )
-        DesignUtils.button(hero, text="Start pairing", command=self._go_to_devices, variant="primary").pack(anchor="w", pady=(Spacing.SM, 0))
+        body = self.scaffold.body
+
+        DesignUtils.button(
+            self.scaffold.header,
+            text="Start pairing",
+            command=self._go_to_devices,
+            variant="primary",
+        ).pack(anchor="w", pady=(Spacing.SM, 0))
         # Apply the latest snapshot immediately so the UI reflects the current store state.
         self._apply_snapshot(self.ui_store.get_device_status())
         self._go_to_devices()
@@ -95,4 +99,6 @@ class HomePage(BasePage):
 
     def destroy(self):
         self._unsubscribe_from_store()
+        if hasattr(self, "scaffold"):
+            self.scaffold.destroy()
         return super().destroy()

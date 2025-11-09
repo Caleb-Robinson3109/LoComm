@@ -39,9 +39,13 @@ class UIStore:
             detail="Select Devices to begin."
         )
         self._device_callbacks: List[Callable[[DeviceStatusSnapshot], None]] = []
+        self._status_callback: Optional[Callable[[str, str], None]] = None
+        self._device_info_callback: Optional[Callable] = None
 
-        self._status_manager.register_status_callback(self._handle_status_text)
-        self._status_manager.register_device_callback(self._handle_device_change)
+        self._status_callback = self._handle_status_text
+        self._device_info_callback = self._handle_device_change
+        self._status_manager.register_status_callback(self._status_callback)
+        self._status_manager.register_device_callback(self._device_info_callback)
         # connection manager already observes status manager, so no extra hook yet
 
     # ------------------------------------------------------------------ #
@@ -136,8 +140,35 @@ class UIStore:
 
     def _emit_device_status(self):
         snapshot = self._device_status
+        stale_callbacks: List[Callable[[DeviceStatusSnapshot], None]] = []
         for callback in list(self._device_callbacks):
-            callback(snapshot)
+            try:
+                callback(snapshot)
+            except Exception:
+                stale_callbacks.append(callback)
+        for callback in stale_callbacks:
+            try:
+                self._device_callbacks.remove(callback)
+            except ValueError:
+                pass
+
+    def close(self):
+        """Unhook callbacks to prevent leaks."""
+        if self._status_callback:
+            try:
+                self._status_manager.unregister_status_callback(self._status_callback)
+            except Exception:
+                pass
+            self._status_callback = None
+        if self._device_info_callback:
+            try:
+                self._status_manager.unregister_device_callback(self._device_info_callback)
+            except Exception:
+                pass
+            self._device_info_callback = None
+
+    def __del__(self):
+        self.close()
 
 
 _ui_store: Optional[UIStore] = None

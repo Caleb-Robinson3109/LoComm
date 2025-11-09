@@ -5,7 +5,7 @@ import sys
 import tkinter as tk
 
 from utils.design_system import Colors, DesignUtils, Typography, Spacing
-from utils.ui_helpers import create_scroll_container
+from utils.ui_helpers import create_page_scaffold
 from .base_page import BasePage, PageContext
 
 
@@ -18,23 +18,17 @@ class AboutPage(BasePage):
         self.controller = context.controller if context else None
         self.session = context.session if context else None
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
-        body = scroll.frame
-
-        DesignUtils.hero_header(
-            body,
+        self.scaffold = create_page_scaffold(
+            self,
             title="About Locomm",
-            subtitle="Build 3.0 • Python {}".format(sys.version.split()[0])
+            subtitle=f"Build 3.0 • Python {sys.version.split()[0]}",
+            padding=(0, Spacing.LG),
         )
+        body = self.scaffold.body
 
-        self._build_version_card(body)
-        self._build_specs(body)
-        self._build_support_card(body)
-        self._build_mission_card(body)
+        card, content = DesignUtils.card(body, "Locomm Desktop overview")
+        card.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=(0, Spacing.LG))
 
-    def _build_version_card(self, parent):
-        card, content = DesignUtils.card(parent, "Version", "Internal preview build")
-        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
         info = [
             ("Desktop build", "v2.1 redesign"),
             ("Transport backend", "Mock LoComm API"),
@@ -43,40 +37,32 @@ class AboutPage(BasePage):
         for label, value in info:
             DesignUtils.create_message_row(content, label, value)
 
-    def _build_specs(self, parent):
-        section, body = DesignUtils.section(parent, "Technical specifications", "Stack overview")
-        specs = {
-            "Transport": "LoCommTransport abstraction + mock backend",
-            "UI": "Tkinter + Locomm Design System v3",
-            "Authentication": "8-digit PIN pairing",
-            "Session storage": "Local session.json cache",
-        }
-        for key, value in specs.items():
-            row = tk.Frame(body, bg=Colors.SURFACE_ALT)
-            row.pack(fill=tk.X, pady=(0, Spacing.SM))
-            tk.Label(row, text=key, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-            tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w")
+        tk.Label(
+            content,
+            text="Technical specifications",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(Spacing.MD, Spacing.XXS))
 
-    def _build_support_card(self, parent):
-        card, content = DesignUtils.card(parent, "Support & feedback", "Need help? Reach the LoComm team")
-        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
-        support = [
-            ("Documentation", "https://docs.locomm.dev"),
-            ("Status & updates", "status.locomm.dev"),
-            ("Email support", "support@locomm.dev"),
+        specs = [
+            "Transport: LoCommTransport abstraction + mock backend",
+            "UI: Tkinter + Locomm Design System v3",
+            "Authentication: 8-digit PIN pairing",
+            "Session storage: Local session.json cache",
         ]
-        for title, value in support:
-            DesignUtils.create_message_row(content, title, value)
+        for bullet in specs:
+            tk.Label(
+                content,
+                text=f"• {bullet}",
+                bg=Colors.SURFACE_ALT,
+                fg=Colors.TEXT_SECONDARY,
+                font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
+                wraplength=720,
+                justify="left",
+            ).pack(anchor="w", pady=(0, Spacing.XXS))
 
-    def _build_mission_card(self, parent):
-        card, content = DesignUtils.card(parent, "Mission + privacy", "What we do and how we protect your data")
-        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.SM))
-        paragraphs = [
-            "Locomm keeps LoRa conversations private by encrypting every message locally and never storing keys outside the device.",
-            "We commit to open telemetry, so the desktop app only records pairing metadata that you can reset at any time.",
-        ]
-        for text in paragraphs:
-            tk.Label(content, text=text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR), wraplength=600, justify="left").pack(anchor="w", pady=(Spacing.XXS, 0))
+    def destroy(self):
+        if hasattr(self, "scaffold"):
+            self.scaffold.destroy()
+        return super().destroy()

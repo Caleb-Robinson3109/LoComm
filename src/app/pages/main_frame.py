@@ -3,13 +3,13 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import Colors, Spacing, Typography, DesignUtils
+from utils.design_system import Colors, Spacing, Space, Typography, DesignUtils
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot
 
 from .chat_page import ChatPage
 from .settings_page import SettingsPage
 from .home_page import HomePage
-from .devices_page import DevicesPage, PairPage
+from .devices_page import DevicesPage
 from .about_page import AboutPage
 from .help_page import HelpPage
 from .sidebar import Sidebar
@@ -51,6 +51,8 @@ class MainFrame(ttk.Frame):
             controller=self.controller,
             navigator=self
         )
+        self._view_cache_order: list[str] = []
+        self._max_cached_views = 3
         self.ui_store = get_ui_store()
         self.routes: List[RouteConfig] = self._build_routes()
         self._register_view_factories()
@@ -126,6 +128,7 @@ class MainFrame(ttk.Frame):
     def _ensure_view(self, view_name: str):
         """Instantiate a view component the first time it is requested."""
         if view_name in self._view_instances:
+            self._record_view_usage(view_name)
             return self._view_instances[view_name]
         factory = self._view_factories.get(view_name)
         container = self._view_containers.get(view_name)
@@ -135,37 +138,58 @@ class MainFrame(ttk.Frame):
         component.pack(fill=tk.BOTH, expand=True, padx=Spacing.PAGE_PADDING, pady=Spacing.PAGE_PADDING)
         self._view_manager.attach_component(view_name, component)
         self._view_instances[view_name] = component
+        self._record_view_usage(view_name)
+        self._trim_view_cache()
         return component
 
     def _build_top_bar(self, parent):
         pad_x = Spacing.XS
-        pad_y = int(Spacing.XXS / 1.5)
-        bar = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR, padx=pad_x, pady=pad_y)
+        pad_y = max(Spacing.XS, int((Spacing.XXS / 1.5) * 1.2 * 1.15))
+        bar = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR, padx=pad_x, pady=pad_y, height=int(Spacing.HEADER_HEIGHT * 1.15))
         bar.pack(fill=tk.X, side=tk.TOP, pady=(0, int(Spacing.XXS / 2)))
 
-        bar.grid_columnconfigure(1, weight=1)
+        bar.grid_columnconfigure(0, weight=1)
+        bar.grid_columnconfigure(1, weight=0)
 
         initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
         self._default_local_device_name = initial_name
 
-        brand_label = tk.Label(bar, text="Locomm", bg=Colors.SURFACE_HEADER, fg=Colors.TEXT_PRIMARY,
-                               font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD))
-        brand_label.grid(row=0, column=0, sticky="w")
+        info_wrap = tk.Frame(bar, bg=Colors.SURFACE_HEADER)
+        info_wrap.grid(row=0, column=0, sticky="w")
 
-        self.local_device_label = tk.Label(bar, text=initial_name, bg=Colors.SURFACE_HEADER,
-                                           fg=Colors.TEXT_PRIMARY,
-                                           font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD))
-        self.local_device_label.grid(row=0, column=2, sticky="e", padx=(0, Spacing.XS))
+        self.local_device_label = tk.Label(
+            info_wrap,
+            text=initial_name,
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        )
+        self.local_device_label.pack(side=tk.LEFT, padx=(0, Space.XS))
 
-        self.status_badge = tk.Label(bar, text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE,
-                                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-                                     padx=Spacing.SM, pady=int(Spacing.XS / 2))
-        self.status_badge.grid(row=0, column=3, sticky="e", padx=(Spacing.XS, 0))
+        self.status_badge = tk.Label(
+            info_wrap,
+            text="Disconnected",
+            bg=Colors.STATE_ERROR,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            padx=Spacing.SM,
+            pady=int(Spacing.XS / 2),
+        )
+        self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
+
+        brand_label = tk.Label(
+            bar,
+            text="Locomm",
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+        )
+        brand_label.grid(row=0, column=1, sticky="e")
         return bar
 
     def _show_view(self, view_name: str):
         """Ensure the view exists, then show it."""
-        self._ensure_view(view_name)
+        target = self._ensure_view(view_name)
         self._view_manager.show_view(view_name)
         if hasattr(self.sidebar, "set_active_view"):
             self.sidebar.set_active_view(view_name)
@@ -212,6 +236,10 @@ class MainFrame(ttk.Frame):
     def destroy(self):
         try:
             self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
+        except Exception:
+            pass
+        try:
+            self._view_manager.cleanup_all()
         except Exception:
             pass
         return super().destroy()
@@ -291,3 +319,31 @@ class MainFrame(ttk.Frame):
         else:
             # Device is disconnected
             self.update_status("Device disconnected")
+
+    def _record_view_usage(self, view_name: str):
+        if view_name in self._view_cache_order:
+            self._view_cache_order.remove(view_name)
+        self._view_cache_order.append(view_name)
+
+    def _trim_view_cache(self):
+        while len(self._view_cache_order) > self._max_cached_views:
+            candidates = [
+                v for v in self._view_cache_order
+                if v not in {self._view_manager.active_view, "home"}
+            ]
+            if not candidates:
+                break
+            target = candidates[0]
+            self._view_cache_order.remove(target)
+            self._unload_view(target)
+
+    def _unload_view(self, view_name: str):
+        if view_name in self._view_cache_order:
+            self._view_cache_order.remove(view_name)
+        component = self._view_instances.pop(view_name, None)
+        if component:
+            try:
+                component.destroy()
+            except Exception:
+                pass
+        self._view_manager.detach_component(view_name)

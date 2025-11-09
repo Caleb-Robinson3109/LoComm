@@ -144,3 +144,15 @@ class ViewManager:
         for view_name in list(self.view_containers.keys()):
             self.cleanup_view(view_name)
         self.active_view = None
+
+    def detach_component(self, view_name: str):
+        """Destroy only the component for a view while keeping its container."""
+        component = self.view_components.pop(view_name, None)
+        if not component:
+            return
+        try:
+            if hasattr(component, "on_hide"):
+                component.on_hide()
+            component.destroy()
+        except Exception as e:
+            self.logger.warning(f"Error detaching component for view '{view_name}': {e}")

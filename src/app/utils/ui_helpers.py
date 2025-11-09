@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import tkinter as tk
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional, List, Any
 
-from .design_system import Colors, Spacing
+from .design_system import Colors, Spacing, DesignUtils
 
 
 @dataclass
@@ -18,6 +18,24 @@ class ScrollContainer:
     scrollbar: tk.Scrollbar
     window_id: int
 
+    def destroy(self):
+        """Tear down the scroll container and unregister bindings."""
+        manager = GlobalMousewheelManager.get_instance()
+        manager.unregister_canvas(self.canvas)
+        if self.wrapper.winfo_exists():
+            self.wrapper.destroy()
+
+@dataclass
+class PageScaffold:
+    root: tk.Frame
+    body: tk.Frame
+    header: tk.Frame
+    scroll: Optional[ScrollContainer]
+
+    def destroy(self):
+        destroy_scroll_container(self.scroll)
+        if self.root.winfo_exists():
+            self.root.destroy()
 
 def create_scroll_container(parent: tk.Misc, *,
                             bg: str = Colors.BG_PRIMARY,
@@ -30,15 +48,15 @@ def create_scroll_container(parent: tk.Misc, *,
     scrollbar = tk.Scrollbar(wrapper, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg=bg)
 
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-    )
+    def _sync_scrollregion(event, target_canvas=canvas):
+        target_canvas.configure(scrollregion=target_canvas.bbox("all"))
+
+    scrollable_frame.bind("<Configure>", _sync_scrollregion)
 
     window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    _bind_mousewheel(canvas)
+    manager = _bind_mousewheel(canvas)
 
     canvas.pack(side="left", fill="both", expand=True)
 
@@ -47,6 +65,11 @@ def create_scroll_container(parent: tk.Misc, *,
 
     canvas.bind("<Configure>", _resize_inner)
     scrollbar.pack(side="right", fill="y")
+
+    def _on_destroy(_event):
+        manager.unregister_canvas(canvas)
+
+    wrapper.bind("<Destroy>", _on_destroy, add="+")
 
     return ScrollContainer(wrapper=wrapper, canvas=canvas, frame=scrollable_frame, scrollbar=scrollbar, window_id=window_id)
 
@@ -98,12 +121,45 @@ class GlobalMousewheelManager:
                 canvas.unbind_all("<MouseWheel>")
 
 
-def _bind_mousewheel(canvas: tk.Canvas) -> None:
+def _bind_mousewheel(canvas: tk.Canvas) -> GlobalMousewheelManager:
     """Attach consistent mousewheel handlers to a canvas."""
     manager = GlobalMousewheelManager.get_instance()
     manager.register_canvas(canvas)
+    return manager
 
 
 def enable_global_mousewheel(widget: tk.Canvas) -> None:
     """Public helper to enable shared mousewheel behavior on any scrollable canvas."""
     _bind_mousewheel(widget)
+
+
+def destroy_scroll_container(container: Optional[ScrollContainer]) -> None:
+    """Best-effort destroy helper for scroll containers."""
+    if container is not None:
+        container.destroy()
+
+
+def create_page_scaffold(
+    parent: tk.Misc,
+    *,
+    title: str,
+    subtitle: str = "",
+    actions: Optional[List[dict[str, Any]]] = None,
+    use_scroll: bool = True,
+    padding: tuple[int, int] = (0, Spacing.LG),
+    bg: str = Colors.SURFACE,
+) -> PageScaffold:
+    """Convenience wrapper that builds a page root, header, and optional scroll body."""
+    root = tk.Frame(parent, bg=bg)
+    root.pack(fill=tk.BOTH, expand=True)
+
+    if use_scroll:
+        scroll = create_scroll_container(root, bg=bg, padding=padding)
+        body = scroll.frame
+    else:
+        scroll = None
+        body = tk.Frame(root, bg=bg)
+        body.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
+
+    header = DesignUtils.hero_header(body, title=title, subtitle=subtitle, actions=actions)
+    return PageScaffold(root=root, body=body, header=header, scroll=scroll)

@@ -99,7 +99,7 @@ class PINAuthentication:
 
         # CRITICAL FIX: Use longer, more secure PINs
         self._pin_length = 8  # Increased from 5 to 8 digits
-        self._pin_charset = string.digits  # Still digits for usability but longer
+        self._pin_charset = string.ascii_uppercase + string.digits  # Allow alphanumeric codes
 
     def _hash_pin(self, pin: str) -> str:
         """CRITICAL FIX: Hash PINs to prevent storage in plaintext."""
@@ -162,7 +162,7 @@ class PINAuthentication:
 
         # Validate PIN format
         if not self.validate_pin_format(pin):
-            return None, f"PIN must be exactly {self._pin_length} digits", 0
+            return None, f"PIN must be exactly {self._pin_length} characters", 0
 
         pin_hash = self._hash_pin(pin)
 
@@ -280,7 +280,7 @@ class PINAuthentication:
         Returns:
             True if PIN is valid format
         """
-        return len(pin) == self._pin_length and pin.isdigit()
+        return len(pin) == self._pin_length and pin.isalnum()
 
     def generate_device_name(self) -> str:
         """

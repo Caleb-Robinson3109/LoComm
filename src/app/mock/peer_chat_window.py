@@ -8,7 +8,7 @@ from tkinter import ttk
 import time
 
 from mock.peer_bridge import get_peer_bridge
-from utils.design_system import Colors
+from utils.design_system import Colors, ensure_styles_initialized
 
 _WINDOW_INSTANCE = None
 
@@ -18,8 +18,9 @@ class MockPeerChatWindow(tk.Toplevel):
 
     def __init__(self, master: tk.Misc, peer_name: str | None = None, on_disconnect=None):
         super().__init__(master)
-        self.peer_name = peer_name or "Mock Device"
-        self.title(self.peer_name)
+        ensure_styles_initialized()
+        self.peer_name = peer_name or "Mock Peer Chat"
+        self.title("Mock Peer Chat")
         self.geometry("460x520")
         self.minsize(420, 480)
         self.resizable(True, True)
@@ -28,7 +29,7 @@ class MockPeerChatWindow(tk.Toplevel):
 
         self._build_ui()
         self._bridge.register_peer_callback(self._handle_incoming)
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.protocol("WM_DELETE_WINDOW", self._trigger_disconnect)
         self._apply_theme()
 
     # ------------------------------------------------------------------ UI

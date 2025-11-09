@@ -30,3 +30,10 @@ class BasePage(tk.Frame):
     def on_hide(self):
         """Called when the page is hidden."""
         pass
+
+    def destroy(self):
+        try:
+            self.on_hide()
+        except Exception:
+            pass
+        return super().destroy()

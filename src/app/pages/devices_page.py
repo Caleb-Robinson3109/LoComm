@@ -37,6 +37,8 @@ class DevicesPage(BasePage):
         self._active_device_id: Optional[str] = None
         self._pin_modal: Optional[tk.Toplevel] = None
         self._pin_modal_frame: Optional[PINPairingFrame] = None
+        self._suppress_selection_event = False
+        self._last_selected_id: Optional[str] = None
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         self.main_body = scroll.frame
@@ -44,7 +46,7 @@ class DevicesPage(BasePage):
         DesignUtils.hero_header(
             self.main_body,
             title="Devices",
-            subtitle="Pair LoRa hardware, confirm PINs face-to-face, and monitor secure sessions."
+            subtitle="Pair LoRa hardware, confirm PINs face-to-face."
         )
         self._build_status_card(self.main_body)
         self._build_body()
@@ -103,24 +105,19 @@ class DevicesPage(BasePage):
         self._refresh_device_table()
 
     def _build_device_card(self, parent):
-        card, content = DesignUtils.card(parent, "Scan & select hardware", "Choose the device you want to pair")
-        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.LG))
-        card.pack_propagate(True)
-        header_bar = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        header_bar.pack(fill=tk.X, pady=(0, Spacing.SM))
-        tk.Label(
-            header_bar,
-            text="Available devices",
+        card = tk.Frame(
+            parent,
             bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(side=tk.LEFT)
-        DesignUtils.button(
-            header_bar,
-            text="Scan",
-            command=self._scan_for_devices,
-            variant="primary"
-        ).pack(side=tk.RIGHT)
+            highlightbackground=Colors.BORDER,
+            highlightthickness=1,
+            bd=0,
+        )
+        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.MD))
+        card.pack_propagate(False)
+        content = tk.Frame(card, bg=Colors.SURFACE_ALT)
+        content.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        table_wrapper = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        table_wrapper.pack(fill=tk.BOTH, expand=True)
 
         columns = ("Name", "Device ID", "Status")
         style = ttk.Style()
@@ -146,27 +143,47 @@ class DevicesPage(BasePage):
         )
 
         self.device_tree = ttk.Treeview(
-            content,
+            table_wrapper,
             columns=columns,
             show="headings",
             height=10,
             style="Devices.Treeview",
         )
-        for col, width in zip(columns, (220, 180, 140)):
-            self.device_tree.heading(col, text=col, anchor="w")
-            self.device_tree.column(col, anchor="w", width=width, stretch=True)
-        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=(Spacing.SM, 0))
+        column_width = 180
+        column_minwidth = 140
+        for col in columns:
+            self.device_tree.heading(col, text=col, anchor="center")
+            self.device_tree.column(
+                col,
+                anchor="center",
+                width=column_width,
+                minwidth=column_minwidth,
+                stretch=True,
+            )
+        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=(Spacing.SM, 0), pady=(Spacing.SM, Spacing.SM))
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
 
-        controls = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        controls.pack(fill=tk.X, pady=(Spacing.SM, 0))
-        button_group = tk.Frame(controls, bg=Colors.SURFACE_ALT)
-        button_group.pack(side=tk.RIGHT)
-        self.disconnect_btn = DesignUtils.button(button_group, text="Disconnect", command=self._disconnect_device, variant="danger")
-        self.disconnect_btn.pack(side=tk.RIGHT, padx=(Spacing.XS, 0))
-        self.disconnect_btn.configure(state="disabled")
-        self.connect_btn = DesignUtils.button(button_group, text="Connect", command=self._connect_selected_device, variant="secondary")
-        self.connect_btn.pack(side=tk.RIGHT)
+        footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
+        footer.pack(fill=tk.X)
+        button_holder = tk.Frame(footer, bg=Colors.SURFACE_ALT)
+        button_holder.pack(side=tk.RIGHT, pady=Spacing.XS, padx=Spacing.SM)
+        btn_width = 12
+        self.scan_btn = DesignUtils.button(
+            button_holder,
+            text="Scan",
+            command=self._scan_for_devices,
+            variant="primary",
+            width=btn_width,
+        )
+        self.scan_btn.pack(side=tk.LEFT)
+        self.connect_btn = DesignUtils.button(
+            button_holder,
+            text="Connect",
+            command=self._connect_selected_device,
+            variant="secondary",
+            width=btn_width,
+        )
+        self.connect_btn.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
         self.connect_btn.configure(state="disabled")
 
     def _refresh_device_table(self):
@@ -177,6 +194,10 @@ class DevicesPage(BasePage):
         devices = self.device_service.list_devices()
         for device in devices:
             self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row())
+        if devices:
+            # Re-select previous device if still present
+            target = self._last_selected_id if self._last_selected_id in self.device_tree.get_children() else devices[0].device_id
+            self._select_device_in_tree(target)
         if not devices:
             self.status_var.set("No mock devices defined. Edit mock/data/devices.json to add entries.")
 
@@ -185,6 +206,8 @@ class DevicesPage(BasePage):
         if self.is_scanning:
             return
         self.is_scanning = True
+        if hasattr(self, "scan_btn"):
+            self.scan_btn.configure(state="disabled", text="Scanning…")
         self._set_stage(DeviceStage.SCANNING)
         self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
 
@@ -197,6 +220,8 @@ class DevicesPage(BasePage):
             self.status_var.set(f"Discovered {len(newly_found)} new devices.")
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
+        if hasattr(self, "scan_btn"):
+            self.scan_btn.configure(state="normal", text="Scan")
 
     def _connect_selected_device(self):
         selected = self.device_tree.selection()
@@ -247,7 +272,9 @@ class DevicesPage(BasePage):
         if self.on_device_paired:
             self.on_device_paired("demo-device", label)
 
-    def _on_device_select(self, _event):
+    def _on_device_select(self, _event=None):
+        if self._suppress_selection_event:
+            return
         if not self.device_tree.selection():
             self.connect_btn.configure(state="disabled")
             return
@@ -258,15 +285,20 @@ class DevicesPage(BasePage):
         self.selected_device_var.set(f"{device.name} ({device.device_id})")
         self._active_device_name = device.name
         self._active_device_id = device.device_id
+        self._last_selected_id = device.device_id
         self._sync_connect_button_state()
 
     def _open_pin_modal(self, device_id: str, device_name: str):
         self._close_pin_modal()
         modal = tk.Toplevel(self)
-        modal.title(f"Pair {device_name}")
+        modal.title(f"Pair {device_name} - {device_id}")
         modal.configure(bg=Colors.SURFACE)
-        modal.geometry("540x650")
-        modal.minsize(480, 600)
+        base_width = 432
+        base_height = 378
+        width = int(base_width * 0.93)
+        height = int(base_height * 0.75)
+        modal.geometry(f"{width}x{height}")
+        modal.minsize(width, height)
         modal.resizable(True, True)
         modal.transient(self.winfo_toplevel())
         modal.grab_set()
@@ -304,16 +336,19 @@ class DevicesPage(BasePage):
             self.selected_device_var.set(label)
             self._active_device_name = label
         if stage == DeviceStage.READY:
-            self.selected_device_var.set("No device selected")
+            if not self._last_selected_id:
+                self.selected_device_var.set("No device selected")
             self._active_device_name = None
             self._active_device_id = None
-        if hasattr(self, "disconnect_btn"):
-            self.disconnect_btn.configure(state="normal" if stage == DeviceStage.CONNECTED else "disabled")
         self._sync_connect_button_state()
+        if stage in (DeviceStage.DISCONNECTED, DeviceStage.READY):
+            if self._last_selected_id:
+                self._select_device_in_tree(self._last_selected_id)
         if self._active_device_id:
             device = self.device_service.get_device(self._active_device_id)
             if device:
                 self.selected_device_var.set(f"{device.name} ({device.device_id})")
+                self._select_device_in_tree(device.device_id)
 
     # ------------------------------------------------------------------ #
     def on_show(self):
@@ -353,8 +388,6 @@ class DevicesPage(BasePage):
 
         # Update disconnect button state based on connection status
         is_connected = snapshot.stage == DeviceStage.CONNECTED
-        if hasattr(self, "disconnect_btn"):
-            self.disconnect_btn.configure(state="normal" if is_connected else "disabled")
         self._sync_connect_button_state()
 
     def _sync_connect_button_state(self):
@@ -367,15 +400,30 @@ class DevicesPage(BasePage):
         if not selection:
             self.connect_btn.configure(state="disabled")
             return
-        if self.connection_manager.is_connected():
-            self.connect_btn.configure(state="disabled")
-            return
         self.connect_btn.configure(state="normal")
+
+    def _select_device_in_tree(self, device_id: str | None):
+        if not device_id or not hasattr(self, "device_tree"):
+            return
+        if not self.device_tree.exists(device_id):
+            return
+        current = self.device_tree.selection()
+        if current and current[0] == device_id:
+            return
+        self._suppress_selection_event = True
+        self.device_tree.selection_set(device_id)
+        self.device_tree.focus(device_id)
+        self.device_tree.see(device_id)
+
+        def _release_and_notify():
+            self._suppress_selection_event = False
+            if self.device_tree.selection():
+                self._on_device_select()
+
+        self.after_idle(_release_and_notify)
 
     def destroy(self):
         self._unsubscribe_from_store()
         return super().destroy()
 
-
-# Backwards compatibility
 PairPage = DevicesPage

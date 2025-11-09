@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils, ThemeManager
+from utils.design_system import Colors, Typography, Spacing, DesignUtils
 
 
 class Sidebar(tk.Frame):
@@ -17,84 +17,57 @@ class Sidebar(tk.Frame):
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.SURFACE_SIDEBAR)
         self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
-        self.current_view = nav_items[0][0] if nav_items else "home"
         self.nav_items = nav_items
-
-        self._dark_mode = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
+        self.current_view = nav_items[0][0] if nav_items else "home"
 
         self._buttons: dict[str, ttk.Button] = {}
-        self._build_ui()
 
-    # ------------------------------------------------------------------ #
-    def _build_ui(self):
-        container = tk.Frame(self, bg=Colors.SURFACE_SIDEBAR)
-        container.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        self.container = tk.Frame(self, bg=Colors.SURFACE_SIDEBAR)
+        self.container.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
 
-        header = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
-        header.pack(fill=tk.X, pady=(0, Spacing.LG))
+        self._build_nav_sections()
+        self._build_footer()
+        self._update_active_button(self.current_view)
 
-        top_keys = []
-        bottom_keys = []
+    def _build_nav_sections(self):
+        self.nav_frame = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
+        self.nav_frame.pack(fill=tk.X)
+
+        self.bottom_frame = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
+        self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
+
+        top_items = []
+        bottom_items = []
         for key, label in self.nav_items:
             if key in ("settings", "about", "help"):
-                bottom_keys.append((key, label))
+                bottom_items.append((key, label))
             else:
-                top_keys.append((key, label))
+                top_items.append((key, label))
 
-        for key, label in top_keys:
-            if key == "mock":
-                tk.Frame(container, bg=Colors.DIVIDER, height=1).pack(fill=tk.X, pady=(Spacing.LG, Spacing.SM))
-            btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
+        self._render_nav_group(self.nav_frame, top_items)
+
+        self.spacer = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
+        self.spacer.pack(fill=tk.BOTH, expand=True)
+
+        self._render_nav_group(self.bottom_frame, bottom_items)
+
+    def _render_nav_group(self, parent, items):
+        for key, label in items:
+            btn = DesignUtils.create_nav_button(parent, label, lambda k=key: self._handle_nav_click(k))
             btn.pack(fill=tk.X, pady=(0, Spacing.SM))
             self._buttons[key] = btn
 
-        spacer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
-        spacer.pack(fill=tk.BOTH, expand=True)
-
-        for key, label in bottom_keys:
-            btn = DesignUtils.create_nav_button(container, label, lambda k=key: self._handle_nav_click(k))
-            btn.pack(fill=tk.X, pady=(0, Spacing.SM))
-            self._buttons[key] = btn
-
-        tk.Frame(container, bg=Colors.DIVIDER, height=1).pack(fill=tk.X, pady=(Spacing.LG, Spacing.MD))
-
-        footer = tk.Frame(container, bg=Colors.SURFACE_SIDEBAR)
-        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.LG, 0))
-        self.theme_button = tk.Frame(
+    def _build_footer(self):
+        footer = tk.Frame(self, bg=Colors.SURFACE_SIDEBAR)
+        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.XS, Spacing.XS))
+        tk.Label(
             footer,
-            bg=Colors.SURFACE_ALT,
-            highlightbackground=Colors.DIVIDER,
-            highlightthickness=1,
-            bd=0,
-            padx=Spacing.SM,
-            pady=Spacing.XXS
-        )
-        self.theme_button.pack(fill=tk.X, pady=(0, Spacing.XXS))
-        self.theme_button.bind("<Button-1>", self._handle_theme_toggle)
-        self.theme_icon = tk.Label(
-            self.theme_button,
-            text="",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)
-        )
-        self.theme_icon.pack(side=tk.LEFT, padx=(0, Spacing.XXS))
-        self.theme_icon.bind("<Button-1>", self._handle_theme_toggle)
-        self.theme_label = tk.Label(
-            self.theme_button,
-            text="",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
+            text="v2.1 Desktop",
+            bg=Colors.SURFACE_SIDEBAR,
+            fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-            padx=Spacing.SM
-        )
-        self.theme_label.pack(side=tk.LEFT)
-        self.theme_label.bind("<Button-1>", self._handle_theme_toggle)
-        self._refresh_theme_button()
-        tk.Label(footer, text="v2.1 Desktop", bg=Colors.SURFACE_SIDEBAR, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-
-        self._update_active_button("home")
+        ).pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.XXS))
 
     # ------------------------------------------------------------------ #
     def _update_active_button(self, active_view: str):
@@ -111,25 +84,6 @@ class Sidebar(tk.Frame):
         """Public helper so MainFrame can update selection when switching programmatically."""
         self.current_view = view_name
         self._update_active_button(view_name)
-
-    def _handle_theme_toggle(self, _event=None):
-        self._dark_mode.set(not self._dark_mode.get())
-        self._refresh_theme_button()
-        if self.on_theme_toggle:
-            self.on_theme_toggle(self._dark_mode.get())
-
-    def _refresh_theme_button(self):
-        """Update the appearance of the theme toggle pill."""
-        if not hasattr(self, "theme_button"):
-            return
-        is_dark = self._dark_mode.get()
-        icon = "●" if is_dark else "○"
-        label = "Dark mode On" if is_dark else "Dark mode Off"
-        bg = Colors.SURFACE_ALT if is_dark else Colors.SURFACE_SELECTED
-        fg = Colors.TEXT_PRIMARY
-        self.theme_button.configure(bg=bg)
-        self.theme_icon.configure(text=icon, bg=bg, fg=fg)
-        self.theme_label.configure(text=label, bg=bg, fg=fg)
 
     def set_status(self, status_text: str):
         """Compatibility stub so main_frame can call without popup badge."""

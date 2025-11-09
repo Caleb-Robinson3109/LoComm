@@ -353,7 +353,7 @@ class StatusManager:
 
     def can_send_messages(self) -> bool:
         """Check if messages can be sent."""
-        return self.is_connected() and bool(self._current_status.lower() in ["connected", "ready"])
+        return self.is_connected() and self.categorize_status(self._current_status) == "connected"
 
     def get_conversation_title(self) -> str:
         """Get the title for the current conversation."""

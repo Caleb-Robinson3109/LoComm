@@ -5,6 +5,7 @@ Provides consistent connection state management across all UI components.
 from typing import Optional, Callable, Dict, Any
 import threading
 from utils.status_manager import get_status_manager
+from utils.app_logger import get_logger
 
 
 class ConnectionManager:
@@ -20,6 +21,7 @@ class ConnectionManager:
         self._connection_callbacks: list[Callable[[bool, Optional[str], Optional[str]], None]] = []
         self._device_info_callbacks: list[Callable[[Optional[Dict[str, Any]]], None]] = []
         self._lock = threading.Lock()  # Thread safety
+        self._logger = get_logger("connection_manager")
 
     # ========== CONNECTION STATE MANAGEMENT ==========
 
@@ -104,7 +106,14 @@ class ConnectionManager:
             callback: Function receiving (is_connected, device_id, device_name)
         """
         with self._lock:
-            self._connection_callbacks.append(callback)
+            if callback not in self._connection_callbacks:
+                self._connection_callbacks.append(callback)
+
+    def unregister_connection_callback(self, callback: Callable[[bool, Optional[str], Optional[str]], None]):
+        """Remove a previously registered connection callback."""
+        with self._lock:
+            if callback in self._connection_callbacks:
+                self._connection_callbacks.remove(callback)
 
     def register_device_info_callback(self, callback: Callable[[Optional[Dict[str, Any]]], None]):
         """
@@ -114,22 +123,29 @@ class ConnectionManager:
             callback: Function receiving device info dict or None
         """
         with self._lock:
-            self._device_info_callbacks.append(callback)
+            if callback not in self._device_info_callbacks:
+                self._device_info_callbacks.append(callback)
+
+    def unregister_device_info_callback(self, callback: Callable[[Optional[Dict[str, Any]]], None]):
+        """Remove a previously registered device info callback."""
+        with self._lock:
+            if callback in self._device_info_callbacks:
+                self._device_info_callbacks.remove(callback)
 
     def _notify_connection_change(self):
         """Notify all registered callbacks about connection state change."""
         device_info = self._status_manager.get_current_device()
-        for callback in self._connection_callbacks:
+        for callback in list(self._connection_callbacks):
             try:
                 callback(device_info.is_connected, device_info.device_id, device_info.device_name)
             except Exception as e:
-                # Log callback errors but don't crash the application
-                print(f"Warning: Connection callback failed: {e}")
+                self._logger.warning("Connection callback failed: %s", e)
+                self.unregister_connection_callback(callback)
 
     def _notify_device_info_change(self):
         """Notify all registered callbacks about device info change."""
         device_info = self._status_manager.get_current_device()
-        for callback in self._device_info_callbacks:
+        for callback in list(self._device_info_callbacks):
             try:
                 if device_info.is_connected:
                     callback({
@@ -140,8 +156,8 @@ class ConnectionManager:
                 else:
                     callback(None)
             except Exception as e:
-                # Log callback errors but don't crash the application
-                print(f"Warning: Device info callback failed: {e}")
+                self._logger.warning("Device info callback failed: %s", e)
+                self.unregister_device_info_callback(callback)
 
     # ========== CONVENIENCE METHODS FOR UI COMPONENTS ==========
 

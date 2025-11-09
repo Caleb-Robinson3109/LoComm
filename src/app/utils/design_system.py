@@ -1,12 +1,15 @@
 """
 Locomm Design System v3
 Provides a layered token/component-based styling toolkit for the desktop app.
+(Buttons tuned for a slightly old-school desktop look.)
 """
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
 from dataclasses import dataclass
+import os
+import time
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +39,6 @@ class Palette:
 class Colors:
     """Runtime theme values (populated at runtime)."""
 
-    # Define all possible color attributes to avoid Pylance errors
     SURFACE = ""
     SURFACE_ALT = ""
     SURFACE_RAISED = ""
@@ -100,7 +102,7 @@ _THEME_DEFINITIONS = {
         "BUTTON_PRIMARY_BG": Palette.SIGNAL_BLUE,
         "BUTTON_PRIMARY_HOVER": Palette.SIGNAL_BLUE_DARK,
         "BUTTON_SECONDARY_BG": "#3F4758",
-        "BUTTON_GHOST_BG": "#00000000",
+        "BUTTON_GHOST_BG": "#262C34",
         "BG_PRIMARY": Palette.SLATE_900,
         "BG_SECONDARY": Palette.SLATE_800,
         "BG_TERTIARY": Palette.SLATE_700,
@@ -114,7 +116,7 @@ _THEME_DEFINITIONS = {
         "MESSAGE_SYSTEM_TEXT": Palette.CLOUD_500,
         "MESSAGE_BUBBLE_OWN_BG": Palette.SIGNAL_BLUE,
         "MESSAGE_BUBBLE_OTHER_BG": Palette.SLATE_800,
-        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.SLATE_800
+        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.SLATE_800,
     },
     "light": {
         "SURFACE": Palette.WHITE,
@@ -136,7 +138,7 @@ _THEME_DEFINITIONS = {
         "BUTTON_PRIMARY_BG": Palette.SIGNAL_BLUE,
         "BUTTON_PRIMARY_HOVER": Palette.SIGNAL_BLUE_DARK,
         "BUTTON_SECONDARY_BG": Palette.CLOUD_200,
-        "BUTTON_GHOST_BG": "#00000000",
+        "BUTTON_GHOST_BG": Palette.CLOUD_100,
         "BG_PRIMARY": Palette.WHITE,
         "BG_SECONDARY": Palette.CLOUD_050,
         "BG_TERTIARY": Palette.CLOUD_100,
@@ -150,8 +152,8 @@ _THEME_DEFINITIONS = {
         "MESSAGE_SYSTEM_TEXT": Palette.CLOUD_500,
         "MESSAGE_BUBBLE_OWN_BG": Palette.SIGNAL_BLUE,
         "MESSAGE_BUBBLE_OTHER_BG": Palette.CLOUD_100,
-        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_050
-    }
+        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_050,
+    },
 }
 
 
@@ -171,10 +173,10 @@ _apply_theme_definition("dark")
 class Typography:
     """Typography scale (8pt grid) with system fallbacks."""
 
-    # Primary fonts (with fallbacks handled by OS) - configurable constants
-    FONT_UI = "SF Pro Display"  # Will fall back to system sans-serif
-    FONT_MONO = "JetBrains Mono"  # Will fall back to system monospace
+    FONT_UI = "SF Pro Display"
+    FONT_MONO = "JetBrains Mono"
 
+    SIZE_10 = 10
     SIZE_12 = 12
     SIZE_14 = 14
     SIZE_16 = 16
@@ -184,17 +186,15 @@ class Typography:
     SIZE_32 = 32
 
     WEIGHT_REGULAR = "normal"
-    WEIGHT_MEDIUM = "normal"  # Tkinter does not support "medium"
+    WEIGHT_MEDIUM = "normal"
     WEIGHT_BOLD = "bold"
 
     @staticmethod
     def font_ui(size: int, weight: str = "normal"):
-        """Create a UI font with proper fallback."""
         return (Typography.FONT_UI, size, weight)
 
     @staticmethod
     def font_mono(size: int, weight: str = "normal"):
-        """Create a monospace font with proper fallback."""
         return (Typography.FONT_MONO, size, weight)
 
 
@@ -226,7 +226,7 @@ class Spacing:
     MESSAGE_GROUP_GAP = Space.XXS
     MESSAGE_MARGIN = (Space.SM, Space.XXS)
     CHAT_AREA_PADDING = Space.MD
-    SIDEBAR_WIDTH = int(260 * 0.85)
+    SIDEBAR_WIDTH = int(260 * 0.85 * 0.9 * 0.92)
     HEADER_HEIGHT = 64
     XXS = Space.XXS
     XS = Space.XXS
@@ -272,21 +272,63 @@ class ThemeManager:
             return
 
         style = ttk.Style()
+        # Clam is fine and supports borders; keeps things consistent.
         if "clam" in style.theme_names():
             style.theme_use("clam")
 
-        default_font = (Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)
-        style.configure("TLabel", background=Colors.SURFACE, foreground=Colors.TEXT_PRIMARY, font=default_font)
+        default_font = (
+            Typography.FONT_UI,
+            Typography.SIZE_14,
+            Typography.WEIGHT_REGULAR,
+        )
+        style.configure(
+            "TLabel",
+            background=Colors.SURFACE,
+            foreground=Colors.TEXT_PRIMARY,
+            font=default_font,
+        )
         style.configure("TFrame", background=Colors.SURFACE)
 
-        # Buttons -----------------------------------------------------------------
-        cls._register_button(style, "Locomm.Primary.TButton", Colors.BUTTON_PRIMARY_BG, Colors.BUTTON_PRIMARY_HOVER, Colors.SURFACE)
-        cls._register_button(style, "Locomm.Secondary.TButton", Colors.BUTTON_SECONDARY_BG, Colors.SURFACE_SELECTED, Colors.TEXT_PRIMARY)
-        cls._register_button(style, "Locomm.Ghost.TButton", Colors.BUTTON_GHOST_BG, Colors.SURFACE_SELECTED, Colors.TEXT_PRIMARY, border=0)
-        cls._register_button(style, "Locomm.Danger.TButton", Colors.STATE_ERROR, "#E1464B", Colors.SURFACE)
-        cls._register_button(style, "Locomm.Success.TButton", Colors.STATE_SUCCESS, "#00B398", Colors.SURFACE)
+        # ------------------------------------------------------------------
+        # BUTTONS: classic / old-school desktop look
+        # ------------------------------------------------------------------
+        # Square corners, visible borders, raised, with pressed "sunken" effect.
+        button_configs = {
+            "Locomm.Primary.TButton": dict(
+                bg=Colors.BUTTON_PRIMARY_BG,
+                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
+                fg=Colors.SURFACE,
+                border=2,
+            ),
+            "Locomm.Secondary.TButton": dict(
+                bg=Colors.BUTTON_SECONDARY_BG,
+                hover_bg=Colors.SURFACE_SELECTED,
+                fg=Colors.TEXT_PRIMARY,
+                border=2,
+            ),
+            "Locomm.Ghost.TButton": dict(
+                bg=Colors.BUTTON_GHOST_BG,
+                hover_bg=Colors.SURFACE_SELECTED,
+                fg=Colors.TEXT_PRIMARY,
+                border=2,
+            ),
+            "Locomm.Danger.TButton": dict(
+                bg=Colors.STATE_ERROR,
+                hover_bg="#E1464B",
+                fg=Colors.SURFACE,
+                border=2,
+            ),
+            "Locomm.Success.TButton": dict(
+                bg=Colors.STATE_SUCCESS,
+                hover_bg="#00B398",
+                fg=Colors.SURFACE,
+                border=2,
+            ),
+        }
+        for style_name, cfg in button_configs.items():
+            cls._register_button(style, style_name, **cfg)
 
-        # Navigation buttons (flat, left aligned)
+        # Navigation buttons (slightly flatter, left-aligned; keep simple)
         style.configure(
             "Locomm.Nav.TButton",
             background=Colors.SURFACE,
@@ -294,12 +336,16 @@ class ThemeManager:
             relief="flat",
             anchor="w",
             padding=(Space.MD, Space.SM),
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_14,
+                Typography.WEIGHT_MEDIUM,
+            ),
         )
         style.map(
             "Locomm.Nav.TButton",
             background=[("active", Colors.SURFACE_SELECTED)],
-            foreground=[("active", Colors.TEXT_PRIMARY)]
+            foreground=[("active", Colors.TEXT_PRIMARY)],
         )
         style.configure(
             "Locomm.NavActive.TButton",
@@ -308,7 +354,11 @@ class ThemeManager:
             relief="flat",
             anchor="w",
             padding=(Space.MD, Space.SM),
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD)
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_14,
+                Typography.WEIGHT_BOLD,
+            ),
         )
 
         # Entry / input fields
@@ -318,39 +368,120 @@ class ThemeManager:
             foreground=Colors.TEXT_PRIMARY,
             insertcolor=Colors.TEXT_PRIMARY,
             padding=(Space.SM, int(Space.XS / 1.5)),
-            bordercolor=Colors.BORDER
+            bordercolor=Colors.BORDER,
+            borderwidth=1,
+            relief="solid",
         )
         style.map(
             "Locomm.Input.TEntry",
             fieldbackground=[("focus", Colors.SURFACE_SELECTED)],
-            foreground=[("disabled", Colors.TEXT_MUTED)]
+            foreground=[("disabled", Colors.TEXT_MUTED)],
+        )
+        style.configure(
+            "Locomm.PinEntry.TEntry",
+            fieldbackground=Colors.SURFACE_ALT,
+            foreground=Colors.TEXT_PRIMARY,
+            insertcolor=Colors.TEXT_PRIMARY,
+            padding=(2, 2),
+            bordercolor=Colors.SURFACE_SELECTED,
+            borderwidth=1,
+            relief="solid",
+        )
+        style.map(
+            "Locomm.PinEntry.TEntry",
+            fieldbackground=[("focus", Colors.SURFACE_SELECTED)],
         )
 
-        # Labels ------------------------------------------------------------------
-        style.configure("Locomm.H1.TLabel", font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD))
-        style.configure("Locomm.H2.TLabel", font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD))
-        style.configure("Locomm.H3.TLabel", font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM))
-        style.configure("Locomm.Caption.TLabel", font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM), foreground=Colors.TEXT_MUTED)
-        # Legacy style aliases
-        style.configure('Header.TLabel', font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD), foreground=Colors.TEXT_PRIMARY, background=Colors.SURFACE)
-        style.configure('SubHeader.TLabel', font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM), foreground=Colors.TEXT_SECONDARY, background=Colors.SURFACE)
-        style.configure('Body.TLabel', font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR), foreground=Colors.TEXT_PRIMARY, background=Colors.SURFACE)
-        style.configure('Small.TLabel', font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR), foreground=Colors.TEXT_MUTED, background=Colors.SURFACE)
+        # Labels
+        style.configure(
+            "Locomm.H1.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_24,
+                Typography.WEIGHT_BOLD,
+            ),
+        )
+        style.configure(
+            "Locomm.H2.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_20,
+                Typography.WEIGHT_BOLD,
+            ),
+        )
+        style.configure(
+            "Locomm.H3.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_16,
+                Typography.WEIGHT_MEDIUM,
+            ),
+        )
+        style.configure(
+            "Locomm.Caption.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_MEDIUM,
+            ),
+            foreground=Colors.TEXT_MUTED,
+        )
+        # Legacy aliases
+        style.configure(
+            "Header.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_20,
+                Typography.WEIGHT_BOLD,
+            ),
+            foreground=Colors.TEXT_PRIMARY,
+            background=Colors.SURFACE,
+        )
+        style.configure(
+            "SubHeader.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_16,
+                Typography.WEIGHT_MEDIUM,
+            ),
+            foreground=Colors.TEXT_SECONDARY,
+            background=Colors.SURFACE,
+        )
+        style.configure(
+            "Body.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_14,
+                Typography.WEIGHT_REGULAR,
+            ),
+            foreground=Colors.TEXT_PRIMARY,
+            background=Colors.SURFACE,
+        )
+        style.configure(
+            "Small.TLabel",
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_REGULAR,
+            ),
+            foreground=Colors.TEXT_MUTED,
+            background=Colors.SURFACE,
+        )
 
-        # Cards / sections
+        # Card / section frames
         style.configure(
             "Locomm.Card.TFrame",
             background=Colors.SURFACE_ALT,
             bordercolor=Colors.BORDER,
-            relief="flat",
-            borderwidth=1
+            relief="solid",
+            borderwidth=1,
         )
         style.configure(
             "Locomm.Section.TFrame",
             background=Colors.SURFACE_ALT,
             bordercolor=Colors.BORDER,
-            relief="flat",
-            borderwidth=1
+            relief="solid",
+            borderwidth=1,
         )
 
         # Badges
@@ -359,12 +490,24 @@ class ThemeManager:
             background=Colors.BUTTON_SECONDARY_BG,
             foreground=Colors.TEXT_PRIMARY,
             padding=(Space.SM, int(Space.XS)),
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_MEDIUM,
+            ),
         )
 
-        # Backwards compatibility styles (legacy names)
-        style.configure("Primary.TButton", background=Colors.BUTTON_PRIMARY_BG, foreground=Colors.SURFACE)
-        style.configure("Secondary.TButton", background=Colors.BUTTON_SECONDARY_BG, foreground=Colors.TEXT_PRIMARY)
+        # Backwards compatibility styles
+        style.configure(
+            "Primary.TButton",
+            background=Colors.BUTTON_PRIMARY_BG,
+            foreground=Colors.SURFACE,
+        )
+        style.configure(
+            "Secondary.TButton",
+            background=Colors.BUTTON_SECONDARY_BG,
+            foreground=Colors.TEXT_PRIMARY,
+        )
 
         cls._initialized = True
 
@@ -373,21 +516,45 @@ class ThemeManager:
         return cls._current_mode
 
     @staticmethod
-    def _register_button(style: ttk.Style, style_name: str, bg: str, hover_bg: str, fg: str, border: int = 0):
+    def _register_button(
+        style: ttk.Style,
+        style_name: str,
+        bg: str,
+        hover_bg: str,
+        fg: str,
+        border: int = 2,
+    ):
+        """
+        Old-school desktop style buttons:
+        - visible solid border
+        - raised by default
+        - sunken when pressed
+        - square corners (ttk doesn't support radius; we keep it simple)
+        """
         style.configure(
             style_name,
             background=bg,
             foreground=fg,
-            padding=(Space.MD, Space.SM),
+            padding=(Space.MD, Space.XXS),
             borderwidth=border,
-            focusthickness=0,
-            focuscolor=bg,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM)
+            relief="raised",
+            focusthickness=1,
+            focuscolor=Colors.BORDER,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_14,
+                Typography.WEIGHT_MEDIUM,
+            ),
         )
         style.map(
             style_name,
-            background=[("active", hover_bg), ("disabled", Colors.BUTTON_SECONDARY_BG)],
-            foreground=[("disabled", Colors.TEXT_MUTED)]
+            background=[
+                ("active", hover_bg),
+                ("pressed", hover_bg),
+                ("disabled", Colors.SURFACE_ALT),
+            ],
+            foreground=[("disabled", Colors.TEXT_MUTED)],
+            relief=[("pressed", "sunken"), ("!pressed", "raised")],
         )
 
     @classmethod
@@ -412,20 +579,23 @@ class DesignUtils:
     """Factory helpers that return styled widgets."""
 
     @staticmethod
-    def button(parent, text: str, command=None, variant: str = "primary", width: int | None = None):
+    def button(
+        parent,
+        text: str,
+        command=None,
+        variant: str = "primary",
+        width: int | None = None,
+    ):
         ThemeManager.ensure()
-        style_name = ThemeManager.BUTTON_STYLES.get(variant, "Locomm.Primary.TButton")
-        # Create button with proper type handling
-        if command is None:
-            if width is None:
-                return ttk.Button(parent, text=text, style=style_name)
-            else:
-                return ttk.Button(parent, text=text, style=style_name, width=width)
-        else:
-            if width is None:
-                return ttk.Button(parent, text=text, command=command, style=style_name)
-            else:
-                return ttk.Button(parent, text=text, command=command, style=style_name, width=width)
+        style_name = ThemeManager.BUTTON_STYLES.get(
+            variant, "Locomm.Primary.TButton"
+        )
+        kwargs = {"text": text, "style": style_name}
+        if command is not None:
+            kwargs["command"] = command
+        if width is not None:
+            kwargs["width"] = width
+        return ttk.Button(parent, **kwargs)
 
     @staticmethod
     def pill(parent, text: str, variant: str = "info"):
@@ -442,9 +612,13 @@ class DesignUtils:
             text=text,
             bg=bg,
             fg=fg,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_MEDIUM,
+            ),
             padx=Space.SM,
-            pady=int(Space.XS / 2)
+            pady=int(Space.XS / 2),
         )
         label.configure(relief="flat")
         return label
@@ -452,46 +626,101 @@ class DesignUtils:
     @staticmethod
     def card(parent, title: str, subtitle: str = "", actions: list | None = None):
         ThemeManager.ensure()
-        frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.BORDER, highlightthickness=1, bd=0)
+        frame = tk.Frame(
+            parent,
+            bg=Colors.SURFACE_ALT,
+            highlightbackground=Colors.BORDER,
+            highlightthickness=1,
+            bd=0,
+        )
         frame.pack_propagate(False)
 
         header = tk.Frame(frame, bg=Colors.SURFACE_ALT)
         header.pack(fill=tk.X, pady=(Space.SM, 0), padx=Space.MD)
 
-        tk.Label(header, text=title, bg=Colors.SURFACE_ALT,
-                 fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        tk.Label(
+            header,
+            text=title,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_16,
+                Typography.WEIGHT_BOLD,
+            ),
+        ).pack(anchor="w")
         if subtitle:
-            tk.Label(header, text=subtitle, bg=Colors.SURFACE_ALT,
-                     fg=Colors.TEXT_MUTED,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
+            tk.Label(
+                header,
+                text=subtitle,
+                bg=Colors.SURFACE_ALT,
+                fg=Colors.TEXT_MUTED,
+                font=(
+                    Typography.FONT_UI,
+                    Typography.SIZE_12,
+                    Typography.WEIGHT_REGULAR,
+                ),
+            ).pack(anchor="w", pady=(Space.XXS, 0))
 
         if actions:
             actions_frame = tk.Frame(frame, bg=Colors.SURFACE_ALT)
-            actions_frame.pack(fill=tk.X, padx=Space.MD, pady=(Space.XS, Space.SM))
+            actions_frame.pack(
+                fill=tk.X, padx=Space.MD, pady=(Space.XS, Space.SM)
+            )
             for action in actions:
                 btn = DesignUtils.button(actions_frame, **action)
                 btn.pack(side=tk.LEFT, padx=(0, Space.SM))
 
         body = tk.Frame(frame, bg=Colors.SURFACE_ALT)
-        body.pack(fill=tk.BOTH, expand=True, padx=Space.MD, pady=(0, Space.MD))
+        body.pack(
+            fill=tk.BOTH, expand=True, padx=Space.MD, pady=(0, Space.MD)
+        )
         return frame, body
 
     @staticmethod
-    def section(parent, title: str, description: str = "", icon: str | None = None):
+    def section(
+        parent,
+        title: str,
+        description: str = "",
+        icon: str | None = None,
+    ):
         ThemeManager.ensure()
-        container = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.DIVIDER, highlightthickness=1, bd=0)
+        container = tk.Frame(
+            parent,
+            bg=Colors.SURFACE_ALT,
+            highlightbackground=Colors.DIVIDER,
+            highlightthickness=1,
+            bd=0,
+        )
         container.pack(fill=tk.X, pady=(0, Space.LG))
 
         header = tk.Frame(container, bg=Colors.SURFACE_ALT)
         header.pack(fill=tk.X, padx=Space.LG, pady=(Space.MD, Space.SM))
 
         title_text = title if not icon else f"{icon} {title}"
-        tk.Label(header, text=title_text, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD)).pack(anchor="w")
+        tk.Label(
+            header,
+            text=title_text,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_18,
+                Typography.WEIGHT_BOLD,
+            ),
+        ).pack(anchor="w")
         if description:
-            tk.Label(header, text=description, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
+            tk.Label(
+                header,
+                text=description,
+                bg=Colors.SURFACE_ALT,
+                fg=Colors.TEXT_SECONDARY,
+                font=(
+                    Typography.FONT_UI,
+                    Typography.SIZE_12,
+                    Typography.WEIGHT_REGULAR,
+                ),
+            ).pack(anchor="w", pady=(Space.XXS, 0))
 
         body = tk.Frame(container, bg=Colors.SURFACE_ALT)
         body.pack(fill=tk.X, padx=Space.LG, pady=(0, Space.LG))
@@ -501,26 +730,83 @@ class DesignUtils:
     def stat_block(parent, label: str, value: str, helper: str = ""):
         block = tk.Frame(parent, bg=Colors.SURFACE_RAISED)
         block.pack(fill=tk.X, padx=0, pady=(0, Space.SM))
-        tk.Label(block, text=label.upper(), bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        tk.Label(block, text=value, bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_20, Typography.WEIGHT_BOLD)).pack(anchor="w", pady=(Space.XXS, 0))
+        tk.Label(
+            block,
+            text=label.upper(),
+            bg=Colors.SURFACE_RAISED,
+            fg=Colors.TEXT_MUTED,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_MEDIUM,
+            ),
+        ).pack(anchor="w")
+        tk.Label(
+            block,
+            text=value,
+            bg=Colors.SURFACE_RAISED,
+            fg=Colors.TEXT_PRIMARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_20,
+                Typography.WEIGHT_BOLD,
+            ),
+        ).pack(anchor="w", pady=(Space.XXS, 0))
         if helper:
-            tk.Label(block, text=helper, bg=Colors.SURFACE_RAISED, fg=Colors.TEXT_SECONDARY,
-                     font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="w")
+            tk.Label(
+                block,
+                text=helper,
+                bg=Colors.SURFACE_RAISED,
+                fg=Colors.TEXT_SECONDARY,
+                font=(
+                    Typography.FONT_UI,
+                    Typography.SIZE_12,
+                    Typography.WEIGHT_REGULAR,
+                ),
+            ).pack(anchor="w")
         return block
 
     @staticmethod
-    def hero_header(parent, title: str, subtitle: str, actions: list | None = None):
-        container = tk.Frame(parent, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.XXS)
-        container.pack(fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS))
+    def hero_header(
+        parent,
+        title: str,
+        subtitle: str,
+        actions: list | None = None,
+    ):
+        container = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Spacing.XXS,
+        )
+        container.pack(
+            fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS)
+        )
         text_wrap = tk.Frame(container, bg=Colors.SURFACE)
         text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        tk.Label(text_wrap, text=title, bg=Colors.SURFACE, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD)).pack(anchor="w")
-        tk.Label(text_wrap, text=subtitle, bg=Colors.SURFACE, fg=Colors.TEXT_SECONDARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XS, 0))
+        tk.Label(
+            text_wrap,
+            text=title,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_24,
+                Typography.WEIGHT_BOLD,
+            ),
+        ).pack(anchor="w")
+        tk.Label(
+            text_wrap,
+            text=subtitle,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_14,
+                Typography.WEIGHT_REGULAR,
+            ),
+        ).pack(anchor="w", pady=(Space.XS, 0))
 
         if actions:
             action_frame = tk.Frame(container, bg=Colors.SURFACE)
@@ -532,16 +818,26 @@ class DesignUtils:
         return container
 
     @staticmethod
-    def create_styled_button(parent, text: str, command=None, style: str = 'Locomm.Primary.TButton'):
+    def create_styled_button(
+        parent,
+        text: str,
+        command=None,
+        style: str = "Locomm.Primary.TButton",
+    ):
         """Backwards-compatible helper."""
         ThemeManager.ensure()
-        if command is None:
-            return ttk.Button(parent, text=text, style=style)
-        else:
-            return ttk.Button(parent, text=text, command=command, style=style)
+        kwargs = {"text": text, "style": style}
+        if command is not None:
+            kwargs["command"] = command
+        return ttk.Button(parent, **kwargs)
 
     @staticmethod
-    def create_styled_label(parent, text: str, style: str = 'Body.TLabel', **kwargs):
+    def create_styled_label(
+        parent,
+        text: str,
+        style: str = "Body.TLabel",
+        **kwargs,
+    ):
         ThemeManager.ensure()
         return ttk.Label(parent, text=text, style=style, **kwargs)
 
@@ -551,21 +847,133 @@ class DesignUtils:
         return ttk.Entry(parent, style="Locomm.Input.TEntry", **kwargs)
 
     @staticmethod
+    def create_pin_entry(parent, **kwargs):
+        ThemeManager.ensure()
+        return ttk.Entry(parent, style="Locomm.PinEntry.TEntry", **kwargs)
+
+    @staticmethod
     def create_nav_button(parent, text: str, command=None):
         ThemeManager.ensure()
-        if command is None:
-            return ttk.Button(parent, text=text, style="Locomm.Nav.TButton")
-        else:
-            return ttk.Button(parent, text=text, command=command, style="Locomm.Nav.TButton")
+        kwargs = {"text": text, "style": "Locomm.Nav.TButton"}
+        if command is not None:
+            kwargs["command"] = command
+        return ttk.Button(parent, **kwargs)
 
     @staticmethod
     def create_message_row(parent, title: str, value: str):
         row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         row.pack(fill=tk.X, pady=(0, Space.SM))
-        tk.Label(row, text=title, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_MUTED,
-                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        tk.Label(row, text=value, bg=Colors.SURFACE_ALT, fg=Colors.TEXT_PRIMARY,
-                 font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
+        tk.Label(
+            row,
+            text=title,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_12,
+                Typography.WEIGHT_MEDIUM,
+            ),
+        ).pack(anchor="w")
+        tk.Label(
+            row,
+            text=value,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(
+                Typography.FONT_UI,
+                Typography.SIZE_16,
+                Typography.WEIGHT_MEDIUM,
+            ),
+        ).pack(anchor="w")
+        return row
+
+    @staticmethod
+    def create_message_bubble(
+        parent: tk.Frame,
+        *,
+        sender: str,
+        message: str,
+        timestamp: float,
+        is_self: bool,
+        wraplength: int,
+    ):
+        """Render a chat bubble (self or peer)."""
+        container = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        container.pack(fill=tk.X, expand=True, pady=(Space.XXS, Space.XXS), padx=(Space.MD, Space.MD))
+
+        content = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        content.pack(fill=tk.X, expand=True, anchor="e" if is_self else "w")
+
+        if is_self:
+            anchor = "e"
+            bubble_bg = Colors.BUTTON_PRIMARY_BG
+            text_fg = Colors.SURFACE
+            name_fg = Colors.TEXT_MUTED
+            name_padx = (0, Space.MD)
+            bubble_padx = (0, Space.MD)
+            msg_justify = "right"
+            timestamp_fg = Colors.TEXT_MUTED
+        else:
+            anchor = "w"
+            bubble_bg = Colors.STATE_SUCCESS
+            text_fg = Colors.SURFACE
+            name_fg = Colors.TEXT_PRIMARY
+            name_padx = (Spacing.LG, 0)
+            bubble_padx = (Spacing.LG, 0)
+            msg_justify = "left"
+            timestamp_fg = Colors.TEXT_MUTED
+
+        tk.Label(
+            content,
+            text=sender,
+            bg=Colors.SURFACE_ALT,
+            fg=name_fg,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor=anchor, padx=name_padx, pady=(0, 1))
+
+        bubble = tk.Frame(content, bg=bubble_bg, padx=int(Space.MD * 0.75), pady=int(Space.XS * 0.8))
+        bubble.pack(anchor=anchor, padx=bubble_padx)
+
+        tk.Label(
+            bubble,
+            text=message,
+            bg=bubble_bg,
+            fg=text_fg,
+            justify=msg_justify,
+            wraplength=wraplength,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack()
+
+        tk.Label(
+            content,
+            text=time.strftime("%H:%M", time.localtime(timestamp)),
+            bg=Colors.SURFACE_ALT,
+            fg=timestamp_fg,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(anchor=anchor, padx=name_padx, pady=(2, 0))
+
+    @staticmethod
+    def create_system_message(parent: tk.Frame, message: str, timestamp: float):
+        row = tk.Frame(parent, bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG, padx=Space.LG, pady=Space.XS)
+        row.pack(fill=tk.X, padx=Space.MD, pady=(Space.SM, Space.XXS))
+
+        tk.Label(
+            row,
+            text=message,
+            bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG,
+            fg=Colors.TEXT_SECONDARY,
+            wraplength=720,
+            justify="center",
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(fill=tk.X, pady=(0, Space.XXS))
+
+        tk.Label(
+            row,
+            text=time.strftime("%H:%M", time.localtime(timestamp)),
+            bg=Colors.MESSAGE_BUBBLE_SYSTEM_BG,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(fill=tk.X)
         return row
 
 
@@ -575,10 +983,19 @@ class DesignUtils:
 class AppConfig:
     """Application-wide configuration constants"""
 
-    # Debug flag - set to True for verbose logging
     DEBUG = False
-    STATUS_CONNECTED_KEYWORDS = {"ready", "connected (mock)", "message from"}
-    STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid pairing code"}
+    STATUS_CONNECTED_KEYWORDS = {
+        "ready",
+        "connected",
+        "connected to",
+        "connected (mock)",
+        "message from",
+    }
+    STATUS_DISCONNECTED_KEYWORDS = {
+        "disconnected",
+        "connection failed",
+        "invalid pairing code",
+    }
     STATUS_ERROR_KEYWORDS = {"failed", "error", "invalid"}
 
     STATUS_DISCONNECTED = "Disconnected"
@@ -592,8 +1009,8 @@ class AppConfig:
 
     WINDOW_WIDTH = 1200
     WINDOW_HEIGHT = 820
-    MIN_WINDOW_WIDTH = 1024
-    MIN_WINDOW_HEIGHT = 720
+    MIN_WINDOW_WIDTH = 848
+    MIN_WINDOW_HEIGHT = 648
     APP_TITLE = "Locomm"
 
     STATUS_UPDATE_DELAY = 2000
@@ -605,8 +1022,8 @@ class AppConfig:
 
     CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{device}.txt"
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
-    WINDOW_WIDTH_RATIO = 0.714
-    WINDOW_HEIGHT_RATIO = 0.9
+    WINDOW_WIDTH_RATIO = 0.595502
+    WINDOW_HEIGHT_RATIO = 0.817938
 
 
 # Legacy exports for compatibility
@@ -630,6 +1047,3 @@ STATUS_AWAITING_PEER = AppConfig.STATUS_AWAITING_PEER
 STATUS_NOT_CONNECTED = AppConfig.STATUS_NOT_CONNECTED
 CHAT_EXPORT_FILENAME_PATTERN = AppConfig.CHAT_EXPORT_FILENAME_PATTERN
 NOTIFICATION_MESSAGE_PATTERN = AppConfig.NOTIFICATION_MESSAGE_PATTERN
-
-import os
-USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")

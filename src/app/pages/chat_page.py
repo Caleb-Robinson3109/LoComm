@@ -9,8 +9,10 @@ from utils.design_system import Colors, Typography, DesignUtils, Space, Spacing
 from utils.status_manager import get_status_manager
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from utils.ui_helpers import create_scroll_container, enable_global_mousewheel
+from utils.app_logger import get_logger
 from .base_page import BasePage, PageContext
 
+logger = get_logger(__name__)
 
 class ChatPage(BasePage):
     """Modern chat UI with fixed composer and scrollable history."""
@@ -58,9 +60,9 @@ class ChatPage(BasePage):
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
-            padx=Space.LG,
+            padx=Spacing.SM,
         )
-        title_wrap.pack(fill=tk.X, pady=(int(Space.LG), int(Space.SM)))
+        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
         tk.Label(
             title_wrap,
@@ -72,10 +74,7 @@ class ChatPage(BasePage):
 
         tk.Label(
             title_wrap,
-            text=(
-                "Secure LoRa conversations stay local; pair once, keep trusting "
-                "devices, and clear history with a single tap."
-            ),
+            text="Secure end to end conversations.",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
@@ -96,6 +95,7 @@ class ChatPage(BasePage):
         )
         header.grid(row=0, column=0, sticky="ew")
 
+        badge_width = 12
         self.connection_badge = tk.Label(
             header,
             text="Disconnected",
@@ -108,6 +108,7 @@ class ChatPage(BasePage):
             ),
             padx=Space.MD,
             pady=int(Space.XS / 2),
+            width=badge_width,
         )
         self.connection_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
 
@@ -133,7 +134,7 @@ class ChatPage(BasePage):
             text="Disconnect",
             command=self._handle_disconnect,
             variant="danger",
-            width=16,
+            width=badge_width,
         )
         self.disconnect_button.pack(side=tk.RIGHT, padx=(0, Space.XL))
         self.disconnect_button.configure(state=tk.DISABLED)
@@ -165,12 +166,12 @@ class ChatPage(BasePage):
         self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
 
         # Keep scrollregion updated when contents change
-        self.history_frame.bind(
-            "<Configure>",
-            lambda e: self._history_canvas.configure(
-                scrollregion=self._history_canvas.bbox("all")
-            ),
-        )
+        def _sync_scrollregion(event, canvas=self._history_canvas):
+            canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+
+        self.history_frame.bind("<Configure>", _sync_scrollregion)
 
         # Embed the frame into the canvas and remember the window ID
         self._history_window = self._history_canvas.create_window(
@@ -282,41 +283,6 @@ class ChatPage(BasePage):
         # -------- Regular messages (self / peer) --------------------------
         is_self = sender == self._get_local_device_name()
 
-        bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
-        # Outer padding gives a consistent page margin; left messages hug left,
-        # right messages hug right inside that margin.
-        bubble_row.pack(
-            fill=tk.X,
-            expand=True,
-            pady=(Space.XXS, Space.XXS),
-            padx=(Space.MD, Space.MD),
-        )
-        bubble_row.grid_columnconfigure(0, weight=1)
-        bubble_row.grid_columnconfigure(1, weight=1)
-
-        # Style per side
-        if is_self:
-            text_anchor = "e"
-            bubble_bg = Colors.BUTTON_PRIMARY_BG
-            text_fg = Colors.SURFACE
-            name_fg = Colors.TEXT_MUTED  # distinguish from bubble
-            name_padx = (0, Space.MD)
-            bubble_padx = (0, Space.MD)
-            msg_justify = "right"
-        else:
-            text_anchor = "w"
-            bubble_bg = Colors.STATE_SUCCESS
-            text_fg = Colors.SURFACE
-            name_fg = Colors.TEXT_PRIMARY
-            name_padx = (Spacing.LG, 0)
-            bubble_padx = (Spacing.LG, 0)
-            msg_justify = "left"
-
-        # Slightly tighter bubbles
-        pad_x = int(Space.MD * 0.75)
-        pad_y = int(Space.XS * 0.8)
-
-        # Dynamic wrap length (kept modest so bubbles don't feel huge)
         canvas_width = self._history_canvas.winfo_width()
         if canvas_width > 1:
             wrap_length = int(canvas_width * 0.6)
@@ -324,74 +290,15 @@ class ChatPage(BasePage):
             wrap_length = 340
         wrap_length = max(260, min(420, wrap_length))
 
-        # Sender name (above bubble)
-        col_idx = 1 if is_self else 0
-        tk.Label(
-            bubble_row,
-            text=sender,
-            bg=Colors.SURFACE_ALT,
-            fg=name_fg,
-            font=(
-                Typography.FONT_UI,
-                Typography.SIZE_12,
-                Typography.WEIGHT_MEDIUM,
-            ),
-        ).grid(
-            row=0,
-            column=col_idx,
-            sticky=text_anchor,
-            padx=name_padx,
-            pady=(0, 1),
-        )
-
-        # Bubble
-        bubble = tk.Frame(
-            bubble_row,
-            bg=bubble_bg,
-            padx=pad_x,
-            pady=pad_y,
-        )
-        bubble.grid(
-            row=1,
-            column=col_idx,
-            sticky=text_anchor,
-            padx=bubble_padx,
-        )
-
-        tk.Label(
-            bubble,
-            text=message,
-            bg=bubble_bg,
-            fg=text_fg,
+        DesignUtils.create_message_bubble(
+            self.history_frame,
+            sender=sender,
+            message=message,
+            timestamp=timestamp,
+            is_self=is_self,
             wraplength=wrap_length,
-            justify=msg_justify,
-            font=(
-                Typography.FONT_UI,
-                Typography.SIZE_12,
-                Typography.WEIGHT_REGULAR,
-            ),
-        ).pack()
-
-        # Timestamp below bubble
-        tk.Label(
-            bubble_row,
-            text=time.strftime("%H:%M", time.localtime(timestamp)),
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(
-                Typography.FONT_UI,
-                Typography.SIZE_12,
-                Typography.WEIGHT_REGULAR,
-            ),
-        ).grid(
-            row=2,
-            column=col_idx,
-            sticky=text_anchor,
-            padx=name_padx,
-            pady=(2, 0),
         )
 
-        # Update scroll region and scroll to bottom
         self._history_canvas.configure(
             scrollregion=self._history_canvas.bbox("all")
         )
@@ -432,10 +339,10 @@ class ChatPage(BasePage):
             try:
                 self.controller.send_message(message)
             except Exception as e:
-                print(f"Send error: {e}")
+                logger.error("Send error: %s", e)
                 return "break"
         else:
-            print("Warning: No controller available for sending message")
+            logger.warning("Warning: No controller available for sending message")
             return "break"
 
         self._add_message(
