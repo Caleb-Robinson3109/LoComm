@@ -181,11 +181,12 @@ class AppController:
                         "mode": mode,
                     })
                     if self.transport.is_mock:
+                        local_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
                         self.root.after(
                             0,
                             lambda: ensure_mock_peer_window(
                                 self.root,
-                                peer_name=device_name,
+                                peer_name=local_name,
                                 on_disconnect=lambda: self.root.after(0, self.stop_session)
                             )
                         )

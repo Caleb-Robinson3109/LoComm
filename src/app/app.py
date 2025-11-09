@@ -10,6 +10,7 @@ from utils.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
+from mock.peer_chat_window import refresh_mock_peer_window_theme
 
 
 class App(tk.Tk):
@@ -191,6 +192,7 @@ class App(tk.Tk):
         if isinstance(self.current_frame, MainFrame):
             prev_route = getattr(self.current_frame.sidebar, "current_view", None)
         ThemeManager.toggle_mode(use_dark)
+        refresh_mock_peer_window_theme()
         # Get current session info from business logic layer
         session = self.app_controller.session
         self.configure(bg=Colors.SURFACE)
