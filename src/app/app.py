@@ -7,7 +7,7 @@ import time
 from collections import deque
 
 from services import AppController
-from utils.status_manager import get_status_manager
+from utils.state.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors

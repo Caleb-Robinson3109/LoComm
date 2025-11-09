@@ -4,7 +4,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
-from utils.ui_helpers import create_scroll_container
+from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
 

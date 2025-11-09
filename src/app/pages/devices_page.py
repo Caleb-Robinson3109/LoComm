@@ -6,9 +6,9 @@ from tkinter import ttk, messagebox
 from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
-from utils.connection_manager import get_connection_manager
-from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from utils.ui_helpers import create_scroll_container, create_table_card
+from utils.state.connection_manager import get_connection_manager
+from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from ui.helpers import create_scroll_container, create_table_card
 from utils.window_sizing import scale_dimensions
 from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext

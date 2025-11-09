@@ -4,8 +4,8 @@ from __future__ import annotations
 import tkinter as tk
 
 from utils.design_system import Colors, DesignUtils, Spacing
-from utils.ui_helpers import create_page_scaffold
-from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from ui.helpers import create_page_scaffold
+from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .base_page import BasePage, PageContext
 
 

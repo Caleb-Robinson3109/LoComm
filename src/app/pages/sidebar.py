@@ -5,7 +5,9 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from utils.design_system import Colors, Typography, Spacing
+from ui.components import DesignUtils
+from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 
 
 class Sidebar(tk.Frame):
@@ -22,7 +24,7 @@ class Sidebar(tk.Frame):
 
         self._buttons: dict[str, ttk.Button] = {}
 
-        self.container = DesignUtils.sidebar_container(self)
+        self.container = sidebar_container(self)
         tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
 
         self._build_nav_sections()
@@ -38,21 +40,20 @@ class Sidebar(tk.Frame):
             else:
                 top_items.append((key, label))
 
-        self.nav_frame = DesignUtils.sidebar_nav_section(
+        self.nav_frame = sidebar_nav_section(
             self.container, top_items, self._handle_nav_click, self._register_nav_button
         )
-        self.nav_frame.pack(fill=tk.X)
 
         self.spacer = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
         self.spacer.pack(fill=tk.BOTH, expand=True)
 
-        self.bottom_frame = DesignUtils.sidebar_nav_section(
+        self.bottom_frame = sidebar_nav_section(
             self.container, bottom_items, self._handle_nav_click, self._register_nav_button
         )
         self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
 
     def _build_footer(self):
-        DesignUtils.sidebar_footer(self, "v2.1 Desktop")
+        sidebar_footer(self, "v2.1 Desktop")
 
     # ------------------------------------------------------------------ #
     def _update_active_button(self, active_view: str):

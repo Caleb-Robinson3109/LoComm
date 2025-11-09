@@ -1,13 +1,13 @@
-"""
-Shared UI helper utilities for consistent layouts.
-"""
+"""Reusable helpers for page scaffolding, scroll containers, and keyboard interactions."""
 from __future__ import annotations
 
 import tkinter as tk
 from dataclasses import dataclass
 from typing import Callable, Optional, List, Any
 
-from .design_system import Colors, Spacing, DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography
+from ui.theme_manager import ensure_styles_initialized
+from ui.components import DesignUtils
 
 
 @dataclass
@@ -19,11 +19,11 @@ class ScrollContainer:
     window_id: int
 
     def destroy(self):
-        """Tear down the scroll container and unregister bindings."""
         manager = GlobalMousewheelManager.get_instance()
         manager.unregister_canvas(self.canvas)
         if self.wrapper.winfo_exists():
             self.wrapper.destroy()
+
 
 @dataclass
 class PageScaffold:
@@ -34,23 +34,20 @@ class PageScaffold:
 
     def destroy(self):
         if self.scroll:
-            manager = GlobalMousewheelManager.get_instance()
-            manager.unregister_canvas(self.scroll.canvas)
-            if self.scroll.wrapper.winfo_exists():
-                self.scroll.wrapper.destroy()
+            self.scroll.destroy()
         if self.root.winfo_exists():
             self.root.destroy()
 
-def create_scroll_container(parent: tk.Misc, *,
-                            bg: str = Colors.BG_PRIMARY,
-                            padding: tuple[int, int] = (0, Spacing.LG)) -> ScrollContainer:
-    """Create a vertical scroll container with unified styling."""
-    wrapper = tk.Frame(parent, bg=bg)
+
+def create_scroll_container(parent: tk.Misc, *, bg: str | None = None, padding: tuple[int, int] = (0, Spacing.LG)) -> ScrollContainer:
+    ensure_styles_initialized()
+    resolved_bg = bg or Colors.BG_PRIMARY
+    wrapper = tk.Frame(parent, bg=resolved_bg)
     wrapper.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
 
-    canvas = tk.Canvas(wrapper, bg=bg, highlightthickness=0)
+    canvas = tk.Canvas(wrapper, bg=resolved_bg, highlightthickness=0)
     scrollbar = tk.Scrollbar(wrapper, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas, bg=bg)
+    scrollable_frame = tk.Frame(canvas, bg=resolved_bg)
 
     def _sync_scrollregion(event, target_canvas=canvas):
         target_canvas.configure(scrollregion=target_canvas.bbox("all"))
@@ -79,8 +76,6 @@ def create_scroll_container(parent: tk.Misc, *,
 
 
 class GlobalMousewheelManager:
-    """CRITICAL FIX: Global mousewheel manager to prevent scrolling conflicts."""
-
     _instance = None
     _active_canvas = None
     _canvas_handlers = {}
@@ -92,7 +87,6 @@ class GlobalMousewheelManager:
         return cls._instance
 
     def register_canvas(self, canvas: tk.Canvas) -> None:
-        """Register a canvas for mousewheel scrolling."""
         def _on_mousewheel(event):
             if self._active_canvas == canvas:
                 canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -106,18 +100,16 @@ class GlobalMousewheelManager:
                 self._active_canvas = None
                 canvas.unbind_all("<MouseWheel>")
 
-        # Store handlers to prevent garbage collection
         self._canvas_handlers[canvas] = {
-            'mousewheel': _on_mousewheel,
-            'enter': _on_enter,
-            'leave': _on_leave
+            "mousewheel": _on_mousewheel,
+            "enter": _on_enter,
+            "leave": _on_leave,
         }
 
         canvas.bind("<Enter>", _on_enter)
         canvas.bind("<Leave>", _on_leave)
 
     def unregister_canvas(self, canvas: tk.Canvas) -> None:
-        """Unregister a canvas from mousewheel scrolling."""
         if canvas in self._canvas_handlers:
             del self._canvas_handlers[canvas]
             if self._active_canvas == canvas:
@@ -126,28 +118,16 @@ class GlobalMousewheelManager:
 
 
 def _bind_mousewheel(canvas: tk.Canvas) -> GlobalMousewheelManager:
-    """Attach consistent mousewheel handlers to a canvas."""
     manager = GlobalMousewheelManager.get_instance()
     manager.register_canvas(canvas)
     return manager
 
 
 def enable_global_mousewheel(widget: tk.Canvas) -> None:
-    """Public helper to enable shared mousewheel behavior on any scrollable canvas."""
     _bind_mousewheel(widget)
 
 
-def create_page_scaffold(
-    parent: tk.Misc,
-    *,
-    title: str,
-    subtitle: str = "",
-    actions: Optional[List[dict[str, Any]]] = None,
-    use_scroll: bool = True,
-    padding: tuple[int, int] = (0, Spacing.LG),
-    bg: str = Colors.SURFACE,
-) -> PageScaffold:
-    """Convenience wrapper that builds a page root, header, and optional scroll body."""
+def create_page_scaffold(parent: tk.Misc, *, title: str, subtitle: str = "", actions: Optional[List[dict[str, Any]]] = None, use_scroll: bool = True, padding: tuple[int, int] = (0, Spacing.LG), bg: str = Colors.SURFACE) -> PageScaffold:
     root = tk.Frame(parent, bg=bg)
     root.pack(fill=tk.BOTH, expand=True)
 
@@ -159,12 +139,13 @@ def create_page_scaffold(
         body = tk.Frame(root, bg=bg)
         body.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
 
+    from ui.components import DesignUtils
+
     header = DesignUtils.hero_header(body, title=title, subtitle=subtitle, actions=actions)
     return PageScaffold(root=root, body=body, header=header, scroll=scroll)
 
 
 def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
-    """Builds a bordered card with a table area and footer row."""
     card = tk.Frame(
         parent,
         bg=Colors.SURFACE_ALT,
@@ -183,3 +164,34 @@ def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
     footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
     footer.pack(fill=tk.X, pady=(Spacing.SM, 0))
     return card, table_wrapper, footer
+
+
+def sidebar_container(parent: tk.Misc, *, padding: tuple[int, int] | None = None):
+    padding = padding or (Spacing.MD, Spacing.MD)
+    container = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    container.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
+    return container
+
+
+def sidebar_nav_section(parent: tk.Misc, items: list[tuple[str, str]], click_handler: Callable[[str], None], register_button: Callable[[str, tk.Widget], None] | None = None):
+    section = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    section.pack(fill=tk.X)
+    for key, label in items:
+        btn = DesignUtils.create_nav_button(section, label, lambda k=key: click_handler(k))
+        btn.pack(fill=tk.X, pady=(0, Spacing.SM))
+        if register_button:
+            register_button(key, btn)
+    return section
+
+
+def sidebar_footer(parent: tk.Misc, version_label: str):
+    footer = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.XS, Spacing.XS))
+    tk.Label(
+        footer,
+        text=version_label,
+        bg=Colors.SURFACE_SIDEBAR,
+        fg=Colors.TEXT_MUTED,
+        font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+    ).pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.XXS))
+    return footer

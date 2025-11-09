@@ -3,8 +3,8 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import Colors, Spacing, Space, Typography, DesignUtils
-from utils.ui_store import DeviceStage, DeviceStatusSnapshot
+from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils
+from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
 
 from .chat_page import ChatPage
 from .settings_page import SettingsPage
@@ -15,7 +15,7 @@ from .help_page import HelpPage
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
-from utils.ui_store import get_ui_store
+from utils.state.ui_store import get_ui_store
 
 
 @dataclass
@@ -294,11 +294,11 @@ class MainFrame(ttk.Frame):
         """Handle device pairing notifications from PairPage."""
         if device_id and device_name:
             # Device is connected
-            self.controller.status_manager.update_status(f"Connected to {device_name}", peer_name=device_name)
+            self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
             self._show_chat_view()
             self.chat_page.sync_session_info()
         else:
             # Device is disconnected
-            self.controller.status_manager.update_status("Device disconnected")
+            self.controller.status_manager.update_status(AppConfig.STATUS_DISCONNECTED)
 
     # Caching is now owned by ViewManager

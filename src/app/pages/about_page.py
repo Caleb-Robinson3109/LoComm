@@ -5,7 +5,7 @@ import sys
 import tkinter as tk
 
 from utils.design_system import Colors, DesignUtils, Typography, Spacing
-from utils.ui_helpers import create_page_scaffold
+from ui.helpers import create_page_scaffold
 from .base_page import BasePage, PageContext
 
 

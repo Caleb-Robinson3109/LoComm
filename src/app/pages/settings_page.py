@@ -4,7 +4,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from utils.design_system import Colors, Spacing, DesignUtils, ThemeManager, Typography
-from utils.ui_helpers import create_page_scaffold
+from ui.helpers import create_page_scaffold
 from .base_page import BasePage, PageContext
 
 

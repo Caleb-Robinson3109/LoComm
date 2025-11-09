@@ -11,13 +11,13 @@ from typing import Callable, List, Optional
 
 from lora_transport_locomm import LoCommTransport
 from services.transport_contract import PairingContext
-from utils.session import Session
+from utils.state.session import Session
 from utils.design_system import AppConfig
-from utils.connection_manager import get_connection_manager
-from utils.status_manager import get_status_manager
+from utils.state.connection_manager import get_connection_manager
+from utils.state.status_manager import get_status_manager
 from utils.app_logger import get_logger
 from utils.runtime_settings import get_runtime_settings
-from utils.mock_config import get_mock_config, set_mock_scenario
+from mock.mock_config import get_mock_config, set_mock_scenario
 from utils.diagnostics import log_transport_event
 MessageCallback = Callable[[str, str, float], None]
 ResultCallback = Optional[Callable[[bool, Optional[str]], None]]

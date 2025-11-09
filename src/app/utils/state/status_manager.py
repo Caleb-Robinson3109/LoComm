@@ -6,14 +6,16 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Set
 from dataclasses import dataclass
 from utils.app_logger import get_logger
-from utils.design_system import Colors
+from utils.design_system import AppConfig, Colors
 from utils.design_system import (
     STATUS_DISCONNECTED_KEYWORDS,
     STATUS_CONNECTED_KEYWORDS,
-    STATUS_ERROR_KEYWORDS
+    STATUS_ERROR_KEYWORDS,
+    STATUS_READY_KEYWORDS,
+    STATUS_TRANSPORT_ERROR_KEYWORDS,
 )
 
 
@@ -38,13 +40,7 @@ class DeviceInfo:
 
     def get_status_summary(self) -> str:
         """Get a summary of the current status."""
-        if not self.is_connected:
-            return "Disconnected"
-
-        if self.device_name:
-            return f"Connected to {self.device_name}"
-        else:
-            return "Connected"
+        return AppConfig.STATUS_CONNECTED if self.is_connected else AppConfig.STATUS_DISCONNECTED
 
     def get_conversation_title(self) -> str:
         """Get the title for conversation view."""
@@ -87,7 +83,12 @@ class StatusManager:
         """
         lowered = status_text.lower()
 
-        # Check for connected/ready status
+        # Check for transport errors first so we catch them before warning
+        if any(keyword in lowered for keyword in STATUS_TRANSPORT_ERROR_KEYWORDS):
+            return "transport_error"
+        if any(keyword in lowered for keyword in STATUS_READY_KEYWORDS):
+            return "ready"
+        # Check for connected status
         if any(keyword in lowered for keyword in STATUS_CONNECTED_KEYWORDS):
             return "connected"
 
@@ -117,10 +118,12 @@ class StatusManager:
 
         # Color mapping for different status categories
         color_map = {
-            "connected": "#00C7B1",      # Teal
-            "disconnected": "#FF5A5F",   # Red
-            "error": "#FF5A5F",         # Red
-            "warning": "#F2A93B"        # Orange
+            "connected": Colors.STATE_SUCCESS or "#00C7B1",
+            "disconnected": Colors.STATE_ERROR or "#FF5A5F",
+            "error": Colors.STATE_ERROR or "#FF5A5F",
+            "warning": Colors.STATE_WARNING or "#F2A93B",
+            "ready": Colors.STATE_INFO or "#3AA0FF",
+            "transport_error": Colors.STATE_ERROR or "#FF5A5F",
         }
 
         return color_map.get(category, "#FF5A5F")
@@ -175,12 +178,20 @@ class StatusManager:
             except Exception as e:
                 self.logger.warning(f"Device callback failed: {e}")
 
-        # Determine display status based on peer connectivity
-        if peer_name and category == "connected":
-            if not peer_name or peer_name == "Not connected":
-                display_status = "Awaiting peer"
+        # Determine display status text
+        if category == "connected":
+            display_status = AppConfig.STATUS_CONNECTED
+        elif category == "disconnected":
+            display_status = AppConfig.STATUS_DISCONNECTED
+        elif category == "error":
+            if "invalid pairing code" in lowered:
+                display_status = AppConfig.STATUS_INVALID_PIN
             else:
-                display_status = f"Paired with: {peer_name}"
+                display_status = AppConfig.STATUS_CONNECTION_FAILED
+        elif category == "transport_error":
+            display_status = AppConfig.STATUS_TRANSPORT_ERROR
+        elif category == "ready":
+            display_status = AppConfig.STATUS_READY
         else:
             display_status = status_text
 

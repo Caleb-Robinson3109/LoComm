@@ -4,8 +4,9 @@ Provides consistent connection state management across all UI components.
 """
 from typing import Optional, Callable, Dict, Any
 import threading
-from utils.status_manager import get_status_manager
+from utils.state.status_manager import get_status_manager
 from utils.app_logger import get_logger
+from utils.design_system import AppConfig
 
 
 class ConnectionManager:
@@ -91,10 +92,7 @@ class ConnectionManager:
     def get_connection_status_text(self) -> str:
         """Get appropriate status text for UI display."""
         device_info = self._status_manager.get_current_device()
-        if device_info.is_connected:
-            return f"Connected to {device_info.device_name}" if device_info.device_name else "Connected"
-        else:
-            return "Disconnected"
+        return AppConfig.STATUS_CONNECTED if device_info.is_connected else AppConfig.STATUS_DISCONNECTED
 
     # ========== CALLBACK REGISTRATION ==========
 

@@ -6,9 +6,9 @@ import time
 from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, DesignUtils, Space, Spacing
-from utils.status_manager import get_status_manager
-from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from utils.ui_helpers import create_scroll_container, enable_global_mousewheel
+from utils.state.status_manager import get_status_manager
+from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from ui.helpers import create_scroll_container, enable_global_mousewheel
 from utils.app_logger import get_logger
 from .base_page import BasePage, PageContext
 

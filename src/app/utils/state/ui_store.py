@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Callable, List, Optional
 
-from utils.connection_manager import get_connection_manager
-from utils.status_manager import get_status_manager
+from utils.state.connection_manager import get_connection_manager
+from utils.state.status_manager import get_status_manager
 
 
 class DeviceStage(Enum):
@@ -115,7 +115,7 @@ class UIStore:
             label = device_name or "LoRa peer"
             return DeviceStatusSnapshot(
                 stage=stage,
-                title=f"Connected to {label}",
+                title="Connected",
                 subtitle="Secure LoRa link established.",
                 detail="Messages will send immediately.",
                 device_name=device_name
