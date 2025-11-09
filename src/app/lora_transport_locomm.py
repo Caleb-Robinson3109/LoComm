@@ -12,7 +12,8 @@ from typing import Callable, Optional
 from services.transport_contract import PairingContext, TransportMessage
 from services.transport_registry import BackendBundle, resolve_backend
 
-DEBUG = False  # Set to True for debug output
+# Debug flag - set to True for verbose logging
+DEBUG = False
 
 
 class LoCommTransport:
@@ -53,11 +54,11 @@ class LoCommTransport:
         """Connect to a device using the supplied pairing context."""
         current_thread_id = threading.get_ident()
         main_thread_id = threading.main_thread().ident
-        print(f"[LoRaTransport] start() called from thread {current_thread_id} (main={current_thread_id == main_thread_id})")
+        if DEBUG:
+            print(f"[LoRaTransport] start() called from thread {current_thread_id} (main={current_thread_id == main_thread_id})")
 
         try:
-            if DEBUG:
-                print(f"[LoRaTransport] Starting connection via {self._backend_label}")
+            # Debug logging moved to conditional block above
 
             raw_mode = None
             if isinstance(pairing_context, PairingContext):
@@ -112,7 +113,8 @@ class LoCommTransport:
     def stop(self) -> None:
         """Stop communication and disconnect device."""
         stop_thread_id = threading.get_ident()
-        print(f"[LoRaTransport] stop() called from thread {stop_thread_id}")
+        if DEBUG:
+            print(f"[LoRaTransport] stop() called from thread {stop_thread_id}")
 
         self.running = False
         self._stop_event.set()
@@ -166,7 +168,8 @@ class LoCommTransport:
     def _rx_loop(self) -> None:
         """Background receive loop for incoming messages."""
         rx_thread_id = threading.get_ident()
-        print(f"[LoRaTransport] _rx_loop started on thread {rx_thread_id}")
+        if DEBUG:
+            print(f"[LoRaTransport] _rx_loop started on thread {rx_thread_id}")
 
         while not self._stop_event.is_set():
             try:
@@ -176,7 +179,8 @@ class LoCommTransport:
                     # Ensure callback is callable before calling
                     callback = self.on_receive
                     if callback:
-                        print(f"[LoRaTransport] Scheduling receive callback on main thread from thread {rx_thread_id}")
+                        if DEBUG:
+                            print(f"[LoRaTransport] Scheduling receive callback on main thread from thread {rx_thread_id}")
                         self.root.after(
                             0,
                             lambda m=message, ts=timestamp: callback(m.sender, m.payload, ts)
@@ -187,7 +191,8 @@ class LoCommTransport:
 
             time.sleep(0.2)
 
-        print(f"[LoRaTransport] _rx_loop ending on thread {rx_thread_id}")
+        if DEBUG:
+            print(f"[LoRaTransport] _rx_loop ending on thread {rx_thread_id}")
 
     def _normalize_pairing_context(self, context: Optional[PairingContext | dict]) -> Optional[PairingContext]:
         if context is None:

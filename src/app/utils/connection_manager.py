@@ -122,8 +122,9 @@ class ConnectionManager:
         for callback in self._connection_callbacks:
             try:
                 callback(device_info.is_connected, device_info.device_id, device_info.device_name)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                # Log callback errors but don't crash the application
+                print(f"Warning: Connection callback failed: {e}")
 
     def _notify_device_info_change(self):
         """Notify all registered callbacks about device info change."""
@@ -138,8 +139,9 @@ class ConnectionManager:
                     })
                 else:
                     callback(None)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                # Log callback errors but don't crash the application
+                print(f"Warning: Device info callback failed: {e}")
 
     # ========== CONVENIENCE METHODS FOR UI COMPONENTS ==========
 

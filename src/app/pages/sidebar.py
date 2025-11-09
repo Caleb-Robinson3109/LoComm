@@ -6,11 +6,10 @@ from tkinter import ttk
 from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils, ThemeManager
-from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 
 
 class Sidebar(tk.Frame):
-    """Left sidebar navigation component with connection summary."""
+    """Left sidebar navigation component for main navigation."""
 
     def __init__(self, master, nav_items: list[tuple[str, str]],
                  on_nav_select: Optional[Callable[[str], None]] = None,
@@ -21,13 +20,10 @@ class Sidebar(tk.Frame):
         self.current_view = nav_items[0][0] if nav_items else "home"
         self.nav_items = nav_items
 
-        self.ui_store = get_ui_store()
-        self._device_subscription = None
         self._dark_mode = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
 
         self._buttons: dict[str, ttk.Button] = {}
         self._build_ui()
-        self._subscribe_to_store()
 
     # ------------------------------------------------------------------ #
     def _build_ui(self):
@@ -103,29 +99,6 @@ class Sidebar(tk.Frame):
         self.current_view = view_name
         self._update_active_button(view_name)
 
-    # ------------------------------------------------------------------ #
-    def _on_connection_state_change(self, is_connected: bool, device_id: Optional[str], device_name: Optional[str]):
-        if is_connected:
-            label = device_name or device_id or "Active device"
-            self._update_device_summary(status_text="Connected", status_color=Colors.STATE_SUCCESS, device_label=label)
-        else:
-            caption = "Pair a LoRa contact to begin chatting securely."
-            if device_name:
-                caption = f"Disconnected ({device_name})"
-            elif device_id:
-                caption = f"Disconnected ({device_id})"
-            self._update_device_summary(status_text="Disconnected", status_color=Colors.STATE_ERROR,
-                                        device_label="No device paired",
-                                        caption=caption)
-
-    def _on_device_info_change(self, device_info: Optional[dict]):
-        if device_info:
-            self.device_caption.configure(text=f"{device_info['name']} ({device_info['id']})")
-
-    def _on_legacy_status_change(self, status_text: str, status_color: str):
-        # Sidebar mirrors connection events already handled above
-        self._update_device_summary(status_text=status_text, status_color=status_color)
-
     def _handle_theme_toggle(self, _event=None):
         self._dark_mode.set(not self._dark_mode.get())
         self._refresh_theme_button()
@@ -145,6 +118,9 @@ class Sidebar(tk.Frame):
         self.theme_icon.configure(text=icon, bg=bg, fg=fg)
         self.theme_label.configure(text=label, bg=bg, fg=fg)
 
+    def set_status(self, status_text: str):
+        """Compatibility stub so main_frame can call without popup badge."""
+        return
     # Public helpers ------------------------------------------------------
     def show_chat(self):
         self._handle_nav_click("chat")
@@ -158,41 +134,5 @@ class Sidebar(tk.Frame):
     def show_settings(self):
         self._handle_nav_click("settings")
 
-    def set_status(self, status_text: str):
-        """Compatibility helper for external callers."""
-        self.connection_badge.configure(text=status_text)
-
-    # ------------------------------------------------------------------ #
-    def _subscribe_to_store(self):
-        if self._device_subscription is not None:
-            return
-
-        def _callback(snapshot: DeviceStatusSnapshot):
-            self._handle_device_snapshot(snapshot)
-
-        self._device_subscription = _callback
-        self.ui_store.subscribe_device_status(_callback)
-
-    def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
-        pass
-
-    def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
-        pass
-
-    @staticmethod
-    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
-        mapping = {
-            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
-            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
-            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
-            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
-            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
-            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
-        }
-        return mapping.get(stage, mapping[DeviceStage.READY])
-
     def destroy(self):
-        if self._device_subscription is not None:
-            self.ui_store.unsubscribe_device_status(self._device_subscription)
-            self._device_subscription = None
         super().destroy()

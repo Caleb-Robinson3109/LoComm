@@ -1,6 +1,7 @@
 """View management system for proper lifecycle handling of application views."""
 import tkinter as tk
 from typing import Dict, Any, Optional
+from utils.app_logger import get_logger
 
 
 class ViewManager:
@@ -15,6 +16,7 @@ class ViewManager:
         self.view_containers: Dict[str, tk.Frame] = {}
         self.view_components: Dict[str, Any] = {}
         self.view_pack_options: Dict[str, dict] = {}
+        self.logger = get_logger("view_manager")
 
     def register_view(self, view_name: str, container: tk.Frame, component: Any = None, *, pack_options: Optional[dict] = None):
         """
@@ -63,7 +65,7 @@ class ViewManager:
                 try:
                     prev_component.on_hide()
                 except Exception as e:
-                    print(f"Warning: Error during on_hide for view '{previous_view}': {e}")
+                    self.logger.warning(f"Error during on_hide for view '{previous_view}': {e}")
 
         # Hide all views first
         for container in self.view_containers.values():
@@ -83,7 +85,7 @@ class ViewManager:
                 try:
                     component.on_show()
                 except Exception as e:
-                    print(f"Warning: Error during on_show for view '{view_name}': {e}")
+                    self.logger.warning(f"Error during on_show for view '{view_name}': {e}")
 
     def get_active_view(self) -> Optional[str]:
         """Get the currently active view name."""
@@ -117,7 +119,7 @@ class ViewManager:
                     component.cleanup()
                 except Exception as e:
                     # Log cleanup errors instead of silently ignoring
-                    print(f"Warning: Error during component cleanup for view '{view_name}': {e}")
+                    self.logger.warning(f"Error during component cleanup for view '{view_name}': {e}")
             del self.view_components[view_name]
 
         # Clean up view containers
@@ -134,7 +136,7 @@ class ViewManager:
                 container.destroy()
             except Exception as e:
                 # Log container destruction errors
-                print(f"Warning: Error during container destruction for view '{view_name}': {e}")
+                self.logger.warning(f"Error during container destruction for view '{view_name}': {e}")
             del self.view_containers[view_name]
 
     def cleanup_all(self):

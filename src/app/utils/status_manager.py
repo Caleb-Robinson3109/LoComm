@@ -8,6 +8,7 @@ import threading
 import tkinter as tk
 from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass
+from utils.app_logger import get_logger
 from utils.design_system import Colors
 from utils.design_system import (
     STATUS_DISCONNECTED_KEYWORDS,
@@ -67,6 +68,7 @@ class StatusManager:
         self._current_status: str = "Disconnected"
         self._status_callbacks: list[Callable[[str, str], None]] = []
         self._callback_lock = threading.Lock()
+        self.logger = get_logger("status_manager")
 
         # Device state management
         self.current_device = DeviceInfo()
@@ -157,12 +159,9 @@ class StatusManager:
         # Execute callbacks outside the lock to prevent deadlocks
         for callback in callbacks_to_execute:
             try:
-                thread_id = threading.get_ident()
-                main_thread_id = threading.main_thread().ident
-                print(f"[STATUS_CALLBACK] Calling status callback from thread {thread_id} (main={thread_id == main_thread_id})")
                 callback(status_text, color)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Status callback failed: {e}")
 
         # CRITICAL FIX: Thread-safe device callback execution
         device_callbacks_to_execute = []
@@ -172,12 +171,9 @@ class StatusManager:
 
         for callback in device_callbacks_to_execute:
             try:
-                thread_id = threading.get_ident()
-                main_thread_id = threading.main_thread().ident
-                print(f"[STATUS_CALLBACK] Calling device callback from thread {thread_id} (main={thread_id == main_thread_id})")
                 callback(self.current_device)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Device callback failed: {e}")
 
         # Determine display status based on peer connectivity
         if peer_name and category == "connected":
@@ -301,14 +297,14 @@ class StatusManager:
         for callback in self._connection_callbacks:
             try:
                 callback(True, device_id, device_name)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Connection callback failed: {e}")
 
         for callback in self._device_callbacks:
             try:
                 callback(self.current_device)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Device info callback failed: {e}")
 
         return True
 
@@ -331,14 +327,14 @@ class StatusManager:
         for callback in self._connection_callbacks:
             try:
                 callback(False, "", "")
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Disconnect callback failed: {e}")
 
         for callback in self._device_callbacks:
             try:
                 callback(self.current_device)
-            except Exception:
-                pass  # Silently ignore callback errors
+            except Exception as e:
+                self.logger.warning(f"Device connect callback failed: {e}")
 
         return True
 
@@ -378,22 +374,22 @@ class StatusManager:
         for callback in self._status_callbacks:
             try:
                 callback(self._current_status, status_color)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning(f"Status emit failed: {e}")
 
         for callback in self._device_callbacks:
             try:
                 callback(self.current_device)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning(f"Device emit failed: {e}")
 
         for callback in self._connection_callbacks:
             try:
                 callback(self.current_device.is_connected,
                         self.current_device.device_id,
                         self.current_device.device_name)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning(f"Force update callback failed: {e}")
 
 
 # Global status manager instance

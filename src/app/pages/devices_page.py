@@ -23,6 +23,7 @@ class DevicesPage(BasePage):
         self.app = context.app if context else None
         self.controller = context.controller if context else None
         self.session = context.session if context else None
+        self.host = context.navigator if context else None
         self.on_device_paired = on_device_paired
 
         self.connection_manager = get_connection_manager()
@@ -34,7 +35,7 @@ class DevicesPage(BasePage):
         self.connection_state = tk.StringVar(value="Ready to pair")
         self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
         self.selected_device_var = tk.StringVar(value="No device selected")
-        self.scenario_var = tk.StringVar(value=self.session.mock_scenario or "default")
+        self.scenario_var = tk.StringVar(value=getattr(self.session, "mock_scenario", None) or "default")
         self.scenario_description_var = tk.StringVar(value=self._scenario_description(self.scenario_var.get()))
         self.telemetry_vars = {
             "rssi": tk.StringVar(value="–"),
@@ -226,7 +227,7 @@ class DevicesPage(BasePage):
             return
         self.is_scanning = True
         self._set_stage(DeviceStage.SCANNING)
-        self.after(2000, self._finish_scan)
+        self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
 
     def _finish_scan(self):
         newly_found = self.device_service.simulate_scan()
@@ -256,7 +257,7 @@ class DevicesPage(BasePage):
         transport = getattr(self.controller, "transport", None)
         if transport and getattr(transport, "is_mock", False):
             self._set_stage(DeviceStage.CONNECTING, name)
-            if getattr(self.controller, "start_mock_session", None):
+            if hasattr(self.controller, "start_mock_session") and self.controller:
                 success = self.controller.start_mock_session(device_id, name)
             else:
                 success = False
@@ -264,8 +265,9 @@ class DevicesPage(BasePage):
                 self._set_stage(DeviceStage.CONNECTED, name)
                 if self.on_device_paired:
                     self.on_device_paired(device_id, name)
-                if self.host and hasattr(self.host, "show_chat_page"):
-                    self.host.show_chat_page()
+                navigator = getattr(self, "navigator", None)
+                if navigator and hasattr(navigator, "show_chat_page"):
+                    navigator.show_chat_page()
             else:
                 messagebox.showerror("Mock Connection Failed", "Unable to connect to mock device.")
                 self._set_stage(DeviceStage.DISCONNECTED, name)
@@ -276,19 +278,22 @@ class DevicesPage(BasePage):
 
     def _handle_pin_pair_success(self, device_id: str, device_name: str):
         self._set_stage(DeviceStage.CONNECTING, device_name)
-        self.app.start_transport_session(device_id, device_name)
+        if self.app:
+            self.app.start_transport_session(device_id, device_name)
         self._set_stage(DeviceStage.CONNECTED, device_name)
         self._close_pin_modal()
         if self.on_device_paired:
             self.on_device_paired(device_id, device_name)
-        if self.host and hasattr(self.host, "show_chat_page"):
-            self.host.show_chat_page()
+        navigator = getattr(self, "navigator", None)
+        if navigator and hasattr(navigator, "show_chat_page"):
+            navigator.show_chat_page()
 
     def _disconnect_device(self):
         if not self.connection_manager.is_connected():
             self.status_var.set("No device connected")
             return
-        self.controller.stop_session()
+        if self.controller:
+            self.controller.stop_session()
         self.connection_manager.disconnect_device()
         last_device = self.selected_device_var.get()
         label = last_device if last_device != "No device selected" else None
@@ -296,7 +301,8 @@ class DevicesPage(BasePage):
 
     def _handle_demo_login(self):
         self._set_stage(DeviceStage.CONNECTING, "Demo Device")
-        self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
+        if self.app:
+            self.app.start_transport_session("demo-device", "Demo Device", mode="demo")
         self._set_stage(DeviceStage.CONNECTED, "Demo Device")
         self._close_pin_modal()
         if self.on_device_paired:
@@ -370,9 +376,10 @@ class DevicesPage(BasePage):
 
     def _apply_scenario(self):
         scenario = self.scenario_var.get() or "default"
-        if hasattr(self.controller, "set_mock_scenario"):
+        if hasattr(self.controller, "set_mock_scenario") and self.controller:
             self.controller.set_mock_scenario(scenario)
-        self.session.mock_scenario = scenario
+        if self.session:
+            self.session.mock_scenario = scenario
         desc = self._scenario_description(scenario)
         self.scenario_description_var.set(desc)
         self.status_var.set(f"Scenario: {scenario} • {desc}")

@@ -51,7 +51,7 @@ class App(tk.Tk):
         if device_id and device_name:
             # CRITICAL FIX: Preserve local device name while updating peer info
             if not hasattr(session, 'local_device_name') or not session.local_device_name:
-                session.local_device_name = "This Device"
+                session.local_device_name = "Orion"
             session.device_name = device_name
             session.device_id = device_id
             session.paired_at = time.time()
@@ -144,8 +144,8 @@ class App(tk.Tk):
 
         # Notify user if message is from external peer
         session = self.app_controller.session
-        local_device_name = getattr(session, "local_device_name", "This Device")
-        if sender and sender not in (local_device_name, "This Device"):
+        local_device_name = getattr(session, "local_device_name", "Orion") or "Orion"
+        if sender and sender != local_device_name:
             self.notify_incoming_message(sender, msg)
 
     def _handle_business_status(self, text: str):
@@ -191,9 +191,7 @@ class App(tk.Tk):
         offset_x = max((screen_w - target_w) // 2, 0)
         offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        min_w = max(900, int(screen_w * 0.6))
-        min_h = max(580, int(screen_h * 0.55))
-        self.minsize(min_w, min_h)
+        self.minsize(target_w, target_h)
         self.resizable(True, True)
 
 

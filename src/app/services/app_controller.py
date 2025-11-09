@@ -43,10 +43,13 @@ class SessionStore:
             return None
 
     def save(self, session: Session) -> None:
+        local_name = getattr(session, "local_device_name", "Orion") or "Orion"
+        if local_name == "This Device":
+            local_name = "Orion"
         data = {
             "device_id": session.device_id,
             "device_name": session.device_name,
-            "local_device_name": getattr(session, "local_device_name", "This Device"),
+            "local_device_name": local_name,
             "paired_at": session.paired_at,
             "transport_profile": getattr(session, "transport_profile", "auto"),
             "mock_scenario": getattr(session, "mock_scenario", "default"),
@@ -73,7 +76,7 @@ class AppController:
         self.logger = get_logger()
         self.session = Session()
         # CRITICAL FIX: Initialize local device name for proper message attribution
-        self.session.local_device_name = "This Device"
+        self.session.local_device_name = "Orion"
         self.settings = get_runtime_settings()
         self.mock_config = get_mock_config()
         self.transport = LoCommTransport(ui_root, profile=self.settings.transport_profile)
@@ -117,7 +120,10 @@ class AppController:
             return
         self.session.device_id = cached.get("device_id", "")
         self.session.device_name = cached.get("device_name", "")
-        self.session.local_device_name = cached.get("local_device_name", "This Device")
+        local_name = cached.get("local_device_name") or "Orion"
+        if local_name == "This Device":
+            local_name = "Orion"
+        self.session.local_device_name = local_name
         self.session.paired_at = cached.get("paired_at", 0.0)
         self.session.transport_profile = cached.get("transport_profile", "auto")
         self.session.mock_scenario = cached.get("mock_scenario", "default")
@@ -335,7 +341,7 @@ class AppController:
 
     def send_message(self, message: str) -> None:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
-        sender = getattr(self.session, 'local_device_name', None) or "This Device"
+        sender = getattr(self.session, 'local_device_name', None) or "Orion"
         metadata = {
             "profile": self.session.transport_profile or self.transport.profile,
             "scenario": self.session.mock_scenario or self.mock_config.scenario,

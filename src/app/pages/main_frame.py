@@ -137,29 +137,33 @@ class MainFrame(ttk.Frame):
         bar = tk.Frame(parent, bg=Colors.SURFACE_HEADER, padx=pad_x, pady=pad_y)
         bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.SM, 0))
 
-        bar.grid_columnconfigure(2, weight=1)
+        bar.grid_columnconfigure(3, weight=1)
 
-        initial_name = getattr(self.session, "local_device_name", "Orion")
+        # Left-aligned device name and status
+        initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
+        self._default_local_device_name = initial_name
         self.local_device_label = tk.Label(bar, text=initial_name, bg=Colors.SURFACE_HEADER,
                                            fg=Colors.TEXT_PRIMARY,
                                            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD))
-        self.local_device_label.grid(row=0, column=0, sticky="w", padx=(0, Spacing.SM))
+        self.local_device_label.grid(row=0, column=0, sticky="w")
 
+        # Status badge next to device name
         self.status_badge = tk.Label(bar, text="Disconnected", bg=Colors.STATE_ERROR, fg=Colors.SURFACE,
                                      font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
                                      padx=Spacing.MD, pady=int(Spacing.XS/2))
-        self.status_badge.grid(row=0, column=1, sticky="w", padx=(0, Spacing.SM))
+        self.status_badge.grid(row=0, column=1, sticky="w", padx=(Spacing.SM, Spacing.SM))
 
-        self.remote_device_label = tk.Label(bar, text="Remote device: —", bg=Colors.SURFACE_HEADER,
+        # Peer device info (left of spacer)
+        self.remote_device_label = tk.Label(bar, text="None", bg=Colors.SURFACE_HEADER,
                                             fg=Colors.TEXT_PRIMARY,
                                             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM))
         self.remote_device_label.grid(row=0, column=2, sticky="w")
 
         devices_btn = DesignUtils.button(bar, text="Devices", command=self.show_pair_page, variant="secondary", width=12)
-        devices_btn.grid(row=0, column=3, sticky="e", padx=(Spacing.SM, 0))
+        devices_btn.grid(row=0, column=8, sticky="e", padx=(Spacing.SM, 0))
 
         clear_btn = DesignUtils.button(bar, text="Clear Chat", command=self.app.clear_chat_history, variant="secondary", width=12)
-        clear_btn.grid(row=0, column=4, sticky="e")
+        clear_btn.grid(row=0, column=9, sticky="e", padx=(Spacing.SM, 0))
         return bar
 
     def _show_view(self, view_name: str):
@@ -219,11 +223,11 @@ class MainFrame(ttk.Frame):
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
         if not snapshot:
             return
-        remote_label = snapshot.device_name or "—"
-        self.remote_device_label.configure(text=f"Remote device: {remote_label}")
+        remote_label = snapshot.device_name if snapshot.stage == DeviceStage.CONNECTED else "None"
+        self.remote_device_label.configure(text=remote_label)
         badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
         self.status_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
-        local_name = getattr(self.session, "local_device_name", "This Device")
+        local_name = getattr(self.session, "local_device_name", None) or self._default_local_device_name
         self.local_device_label.configure(text=local_name)
 
     @staticmethod

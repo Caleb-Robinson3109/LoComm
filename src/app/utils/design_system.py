@@ -575,6 +575,7 @@ class DesignUtils:
 class AppConfig:
     """Application-wide configuration constants"""
 
+    # Debug flag - set to True for verbose logging
     DEBUG = False
     STATUS_CONNECTED_KEYWORDS = {"ready", "connected (mock)", "message from"}
     STATUS_DISCONNECTED_KEYWORDS = {"disconnected", "connection failed", "invalid pairing code"}
