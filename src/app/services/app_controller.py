@@ -252,6 +252,52 @@ class AppController:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def start_mock_session(self, device_id: str, device_name: str) -> bool:
+        """Immediate connect path for mock devices to avoid extra threads."""
+        pairing_context = PairingContext(
+            mode="mock",
+            device_id=device_id,
+            device_name=device_name,
+            metadata={
+                "requested_profile": self.settings.transport_profile,
+                "active_profile": self.transport.profile,
+                "scenario": self.mock_config.scenario,
+            }
+        )
+        try:
+            success = self.transport.start(pairing_context)
+        except Exception as exc:  # noqa: BLE001
+            self.logger.exception("Mock transport start failed: %s", exc)
+            success = False
+
+        self.logger.info("Mock session connection result: success=%s", success)
+        if success:
+            self.session.device_id = device_id
+            self.session.device_name = device_name
+            self.session.paired_at = time.time()
+            self.session.transport_profile = self.transport.profile
+            self.session.mock_scenario = self.mock_config.scenario
+            self._safe_connect_device(device_id, device_name)
+            self._persist_session()
+            log_transport_event("connect_success", {
+                "device_id": device_id,
+                "device_name": device_name,
+                "profile": self.transport.profile,
+                "scenario": self.mock_config.scenario,
+                "mode": "mock",
+            })
+            return True
+
+        self.transport.stop()
+        log_transport_event("connect_failed", {
+            "device_id": device_id,
+            "device_name": device_name,
+            "profile": self.transport.profile,
+            "scenario": self.mock_config.scenario,
+            "mode": "mock",
+        })
+        return False
+
     def _safe_connect_device(self, device_id: str, device_name: str):
         """Thread-safe device connection."""
         try:
@@ -314,9 +360,15 @@ class AppController:
 
     def _emit_status(self, text: str):
         """Push status text through the consolidated status manager."""
+        def dispatch():
+            try:
+                self.status_manager.update_status(text, self.session.device_name)
+            except Exception:
+                self.logger.exception("Status emit failed")
+            else:
+                log_transport_event("status", {"text": text, "source": "controller"})
+
         try:
-            self.status_manager.update_status(text, self.session.device_name)
+            self.root.after(0, dispatch)
         except Exception:
-            self.logger.exception("Status emit failed")
-        else:
-            log_transport_event("status", {"text": text, "source": "controller"})
+            dispatch()

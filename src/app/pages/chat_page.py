@@ -58,6 +58,7 @@ class ChatPage(BasePage):
 
         right = tk.Frame(header, bg=Colors.SURFACE_HEADER)
         right.pack(side=tk.RIGHT)
+
         self.connection_badge = tk.Label(
             right,
             text="Disconnected",
@@ -67,7 +68,24 @@ class ChatPage(BasePage):
             padx=Space.MD,
             pady=int(Space.XS / 2)
         )
-        self.connection_badge.pack()
+        self.connection_badge.pack(side=tk.RIGHT, padx=(Space.SM, 0))
+
+        button_row = tk.Frame(right, bg=Colors.SURFACE_HEADER)
+        button_row.pack(side=tk.RIGHT, padx=(0, Space.SM))
+        DesignUtils.button(
+            button_row,
+            text="Clear Chat",
+            command=self._handle_clear_chat,
+            variant="ghost",
+            width=12
+        ).pack(side=tk.RIGHT, padx=(Space.SM, 0))
+        DesignUtils.button(
+            button_row,
+            text="Disconnect",
+            command=self._handle_disconnect,
+            variant="secondary",
+            width=12
+        ).pack(side=tk.RIGHT)
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
@@ -100,7 +118,7 @@ class ChatPage(BasePage):
         self.entry.grid(row=0, column=0, sticky="ew")
         self.entry.bind("<Return>", self._send_message)
 
-        self.send_button = DesignUtils.button(composer, text="Send", command=self._send_message)
+        self.send_button = DesignUtils.button(composer, text="Send", command=self._send_message, width=10)
         self.send_button.grid(row=0, column=1, padx=(Space.SM, 0))
 
     # ---------------------------------------------------------------- helpers
@@ -117,30 +135,28 @@ class ChatPage(BasePage):
     def _add_message(self, sender: str, message: str, is_system: bool = False):
         bubble_row = tk.Frame(self.history_frame, bg=Colors.SURFACE_ALT)
         bubble_row.pack(fill=tk.X, pady=(Space.XXS, 0), padx=Space.MD)
-        bubble_row.grid_columnconfigure(0, weight=1)
-        bubble_row.grid_columnconfigure(1, weight=1)
 
-        is_self = sender in (self.session.device_name, "This Device") and not is_system
+        is_self = sender == self._get_local_device_name() and not is_system
         if is_system:
             bubble_bg = Colors.MESSAGE_BUBBLE_SYSTEM_BG
             fg = Colors.TEXT_PRIMARY
-        elif is_self or (not is_self and not is_system):
+        elif is_self:
             bubble_bg = Colors.MESSAGE_BUBBLE_OWN_BG
             fg = Colors.SURFACE
         else:
             bubble_bg = Colors.MESSAGE_BUBBLE_OTHER_BG
             fg = Colors.TEXT_PRIMARY
-
-        col = 1 if is_self else 0
-        sticky = "e" if is_self else "w"
-        bubble = tk.Frame(bubble_row, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
-        bubble.grid(row=0, column=col, sticky=sticky)
-        tk.Label(bubble, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
+        anchor = "e" if is_self else "w"
+        bubble = tk.Frame(bubble_row, bg=Colors.SURFACE_ALT)
+        bubble.pack(anchor=anchor, fill=tk.X if is_system else tk.NONE)
+        inner = tk.Frame(bubble, bg=bubble_bg, padx=Space.MD, pady=Space.XS)
+        inner.pack(anchor=anchor, padx=(0 if is_self else Space.LG, Space.LG if is_self else 0))
+        tk.Label(inner, text=sender, bg=bubble_bg, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM)).pack(anchor="w")
-        tk.Label(bubble, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
+        tk.Label(inner, text=message, bg=bubble_bg, fg=fg if not is_system else Colors.TEXT_SECONDARY,
                  wraplength=520, justify="left",
                  font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR)).pack(anchor="w", pady=(Space.XXS, 0))
-        tk.Label(bubble, text=time.strftime("%H:%M"), bg=bubble_bg, fg=Colors.TEXT_MUTED,
+        tk.Label(inner, text=time.strftime("%H:%M"), bg=bubble_bg, fg=Colors.TEXT_MUTED,
                  font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR)).pack(anchor="e")
 
         self._scroll_to_bottom()
@@ -162,30 +178,31 @@ class ChatPage(BasePage):
         if self.on_disconnect:
             self.on_disconnect()
 
+    def _handle_clear_chat(self):
+        self.clear_history()
+
     def _handle_attach(self):
         pass  # Placeholder for future file picker
 
     def _send_message(self, event=None):
         """Send message - use consolidated status manager to check connectivity."""
-        if not self._connected:
-            return
-        if not self.status_manager.can_send_messages():
-            return
+        if not self.status_manager.can_send_messages() or not self._connected:
+            return "break"
 
         message = self.msg_var.get().strip()
         if not message:
-            return
+            return "break"
 
         try:
             self.controller.send_message(message)
-            # Update connection state after successful send
             self._connected = True
         except Exception as e:
             print(f"Send error: {e}")
-            return
+            return "break"
 
         self._add_message(self._get_local_device_name(), message)
         self.msg_var.set("")
+        return "break"
 
     # ---------------------------------------------------------------- API hooks
     def append_line(self, sender: str, message: str):

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Optional, Callable
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
@@ -144,6 +144,14 @@ class DevicesPage(BasePage):
         card.pack(fill=tk.X, pady=(0, Spacing.LG))
         card.pack_propagate(True)
 
+        if not hasattr(self, "detail_vars"):
+            self.detail_vars = {
+                "name": tk.StringVar(value="No device selected"),
+                "firmware": tk.StringVar(value="—"),
+                "region": tk.StringVar(value="—"),
+                "last_seen": tk.StringVar(value="—"),
+            }
+
         columns = ("Device ID", "Name", "Status", "Last Seen")
         self.device_tree = ttk.Treeview(content, columns=columns, show="headings", height=10)
         for col in columns:
@@ -238,6 +246,23 @@ class DevicesPage(BasePage):
         self._active_device_name = name
         self._active_device_id = device_id
         self.selected_device_var.set(f"{name} ({device_id})")
+
+        transport = getattr(self.controller, "transport", None)
+        if transport and getattr(transport, "is_mock", False):
+            self._set_stage(DeviceStage.CONNECTING, name)
+            if getattr(self.controller, "start_mock_session", None):
+                success = self.controller.start_mock_session(device_id, name)
+            else:
+                success = False
+            if success:
+                self._set_stage(DeviceStage.CONNECTED, name)
+                if self.on_device_paired:
+                    self.on_device_paired(device_id, name)
+            else:
+                messagebox.showerror("Mock Connection Failed", "Unable to connect to mock device.")
+                self._set_stage(DeviceStage.DISCONNECTED, name)
+            return
+
         self._set_stage(DeviceStage.AWAITING_PIN, name)
         self._open_pin_modal(device_id, name)
 

@@ -9,7 +9,7 @@ from services import AppController
 from utils.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
-from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager
+from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
 
 
 class App(tk.Tk):
@@ -38,7 +38,8 @@ class App(tk.Tk):
         self.show_main()
 
     # ------------------------------------------------------------------ #
-    def show_main(self, device_id: str | None = None, device_name: str | None = None):
+    def show_main(self, device_id: str | None = None, device_name: str | None = None,
+                  route_id: str | None = None):
         """Show the main chat interface."""
         if self.current_frame:
             self.current_frame.destroy()
@@ -58,6 +59,11 @@ class App(tk.Tk):
         # Create main frame - pass controller reference for backward compatibility
         self.current_frame = MainFrame(self, self, session, self.app_controller, self._handle_logout, self.toggle_theme)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
+        if route_id:
+            try:
+                self.current_frame.navigate_to(route_id)
+            except Exception:
+                pass
 
         if hasattr(self.current_frame, "chat_page"):
             self.current_frame.chat_page.sync_session_info()
@@ -165,10 +171,14 @@ class App(tk.Tk):
 
     def toggle_theme(self, use_dark: bool):
         """Toggle between light and dark themes."""
+        prev_route = None
+        if isinstance(self.current_frame, MainFrame):
+            prev_route = getattr(self.current_frame.sidebar, "current_view", None)
         ThemeManager.toggle_mode(use_dark)
         # Get current session info from business logic layer
         session = self.app_controller.session
-        self.show_main(session.device_id or None, session.device_name or None)
+        self.configure(bg=Colors.SURFACE)
+        self.show_main(session.device_id or None, session.device_name or None, route_id=prev_route)
 
     # ------------------------------------------------------------------ #
     def _init_fullscreen_window(self):

@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Protocol, Tuple
 
 from services.transport_contract import PairingContext, TransportMessage
-from mock.backend import MockLoCommBackend
 
 
 class TransportBackend(Protocol):
@@ -156,6 +155,7 @@ def _try_profile(profile_key: str) -> Tuple[Optional[BackendBundle], Optional[st
 
 def _register_builtin_profiles() -> None:
     def _load_mock() -> TransportBackend:
+        from mock.backend import MockLoCommBackend
         return MockLoCommBackend()
 
     register_profile(

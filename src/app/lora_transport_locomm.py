@@ -59,6 +59,12 @@ class LoCommTransport:
             if DEBUG:
                 print(f"[LoRaTransport] Starting connection via {self._backend_label}")
 
+            raw_mode = None
+            if isinstance(pairing_context, PairingContext):
+                raw_mode = pairing_context.mode
+            elif isinstance(pairing_context, dict):
+                raw_mode = pairing_context.get("mode")
+
             normalized_context = self._normalize_pairing_context(pairing_context)
             success = self._backend.connect(normalized_context)
             if not success:
@@ -72,7 +78,7 @@ class LoCommTransport:
             self._start_rx_thread()
 
             status_text = "Connected"
-            if pairing_context and pairing_context.get("mode") == "demo":
+            if raw_mode == "demo":
                 status_text = "Connected (demo mode)"
             elif self._is_mock:
                 status_text = "Connected (mock backend)"
@@ -83,11 +89,11 @@ class LoCommTransport:
             return True
 
         except Exception as exc:  # noqa: BLE001
-            if DEBUG:
-                print(f"[LoRaTransport] Connection error: {exc!r}")
+            print(f"[LoRaTransport] Connection error: {exc!r}")
             if self.on_status:
                 # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
-                self.root.after(0, lambda: self._safe_status_callback(f"Connection error: {exc}"))
+                message = f"Connection error: {exc}"
+                self.root.after(0, lambda text=message: self._safe_status_callback(text))
             return False
 
     def _safe_status_callback(self, status_text: str):
