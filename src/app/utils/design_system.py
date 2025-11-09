@@ -10,6 +10,7 @@ from tkinter import ttk
 from dataclasses import dataclass
 import os
 import time
+from typing import Callable
 
 
 # ---------------------------------------------------------------------------
@@ -858,6 +859,40 @@ class DesignUtils:
         if command is not None:
             kwargs["command"] = command
         return ttk.Button(parent, **kwargs)
+
+    @staticmethod
+    def sidebar_container(parent, padding: int = Spacing.MD):
+        container = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+        container.pack(fill=tk.BOTH, expand=True, padx=padding, pady=padding)
+        return container
+
+    @staticmethod
+    def sidebar_nav_section(
+        parent,
+        items: list[tuple[str, str]],
+        click_handler: Callable[[str], None],
+        register_button: Callable[[str, ttk.Button], None] | None = None,
+    ):
+        section = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+        for key, label in items:
+            btn = DesignUtils.create_nav_button(section, label, lambda k=key: click_handler(k))
+            btn.pack(fill=tk.X, pady=(0, Spacing.SM))
+            if register_button:
+                register_button(key, btn)
+        return section
+
+    @staticmethod
+    def sidebar_footer(parent, version_label: str):
+        footer = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.XS, Spacing.XS))
+        tk.Label(
+            footer,
+            text=version_label,
+            bg=Colors.SURFACE_SIDEBAR,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.XXS))
+        return footer
 
     @staticmethod
     def create_message_row(parent, title: str, value: str):

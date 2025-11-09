@@ -8,7 +8,8 @@ from typing import Optional, Callable
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.connection_manager import get_connection_manager
 from utils.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from utils.ui_helpers import create_scroll_container
+from utils.ui_helpers import create_scroll_container, create_table_card
+from utils.window_sizing import scale_dimensions
 from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
 from .pin_pairing_frame import PINPairingFrame
@@ -105,19 +106,7 @@ class DevicesPage(BasePage):
         self._refresh_device_table()
 
     def _build_device_card(self, parent):
-        card = tk.Frame(
-            parent,
-            bg=Colors.SURFACE_ALT,
-            highlightbackground=Colors.BORDER,
-            highlightthickness=1,
-            bd=0,
-        )
-        card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.MD))
-        card.pack_propagate(False)
-        content = tk.Frame(card, bg=Colors.SURFACE_ALT)
-        content.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
-        table_wrapper = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        table_wrapper.pack(fill=tk.BOTH, expand=True)
+        _, table_wrapper, footer = create_table_card(parent)
 
         columns = ("Name", "Device ID", "Status")
         style = ttk.Style()
@@ -163,8 +152,6 @@ class DevicesPage(BasePage):
         self.device_tree.pack(fill=tk.BOTH, expand=True, padx=(Spacing.SM, 0), pady=(Spacing.SM, Spacing.SM))
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
 
-        footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        footer.pack(fill=tk.X)
         button_holder = tk.Frame(footer, bg=Colors.SURFACE_ALT)
         button_holder.pack(side=tk.RIGHT, pady=Spacing.XS, padx=Spacing.SM)
         btn_width = 12
@@ -293,10 +280,7 @@ class DevicesPage(BasePage):
         modal = tk.Toplevel(self)
         modal.title(f"Pair {device_name} - {device_id}")
         modal.configure(bg=Colors.SURFACE)
-        base_width = 432
-        base_height = 378
-        width = int(base_width * 0.93)
-        height = int(base_height * 0.75)
+        width, height = scale_dimensions(432, 378, 0.93, 0.75)
         modal.geometry(f"{width}x{height}")
         modal.minsize(width, height)
         modal.resizable(True, True)

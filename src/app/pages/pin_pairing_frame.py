@@ -10,10 +10,8 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from utils.pin_authentication import (
     generate_pairing_pin,
     verify_pairing_pin,
-    validate_pin_format,
-    get_pin_auth,
-    get_security_status,
 )
+from utils.pin_pairing_state import PinPairingState
 
 
 class PINPairingFrame(tk.Frame):
@@ -23,7 +21,7 @@ class PINPairingFrame(tk.Frame):
         super().__init__(master, bg=Colors.SURFACE)
         self.on_pair_success = on_pair_success
         self.on_demo_login = on_demo_login
-        self.pin_auth = get_pin_auth()
+        self.pairing_state = PinPairingState()
         self.pin_vars: list[tk.StringVar] = []
         self.pin_entries: list[tk.Entry] = []
 
@@ -192,23 +190,14 @@ class PINPairingFrame(tk.Frame):
         """CRITICAL FIX: Handle PIN submission with security measures."""
         pin = self._collect_pin().strip()
 
-        if not pin:
-            self._show_error("Please enter a PIN")
+        valid, error = self.pairing_state.validate_pin(pin)
+        if not valid:
+            self._show_error(error)
             return
 
-        if len(pin) != 8:
-            self._show_error("PIN must be exactly 8 characters")
-            return
-
-        if not validate_pin_format(pin):
-            self._show_error("PIN must contain only letters A-Z and numbers")
-            return
-
-        # Check security status before allowing attempt
-        security_status = get_security_status("desktop-client")
-        if security_status['is_locked']:
-            minutes_remaining = int(security_status['lockout_remaining_seconds'] // 60)
-            self._show_error(f"Account locked for {minutes_remaining} more minutes")
+        locked, lock_msg, _ = self.pairing_state.check_lockout()
+        if locked:
+            self._show_error(lock_msg)
             return
 
         # Verify PIN

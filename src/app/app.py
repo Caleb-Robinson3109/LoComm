@@ -11,6 +11,7 @@ from utils.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
+from utils.window_sizing import calculate_initial_window_size, calculate_minimum_window_size
 from mock.peer_chat_window import refresh_mock_peer_window_theme
 
 MAX_UI_PENDING_MESSAGES = 500
@@ -37,8 +38,6 @@ class App(tk.Tk):
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
-        self.app_controller.register_status_callback(self._handle_business_status)
-
         # Initialize UI
         self.show_main()
 
@@ -167,16 +166,6 @@ class App(tk.Tk):
         if sender and sender != local_device_name:
             self.notify_incoming_message(sender, msg)
 
-    def _handle_business_status(self, text: str):
-        """Handle status updates from business logic layer."""
-        if isinstance(self.current_frame, MainFrame):
-            self.current_frame.update_status(text)
-
-    def _on_status_update(self, status_text: str, color: str):
-        """Handle centralized status updates."""
-        if isinstance(self.current_frame, MainFrame):
-            self.current_frame.update_status(status_text)
-
     # ------------------------------------------------------------------ #
     def notify_incoming_message(self, sender: str, msg: str):
         """Notify user of incoming messages."""
@@ -217,15 +206,13 @@ class App(tk.Tk):
     def _init_fullscreen_window(self):
         """Force the app to occupy the full screen and prevent shrinking."""
         self.update_idletasks()
+        target_w, target_h = calculate_initial_window_size(self)
         screen_w = self.winfo_screenwidth()
-        screen_h = self.winfo_screenheight()
-        target_w = int(screen_w * AppConfig.WINDOW_WIDTH_RATIO)
-        target_h = int(screen_h * AppConfig.WINDOW_HEIGHT_RATIO)
         offset_x = max(screen_w - target_w, 0)
         offset_y = 0
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        min_height = max(int(target_h * 0.9), AppConfig.MIN_WINDOW_HEIGHT)
-        self.minsize(target_w, min_height)
+        min_w, min_h = calculate_minimum_window_size(target_w, target_h)
+        self.minsize(min_w, min_h)
         self.resizable(True, True)
 
 

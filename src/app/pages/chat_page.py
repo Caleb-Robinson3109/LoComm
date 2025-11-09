@@ -312,10 +312,6 @@ class ChatPage(BasePage):
             self.on_disconnect()
         self._clear_chat_contents(confirm=False)
 
-    def _handle_connect(self):
-        # Placeholder for connect action - implement based on controller
-        pass
-
     def _clear_chat_contents(self, *, confirm: bool = True):
         if self.context and hasattr(self.context.app, "clear_chat_history"):
             self.context.app.clear_chat_history(confirm=confirm)

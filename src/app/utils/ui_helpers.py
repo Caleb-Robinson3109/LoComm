@@ -33,7 +33,11 @@ class PageScaffold:
     scroll: Optional[ScrollContainer]
 
     def destroy(self):
-        destroy_scroll_container(self.scroll)
+        if self.scroll:
+            manager = GlobalMousewheelManager.get_instance()
+            manager.unregister_canvas(self.scroll.canvas)
+            if self.scroll.wrapper.winfo_exists():
+                self.scroll.wrapper.destroy()
         if self.root.winfo_exists():
             self.root.destroy()
 
@@ -133,12 +137,6 @@ def enable_global_mousewheel(widget: tk.Canvas) -> None:
     _bind_mousewheel(widget)
 
 
-def destroy_scroll_container(container: Optional[ScrollContainer]) -> None:
-    """Best-effort destroy helper for scroll containers."""
-    if container is not None:
-        container.destroy()
-
-
 def create_page_scaffold(
     parent: tk.Misc,
     *,
@@ -163,3 +161,25 @@ def create_page_scaffold(
 
     header = DesignUtils.hero_header(body, title=title, subtitle=subtitle, actions=actions)
     return PageScaffold(root=root, body=body, header=header, scroll=scroll)
+
+
+def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
+    """Builds a bordered card with a table area and footer row."""
+    card = tk.Frame(
+        parent,
+        bg=Colors.SURFACE_ALT,
+        highlightbackground=Colors.BORDER,
+        highlightthickness=1,
+        bd=0,
+    )
+    card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.MD))
+    card.pack_propagate(False)
+    content = tk.Frame(card, bg=Colors.SURFACE_ALT)
+    content.pack(fill=tk.BOTH, expand=True, padx=padding, pady=padding)
+
+    table_wrapper = tk.Frame(content, bg=Colors.SURFACE_ALT)
+    table_wrapper.pack(fill=tk.BOTH, expand=True)
+
+    footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
+    footer.pack(fill=tk.X, pady=(Spacing.SM, 0))
+    return card, table_wrapper, footer

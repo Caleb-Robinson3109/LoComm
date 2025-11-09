@@ -246,6 +246,10 @@ class PINAuthentication:
         self.cleanup_expired_pins()
         return self._active_pins.copy()
 
+    def get_pin_length(self) -> int:
+        """Return configured PIN length."""
+        return self._pin_length
+
     def revoke_pin(self, device_id: str):
         """Manually revoke a device's PIN."""
         if device_id in self._device_pins:

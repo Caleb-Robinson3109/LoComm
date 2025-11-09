@@ -22,8 +22,7 @@ class Sidebar(tk.Frame):
 
         self._buttons: dict[str, ttk.Button] = {}
 
-        self.container = tk.Frame(self, bg=Colors.SURFACE_SIDEBAR)
-        self.container.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        self.container = DesignUtils.sidebar_container(self)
         tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
 
         self._build_nav_sections()
@@ -31,12 +30,6 @@ class Sidebar(tk.Frame):
         self._update_active_button(self.current_view)
 
     def _build_nav_sections(self):
-        self.nav_frame = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
-        self.nav_frame.pack(fill=tk.X)
-
-        self.bottom_frame = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
-        self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
-
         top_items = []
         bottom_items = []
         for key, label in self.nav_items:
@@ -45,35 +38,30 @@ class Sidebar(tk.Frame):
             else:
                 top_items.append((key, label))
 
-        self._render_nav_group(self.nav_frame, top_items)
+        self.nav_frame = DesignUtils.sidebar_nav_section(
+            self.container, top_items, self._handle_nav_click, self._register_nav_button
+        )
+        self.nav_frame.pack(fill=tk.X)
 
         self.spacer = tk.Frame(self.container, bg=Colors.SURFACE_SIDEBAR)
         self.spacer.pack(fill=tk.BOTH, expand=True)
 
-        self._render_nav_group(self.bottom_frame, bottom_items)
-
-    def _render_nav_group(self, parent, items):
-        for key, label in items:
-            btn = DesignUtils.create_nav_button(parent, label, lambda k=key: self._handle_nav_click(k))
-            btn.pack(fill=tk.X, pady=(0, Spacing.SM))
-            self._buttons[key] = btn
+        self.bottom_frame = DesignUtils.sidebar_nav_section(
+            self.container, bottom_items, self._handle_nav_click, self._register_nav_button
+        )
+        self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
 
     def _build_footer(self):
-        footer = tk.Frame(self, bg=Colors.SURFACE_SIDEBAR)
-        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.XS, Spacing.XS))
-        tk.Label(
-            footer,
-            text="v2.1 Desktop",
-            bg=Colors.SURFACE_SIDEBAR,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w", padx=Spacing.MD, pady=(0, Spacing.XXS))
+        DesignUtils.sidebar_footer(self, "v2.1 Desktop")
 
     # ------------------------------------------------------------------ #
     def _update_active_button(self, active_view: str):
         for key, button in self._buttons.items():
             style = "Locomm.NavActive.TButton" if key == active_view else "Locomm.Nav.TButton"
             button.configure(style=style)
+
+    def _register_nav_button(self, key: str, button: ttk.Button):
+        self._buttons[key] = button
 
     def _handle_nav_click(self, route_id: str):
         self.set_active_view(route_id)

@@ -43,7 +43,6 @@ class MainFrame(ttk.Frame):
         # View bookkeeping for lazy loading
         self._view_manager = ViewManager(self)
         self._view_factories: dict[str, Callable[[tk.Frame], tk.Frame]] = {}
-        self._view_instances: dict[str, tk.Frame] = {}
         self._view_containers: dict[str, tk.Frame] = {}
         self._page_context = PageContext(
             app=self.app,
@@ -51,8 +50,7 @@ class MainFrame(ttk.Frame):
             controller=self.controller,
             navigator=self
         )
-        self._view_cache_order: list[str] = []
-        self._max_cached_views = 3
+        self._view_manager.set_protected_views({"home"})
         self.ui_store = get_ui_store()
         self.routes: List[RouteConfig] = self._build_routes()
         self._register_view_factories()
@@ -127,9 +125,9 @@ class MainFrame(ttk.Frame):
 
     def _ensure_view(self, view_name: str):
         """Instantiate a view component the first time it is requested."""
-        if view_name in self._view_instances:
-            self._record_view_usage(view_name)
-            return self._view_instances[view_name]
+        existing = self._view_manager.get_view_component(view_name)
+        if existing:
+            return existing
         factory = self._view_factories.get(view_name)
         container = self._view_containers.get(view_name)
         if not factory or not container:
@@ -137,9 +135,6 @@ class MainFrame(ttk.Frame):
         component = factory(container)
         component.pack(fill=tk.BOTH, expand=True, padx=Spacing.PAGE_PADDING, pady=Spacing.PAGE_PADDING)
         self._view_manager.attach_component(view_name, component)
-        self._view_instances[view_name] = component
-        self._record_view_usage(view_name)
-        self._trim_view_cache()
         return component
 
     def _build_top_bar(self, parent):
@@ -238,10 +233,6 @@ class MainFrame(ttk.Frame):
             self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
         except Exception:
             pass
-        try:
-            self._view_manager.cleanup_all()
-        except Exception:
-            pass
         return super().destroy()
 
     # ------------------------------------------------------------------ #
@@ -266,20 +257,10 @@ class MainFrame(ttk.Frame):
         return mapping.get(stage, ("Status", Colors.STATE_ERROR))
 
     # ------------------------------------------------------------------ #
-    def update_status(self, text: str):
-        """Update status in both chat tab and sidebar."""
-        # Only update if components exist
-        chat_page = self._view_instances.get("chat")
-        if chat_page:
-            chat_page.set_status(text)
-        if hasattr(self, 'sidebar'):
-            self.sidebar.set_status(text)
-        self._last_status = text
-
     def _handle_disconnect(self):
         """Handle disconnect request from chat tab."""
         self.controller.stop_session()
-        self.update_status("Disconnected")
+        self.controller.status_manager.update_status("Disconnected")
         if hasattr(self.app, "clear_chat_history"):
             self.app.clear_chat_history(confirm=False)
 
@@ -313,37 +294,11 @@ class MainFrame(ttk.Frame):
         """Handle device pairing notifications from PairPage."""
         if device_id and device_name:
             # Device is connected
-            self.update_status(f"Connected to {device_name}")
+            self.controller.status_manager.update_status(f"Connected to {device_name}", peer_name=device_name)
             self._show_chat_view()
             self.chat_page.sync_session_info()
         else:
             # Device is disconnected
-            self.update_status("Device disconnected")
+            self.controller.status_manager.update_status("Device disconnected")
 
-    def _record_view_usage(self, view_name: str):
-        if view_name in self._view_cache_order:
-            self._view_cache_order.remove(view_name)
-        self._view_cache_order.append(view_name)
-
-    def _trim_view_cache(self):
-        while len(self._view_cache_order) > self._max_cached_views:
-            candidates = [
-                v for v in self._view_cache_order
-                if v not in {self._view_manager.active_view, "home"}
-            ]
-            if not candidates:
-                break
-            target = candidates[0]
-            self._view_cache_order.remove(target)
-            self._unload_view(target)
-
-    def _unload_view(self, view_name: str):
-        if view_name in self._view_cache_order:
-            self._view_cache_order.remove(view_name)
-        component = self._view_instances.pop(view_name, None)
-        if component:
-            try:
-                component.destroy()
-            except Exception:
-                pass
-        self._view_manager.detach_component(view_name)
+    # Caching is now owned by ViewManager

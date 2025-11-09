@@ -14,6 +14,11 @@ from mock.device_service import MockDevice, get_mock_device_service
 from mock.network_simulator import LoRaNetworkSimulator
 from mock.peer_bridge import get_peer_bridge
 from services.transport_contract import PairingContext, TransportMessage
+from mock.session import (
+    clear_mock_session,
+    get_mock_session_state,
+    set_mock_session_device,
+)
 
 
 class MockLoCommBackend:
@@ -23,7 +28,7 @@ class MockLoCommBackend:
 
     def __init__(self):
         self._connected = False
-        self._active_device: Optional[MockDevice] = None
+        self._session_state = get_mock_session_state()
         self._message_counter = 0
         self._device_service = get_mock_device_service()
         self._network = LoRaNetworkSimulator()
@@ -48,11 +53,11 @@ class MockLoCommBackend:
 
         self._network.set_scenario(scenario)
         self._bridge.register_backend(self)
-        self._active_device = None
+        device = None
         if device_id:
-            self._active_device = self._device_service.get_device(device_id)
-        if self._active_device is None and provided_name:
-            self._active_device = MockDevice(
+            device = self._device_service.get_device(device_id)
+        if device is None and provided_name:
+            device = MockDevice(
                 device_id=device_id or "MOCK",
                 name=provided_name,
                 status="Available",
@@ -60,17 +65,22 @@ class MockLoCommBackend:
                 metadata={"source": pairing_context.mode if pairing_context else "mock"},
                 telemetry={"rssi": -70, "snr": 4.0, "battery": 80},
             )
-        if self._active_device is None:
-            self._active_device = self._device_service.pick_default()
-        if self._active_device and provided_name:
-            self._active_device.name = provided_name
-
+        if device is None:
+            device = self._device_service.pick_default()
+        if device and provided_name:
+            device.name = provided_name
+        self._session_state.device = device
+        set_mock_session_device(
+            device,
+            scenario,
+            pairing_context.mode if pairing_context else "mock",
+        )
         self._seed_handshake()
         return True
 
     def disconnect(self) -> bool:
         self._connected = False
-        self._active_device = None
+        clear_mock_session()
         self._message_counter = 0
         self._bridge.unregister_backend(self)
         return True
@@ -105,17 +115,18 @@ class MockLoCommBackend:
         return True
 
     def _seed_handshake(self):
-        if not self._active_device:
+        device = self._session_state.device
+        if not device:
             return
         metadata = {
             "scenario": self._network.scenario.name,
-            "rssi": self._active_device.telemetry.get("rssi", -78),
-            "snr": self._active_device.telemetry.get("snr", 4.2),
-            "battery": self._active_device.telemetry.get("battery", 80),
+            "rssi": device.telemetry.get("rssi", -78),
+            "snr": device.telemetry.get("snr", 4.2),
+            "battery": device.telemetry.get("battery", 80),
         }
         text = (
-            f"{self._active_device.name} ready. Firmware "
-            f"{self._active_device.metadata.get('firmware', '1.0.0')}"
+            f"{device.name} ready. Firmware "
+            f"{device.metadata.get('firmware', '1.0.0')}"
         )
         self._emit_system_message(text, metadata)
         self._bridge.notify_peer("System", text)
@@ -124,9 +135,10 @@ class MockLoCommBackend:
         return  # Heartbeats disabled for mock testing
 
     def inject_peer_message(self, text: str) -> None:
-        if not self._connected or not self._active_device:
+        device = self._session_state.device
+        if not self._connected or not device:
             return
-        telemetry = self._active_device.telemetry or {}
+        telemetry = device.telemetry or {}
         metadata = {
             "scenario": self._network.scenario.name,
             "rssi": telemetry.get("rssi", -78),
@@ -134,7 +146,7 @@ class MockLoCommBackend:
             "battery": telemetry.get("battery", 80),
         }
         message = TransportMessage(
-            sender=self._active_device.name,
+            sender=device.name,
             payload=text,
             metadata=metadata,
         )

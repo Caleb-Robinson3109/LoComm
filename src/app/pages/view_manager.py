@@ -1,6 +1,6 @@
 """View management system for proper lifecycle handling of application views."""
 import tkinter as tk
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Set, List
 from utils.app_logger import get_logger
 
 
@@ -17,6 +17,9 @@ class ViewManager:
         self.view_components: Dict[str, Any] = {}
         self.view_pack_options: Dict[str, dict] = {}
         self.logger = get_logger("view_manager")
+        self._cache_limit = 3
+        self._cache_order: List[str] = []
+        self._protected_views: Set[str] = {"home"}
 
     def register_view(self, view_name: str, container: tk.Frame, component: Any = None, *, pack_options: Optional[dict] = None):
         """
@@ -78,6 +81,8 @@ class ViewManager:
 
         # Update active view
         self.active_view = view_name
+        self._record_cache_usage(view_name)
+        self._trim_cache()
 
         if not is_same_view:
             component = self.view_components.get(view_name)
@@ -103,56 +108,39 @@ class ViewManager:
         """
         return self.view_components.get(view_name)
 
-    def cleanup_view(self, view_name: str):
-        """
-        Clean up resources for a specific view.
-
-        Args:
-            view_name: Name of the view to clean up
-        """
-        # Clean up view components
-        if view_name in self.view_components:
-            component = self.view_components[view_name]
-            # Call cleanup method if available
-            if hasattr(component, 'cleanup'):
-                try:
-                    component.cleanup()
-                except Exception as e:
-                    # Log cleanup errors instead of silently ignoring
-                    self.logger.warning(f"Error during component cleanup for view '{view_name}': {e}")
-            del self.view_components[view_name]
-
-        # Clean up view containers
-        if view_name in self.view_containers:
-            container = self.view_containers[view_name]
-            # Destroy the container to free resources
-            try:
-                # Clear any child widgets first
-                for child in container.winfo_children():
-                    try:
-                        child.destroy()
-                    except Exception:
-                        pass  # Ignore individual child destruction errors
-                container.destroy()
-            except Exception as e:
-                # Log container destruction errors
-                self.logger.warning(f"Error during container destruction for view '{view_name}': {e}")
-            del self.view_containers[view_name]
-
-    def cleanup_all(self):
-        """Clean up all registered views."""
-        for view_name in list(self.view_containers.keys()):
-            self.cleanup_view(view_name)
-        self.active_view = None
-
     def detach_component(self, view_name: str):
-        """Destroy only the component for a view while keeping its container."""
         component = self.view_components.pop(view_name, None)
         if not component:
             return
         try:
             if hasattr(component, "on_hide"):
                 component.on_hide()
+        except Exception as exc:
+            self.logger.warning(f"Error during on_hide for detached view '{view_name}': {exc}")
+        try:
             component.destroy()
-        except Exception as e:
-            self.logger.warning(f"Error detaching component for view '{view_name}': {e}")
+        except Exception as exc:
+            self.logger.warning(f"Error destroying detached view '{view_name}': {exc}")
+
+    def set_cache_limit(self, limit: int):
+        self._cache_limit = limit
+
+    def set_protected_views(self, views: Set[str]):
+        self._protected_views = set(views)
+
+    def _record_cache_usage(self, view_name: str):
+        if view_name in self._cache_order:
+            self._cache_order.remove(view_name)
+        self._cache_order.append(view_name)
+
+    def _trim_cache(self):
+        while len(self._cache_order) > self._cache_limit:
+            candidates = [
+                view for view in self._cache_order
+                if view != self.active_view and view not in self._protected_views
+            ]
+            if not candidates:
+                break
+            target = candidates[0]
+            self._cache_order.remove(target)
+            self.detach_component(target)

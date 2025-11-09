@@ -20,7 +20,6 @@ from utils.runtime_settings import get_runtime_settings
 from utils.mock_config import get_mock_config, set_mock_scenario
 from utils.diagnostics import log_transport_event
 MessageCallback = Callable[[str, str, float], None]
-StatusCallback = Callable[[str], None]
 ResultCallback = Optional[Callable[[bool, Optional[str]], None]]
 
 
@@ -84,7 +83,6 @@ class AppController:
         self.store = SessionStore()
 
         self._message_callbacks: List[MessageCallback] = []
-        self._status_callbacks: List[StatusCallback] = []
         self._worker_lock = threading.Lock()
 
         # Log resolved transport profile for diagnostics
@@ -137,9 +135,6 @@ class AppController:
     # Event registration
     def register_message_callback(self, callback: MessageCallback) -> None:
         self._message_callbacks.append(callback)
-
-    def register_status_callback(self, callback: StatusCallback) -> None:
-        self._status_callbacks.append(callback)
 
     # ------------------------------------------------------------------ #
     # Transport orchestration
@@ -375,11 +370,6 @@ class AppController:
 
     def _handle_transport_status(self, status_text: str) -> None:
         self.status_manager.update_status(status_text, self.session.device_name)
-        for callback in self._status_callbacks:
-            try:
-                callback(status_text)
-            except Exception:
-                self.logger.exception("Status callback failed")
         log_transport_event("status", {"text": status_text})
 
     def _emit_status(self, text: str):
