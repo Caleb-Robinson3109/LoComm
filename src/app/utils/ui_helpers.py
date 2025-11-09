@@ -16,11 +16,12 @@ class ScrollContainer:
     canvas: tk.Canvas
     frame: tk.Frame
     scrollbar: tk.Scrollbar
+    window_id: int
 
 
 def create_scroll_container(parent: tk.Misc, *,
                             bg: str = Colors.BG_PRIMARY,
-                            padding: tuple[int, int] = (Spacing.XL, Spacing.XL)) -> ScrollContainer:
+                            padding: tuple[int, int] = (0, Spacing.LG)) -> ScrollContainer:
     """Create a vertical scroll container with unified styling."""
     wrapper = tk.Frame(parent, bg=bg)
     wrapper.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
@@ -34,15 +35,20 @@ def create_scroll_container(parent: tk.Misc, *,
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
 
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
 
     _bind_mousewheel(canvas)
 
     canvas.pack(side="left", fill="both", expand=True)
+
+    def _resize_inner(event):
+        canvas.itemconfig(window_id, width=event.width, height=event.height)
+
+    canvas.bind("<Configure>", _resize_inner)
     scrollbar.pack(side="right", fill="y")
 
-    return ScrollContainer(wrapper=wrapper, canvas=canvas, frame=scrollable_frame, scrollbar=scrollbar)
+    return ScrollContainer(wrapper=wrapper, canvas=canvas, frame=scrollable_frame, scrollbar=scrollbar, window_id=window_id)
 
 
 class GlobalMousewheelManager:
