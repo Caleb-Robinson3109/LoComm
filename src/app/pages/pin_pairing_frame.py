@@ -6,7 +6,7 @@ import tkinter as tk
 from typing import Callable, Optional
 from tkinter import messagebox
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from utils.design_system import Colors, Typography, Spacing, DesignUtils, Space
 from utils.pin_authentication import (
     generate_pairing_pin,
     verify_pairing_pin,
@@ -53,37 +53,37 @@ class PINPairingFrame(tk.Frame):
         )
         self.subtitle_label.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
 
-        inputs_row = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        inputs_row.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
-        inputs_row.pack_propagate(False)
+        inputs_row = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Spacing.SM)
+        inputs_row.pack(fill=tk.X, pady=(0, Spacing.SM))
         self._build_pin_inputs(inputs_row)
-
-        control_row = tk.Frame(content, bg=Colors.SURFACE)
-        control_row.pack(fill=tk.X, pady=(Spacing.MD, 0))
-        control_row.grid_columnconfigure(1, weight=1)
-        if self.on_demo_login:
-            DesignUtils.button(
-                control_row,
-                text="Mock",
-                command=self._on_demo_login,
-                variant="secondary",
-            ).grid(row=0, column=0, sticky="w")
-        DesignUtils.button(
-            control_row,
-            text="Clear PIN",
-            command=self._clear_pin,
-            variant="ghost",
-        ).grid(row=0, column=2, sticky="e")
 
         button_frame = tk.Frame(content, bg=Colors.SURFACE)
         button_frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
+        self.clear_btn = DesignUtils.button(
+            button_frame,
+            text="Clear",
+            command=self._clear_pin,
+            variant="primary",
+        )
+        self.clear_btn.pack(fill=tk.X, pady=(0, Spacing.XXS))
+
         self.pair_btn = DesignUtils.button(
             button_frame,
-            text="Pair device",
+            text="Pair",
             command=self._on_submit_pin,
+            variant="primary",
         )
-        self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
+        self.pair_btn.pack(fill=tk.X, pady=(0, Spacing.XXS))
+
+        if self.on_demo_login:
+            self.mock_btn = DesignUtils.button(
+                button_frame,
+                text="Mock",
+                command=self._on_demo_login,
+                variant="primary",
+            )
+            self.mock_btn.pack(fill=tk.X, pady=(0, Spacing.XXS))
 
         # Set initial focus after widgets are laid out
         self.after(100, self.focus_input)
@@ -106,17 +106,17 @@ class PINPairingFrame(tk.Frame):
     def _build_pin_inputs(self, parent: tk.Frame):
         self.pin_vars.clear()
         self.pin_entries.clear()
-        pin_spacing = max(int(Spacing.XXS * 0.95), 1)
+        pin_spacing = max(int(Spacing.XXS * 0.5), 1)
         for idx in range(8):
             var = tk.StringVar()
             entry = DesignUtils.create_pin_entry(
                 parent,
                 textvariable=var,
                 justify="center",
-                width=2,
-                font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+                width=1,
+                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
             )
-            entry.pack(side=tk.LEFT, padx=(pin_spacing, pin_spacing), pady=(0, pin_spacing))
+            entry.pack(side=tk.LEFT, padx=(pin_spacing // 2, pin_spacing // 2), pady=(0, pin_spacing // 2))
             entry.bind("<KeyRelease>", lambda e, i=idx: self._handle_digit_key(e, i))
             entry.bind("<KeyPress>", lambda e, i=idx: self._handle_digit_press(e, i))
             entry.bind("<Return>", self._on_submit_pin)

@@ -296,10 +296,8 @@ class DevicesPage(BasePage):
         modal.title(f"Pair {device_name} - {device_id}")
         modal.configure(bg=Colors.SURFACE)
         base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
-        width = int(base_width * 1.05)
-        height = base_height
-        width = max(width, 320)
-        height = max(height, 320)
+        width = max(int(base_width * 1.08), 320)
+        height = max(int(base_height * 1.06), 340)
         modal.geometry(f"{width}x{height}")
         modal.minsize(width, height)
         modal.resizable(True, True)
