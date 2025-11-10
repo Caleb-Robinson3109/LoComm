@@ -1,14 +1,14 @@
-"""Pair page component for managing paired devices with modern layout."""
+"""Pair page component matching chat page's clean, simple design."""
 from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional, Callable
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from utils.design_system import Colors, Typography, Spacing, DesignUtils, Space
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from ui.helpers import create_scroll_container, create_table_card
+from ui.helpers import create_scroll_container
 from utils.window_sizing import scale_dimensions
 from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
@@ -16,7 +16,7 @@ from .pin_pairing_frame import PINPairingFrame
 
 
 class DevicesPage(BasePage):
-    """Devices page for managing device connections, PIN entry, and trust verification."""
+    """Devices page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
         super().__init__(master, context=context, bg=Colors.SURFACE)
@@ -31,8 +31,6 @@ class DevicesPage(BasePage):
         self.device_service = get_mock_device_service()
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
-        self.connection_state = tk.StringVar(value="Ready to pair")
-        self.status_var = tk.StringVar(value="No device paired yet. Select a device to get started.")
         self.selected_device_var = tk.StringVar(value="No device selected")
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
@@ -41,74 +39,81 @@ class DevicesPage(BasePage):
         self._suppress_selection_event = False
         self._last_selected_id: Optional[str] = None
 
-        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
-        self.main_body = scroll.frame
-
-        DesignUtils.hero_header(
-            self.main_body,
-            title="Devices",
-            subtitle="Pair LoRa hardware, confirm PINs face-to-face."
+        # Simple scroll container like chat page
+        scroll = create_scroll_container(
+            self, 
+            bg=Colors.SURFACE, 
+            padding=(0, Spacing.LG)
         )
-        self._build_status_card(self.main_body)
-        self._build_body()
+        body = scroll.frame
+
+        self._build_title(body)
+        self._build_devices_section(body)
+
         # Reflect whatever the store currently knows about the connection state
-        # instead of force-resetting everyone back to READY. This keeps the chat
-        # composer enabled after a successful demo/mock connect.
         self._apply_snapshot(self.ui_store.get_device_status())
 
-    def _build_status_card(self, parent):
-        card, content = DesignUtils.card(
+    def _build_title(self, parent):
+        """Build simple title section like chat page."""
+        title_wrap = tk.Frame(
             parent,
-            "Pairing status",
-            "Stay aware of your current session before selecting a new device.",
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
         )
-        card.pack(fill=tk.X, pady=(0, Spacing.LG))
+        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
         tk.Label(
-            content,
-            textvariable=self.connection_state,
-            bg=Colors.SURFACE_ALT,
+            title_wrap,
+            text="Devices",
+            bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
         tk.Label(
-            content,
-            textvariable=self.status_var,
-            bg=Colors.SURFACE_ALT,
+            title_wrap,
+            text="Pair LoRa hardware, confirm PINs face-to-face",
+            bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=640,
             justify="left",
-            wraplength=520,
-        ).pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
+        ).pack(anchor="w", pady=(Space.XXS, 0))
 
-        footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
-        footer.pack(fill=tk.X)
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
+
+    def _build_devices_section(self, parent):
+        """Build clean devices section."""
+        content = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Space.LG,
+            pady=Space.MD,
+        )
+        content.pack(fill=tk.BOTH, expand=True)
+        
+        # Section title
         tk.Label(
-            footer,
-            text="Selected device",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-        tk.Label(
-            footer,
-            textvariable=self.selected_device_var,
-            bg=Colors.SURFACE_ALT,
+            content,
+            text="Available Devices",
+            bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+        
+        # Device list
+        list_frame = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
+        
+        self._build_device_list(list_frame)
+        
+        # Action buttons
+        self._build_action_buttons(content)
 
-    def _build_body(self):
-        body = tk.Frame(self.main_body, bg=Colors.SURFACE)
-        body.pack(fill=tk.BOTH, expand=True)
-
-        self._build_device_card(body)
-        self._refresh_device_table()
-
-    def _build_device_card(self, parent):
-        _, table_wrapper, footer = create_table_card(parent)
-
-        columns = ("Name", "Device ID", "Status")
+    def _build_device_list(self, parent):
+        """Build simple device list."""
+        # Configure treeview style
         style = ttk.Style()
         style.configure(
             "Devices.Treeview",
@@ -131,11 +136,13 @@ class DevicesPage(BasePage):
             foreground=[("selected", Colors.TEXT_PRIMARY)],
         )
 
+        # Create treeview
+        columns = ("Name", "Device ID", "Status")
         self.device_tree = ttk.Treeview(
-            table_wrapper,
+            parent,
             columns=columns,
             show="headings",
-            height=10,
+            height=8,
             style="Devices.Treeview",
         )
         column_width = 180
@@ -149,22 +156,29 @@ class DevicesPage(BasePage):
                 minwidth=column_minwidth,
                 stretch=True,
             )
-        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=(Spacing.SM, 0), pady=(Spacing.SM, Spacing.SM))
+        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=(0, 0), pady=(0, Spacing.SM))
         self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
+        
+        # Populate devices
+        self._refresh_device_table()
 
-        button_holder = tk.Frame(footer, bg=Colors.SURFACE_ALT)
-        button_holder.pack(side=tk.RIGHT, pady=Spacing.XS, padx=Spacing.SM)
+    def _build_action_buttons(self, parent):
+        """Build simple action buttons."""
+        button_frame = tk.Frame(parent, bg=Colors.SURFACE)
+        button_frame.pack(fill=tk.X)
+        
         btn_width = 12
         self.scan_btn = DesignUtils.button(
-            button_holder,
-            text="Scan",
+            button_frame,
+            text="Scan for Devices",
             command=self._scan_for_devices,
             variant="primary",
             width=btn_width,
         )
         self.scan_btn.pack(side=tk.LEFT)
+        
         self.connect_btn = DesignUtils.button(
-            button_holder,
+            button_frame,
             text="Connect",
             command=self._connect_selected_device,
             variant="secondary",
@@ -185,8 +199,6 @@ class DevicesPage(BasePage):
             # Re-select previous device if still present
             target = self._last_selected_id if self._last_selected_id in self.device_tree.get_children() else devices[0].device_id
             self._select_device_in_tree(target)
-        if not devices:
-            self.status_var.set("No mock devices defined. Edit mock/data/devices.json to add entries.")
 
     # ------------------------------------------------------------------ #
     def _scan_for_devices(self):
@@ -203,12 +215,10 @@ class DevicesPage(BasePage):
         if not newly_found:
             self.device_service.refresh()
         self._refresh_device_table()
-        if newly_found:
-            self.status_var.set(f"Discovered {len(newly_found)} new devices.")
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
         if hasattr(self, "scan_btn"):
-            self.scan_btn.configure(state="normal", text="Scan")
+            self.scan_btn.configure(state="normal", text="Scan for Devices")
 
     def _connect_selected_device(self):
         selected = self.device_tree.selection()
@@ -236,7 +246,6 @@ class DevicesPage(BasePage):
 
     def _disconnect_device(self):
         if not self.connection_manager.is_connected():
-            self.status_var.set("No device connected")
             return
         if self.controller:
             self.controller.stop_session()
@@ -360,9 +369,6 @@ class DevicesPage(BasePage):
     def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
         if not snapshot:
             return
-        self.connection_state.set(snapshot.title)
-        detail_text = snapshot.detail or snapshot.subtitle or ""
-        self.status_var.set(detail_text)
         if snapshot.stage == DeviceStage.READY:
             self.selected_device_var.set("No device selected")
             self._active_device_name = None

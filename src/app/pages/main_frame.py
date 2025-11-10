@@ -93,7 +93,7 @@ class MainFrame(ttk.Frame):
         self.top_bar = self._build_top_bar(main_container)
 
         body = tk.Frame(main_container, bg=Colors.SURFACE)
-        body.pack(fill=tk.BOTH, expand=True, pady=(int(Spacing.SM / 4), 0))
+        body.pack(fill=tk.BOTH, expand=True)
 
         # ---------- Left Sidebar ---------- #
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
@@ -141,7 +141,7 @@ class MainFrame(ttk.Frame):
         pad_x = Spacing.XS
         pad_y = max(Spacing.XS, int((Spacing.XXS / 1.5) * 1.2 * 1.15))
         bar = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR, padx=pad_x, pady=pad_y, height=int(Spacing.HEADER_HEIGHT * 1.15))
-        bar.pack(fill=tk.X, side=tk.TOP, pady=(0, int(Spacing.XXS / 2)))
+        bar.pack(fill=tk.X, side=tk.TOP)
 
         bar.grid_columnconfigure(0, weight=1)
         bar.grid_columnconfigure(1, weight=0)

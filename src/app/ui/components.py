@@ -52,26 +52,26 @@ class DesignUtils:
     @staticmethod
     def hero_header(parent, title: str, subtitle: str, actions: List[dict[str, Any]] | None = None):
         ThemeManager.ensure()
-        container = tk.Frame(parent, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.XXS)
+        container = tk.Frame(parent, bg=Colors.HERO_PANEL_BG, padx=Spacing.SM, pady=Spacing.XXS)
         container.pack(fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS))
-        text_wrap = tk.Frame(container, bg=Colors.SURFACE)
+        text_wrap = tk.Frame(container, bg=Colors.HERO_PANEL_BG)
         text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Label(
             text_wrap,
             text=title,
-            bg=Colors.SURFACE,
+            bg=Colors.HERO_PANEL_BG,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
         tk.Label(
             text_wrap,
             text=subtitle,
-            bg=Colors.SURFACE,
+            bg=Colors.HERO_PANEL_BG,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w", pady=(Spacing.XS, 0))
         if actions:
-            action_frame = tk.Frame(container, bg=Colors.SURFACE)
+            action_frame = tk.Frame(container, bg=Colors.HERO_PANEL_BG)
             action_frame.pack(side=tk.RIGHT, anchor="e")
             for action in actions:
                 btn = DesignUtils.button(action_frame, **action)
@@ -136,8 +136,8 @@ class DesignUtils:
             bubble_padx = (0, Spacing.MD)
         else:
             anchor = "w"
-            bubble_bg = Colors.STATE_SUCCESS
-            text_fg = Colors.SURFACE
+            bubble_bg = Colors.CHAT_BUBBLE_OTHER_BG
+            text_fg = Colors.CHAT_BUBBLE_OTHER_TEXT
             name_fg = Colors.TEXT_PRIMARY
             bubble_padx = (Spacing.MD, 0)
 
@@ -187,14 +187,14 @@ class DesignUtils:
     @staticmethod
     def card(parent, title: str, subtitle: str = "", actions: List[dict[str, Any]] | None = None):
         ThemeManager.ensure()
-        frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.BORDER, highlightthickness=1, bd=0)
+        frame = tk.Frame(parent, bg=Colors.CARD_PANEL_BG, highlightbackground=Colors.CARD_PANEL_BORDER, highlightthickness=1, bd=0)
         frame.pack_propagate(False)
-        header = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+        header = tk.Frame(frame, bg=Colors.CARD_PANEL_BG)
         header.pack(fill=tk.X, pady=(Spacing.SM, 0), padx=Spacing.MD)
         tk.Label(
             header,
             text=title,
-            bg=Colors.SURFACE_ALT,
+            bg=Colors.CARD_PANEL_BG,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
@@ -202,17 +202,17 @@ class DesignUtils:
             tk.Label(
                 header,
                 text=subtitle,
-                bg=Colors.SURFACE_ALT,
+                bg=Colors.CARD_PANEL_BG,
                 fg=Colors.TEXT_MUTED,
                 font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
             ).pack(anchor="w", pady=(Spacing.XXS, 0))
         if actions:
-            actions_frame = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+            actions_frame = tk.Frame(frame, bg=Colors.CARD_PANEL_BG)
             actions_frame.pack(fill=tk.X, padx=Spacing.MD, pady=(Spacing.XS, Spacing.SM))
             for action in actions:
                 btn = DesignUtils.button(actions_frame, **action)
                 btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
-        body = tk.Frame(frame, bg=Colors.SURFACE_ALT)
+        body = tk.Frame(frame, bg=Colors.CARD_PANEL_BG)
         body.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=(0, Spacing.MD))
         return frame, body
 

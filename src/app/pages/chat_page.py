@@ -37,7 +37,7 @@ class ChatPage(BasePage):
 
         self.shell = tk.Frame(
             body,
-            bg=Colors.SURFACE_ALT,
+            bg=Colors.CHAT_SHELL_BG,
             highlightbackground=Colors.BORDER,
             highlightthickness=1,
             bd=0,
@@ -141,7 +141,7 @@ class ChatPage(BasePage):
 
     # ---------------------------------------------------------------- history area
     def _build_history(self):
-        container = tk.Frame(self.shell, bg=Colors.SURFACE_ALT)
+        container = tk.Frame(self.shell, bg=Colors.CHAT_HISTORY_BG)
         container.grid(row=1, column=0, sticky="nsew")
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
@@ -163,7 +163,7 @@ class ChatPage(BasePage):
         scrollbar.grid(row=0, column=1, sticky="ns")
 
         # Frame that will contain all message rows
-        self.history_frame = tk.Frame(self._history_canvas, bg=Colors.SURFACE_ALT)
+        self.history_frame = tk.Frame(self._history_canvas, bg=Colors.CHAT_HISTORY_BG)
 
         # Keep scrollregion updated when contents change
         def _sync_scrollregion(event, canvas=self._history_canvas):
@@ -192,7 +192,7 @@ class ChatPage(BasePage):
     def _build_composer(self):
         composer = tk.Frame(
             self.shell,
-            bg=Colors.SURFACE_RAISED,
+            bg=Colors.CHAT_COMPOSER_BG,
             padx=Space.LG,
             pady=Space.SM,
         )

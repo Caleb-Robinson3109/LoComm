@@ -1,16 +1,16 @@
-"""Modernized Home page built on the refreshed design system."""
+"""Home page matching chat page's clean, simple design."""
 from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import Colors, DesignUtils, Spacing
-from ui.helpers import create_page_scaffold
+from utils.design_system import Colors, DesignUtils, Spacing, Typography, Space
+from ui.helpers import create_scroll_container
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .base_page import BasePage, PageContext
 
 
 class HomePage(BasePage):
-    """Conversation hub that mirrors Signal-style first run experience."""
+    """Home page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
@@ -22,26 +22,122 @@ class HomePage(BasePage):
 
         self.connection_title_var = tk.StringVar(value="No device paired")
         self.connection_subtitle_var = tk.StringVar(value="Start by pairing a LoRa contact to open a secure chat.")
-        self.connection_badge_var = tk.StringVar(value="Disconnected")
         self.connection_detail_var = tk.StringVar(value="Awaiting secure PIN handoff")
 
-        self.scaffold = create_page_scaffold(
-            self,
-            title="Welcome to Locomm Desktop",
-            subtitle="Secure LoRa messaging starts by pairing a device.",
-            padding=(0, Spacing.LG),
+        # Simple scroll container like chat page
+        scroll = create_scroll_container(
+            self, 
+            bg=Colors.SURFACE, 
+            padding=(0, Spacing.LG)
         )
-        body = self.scaffold.body
+        body = scroll.frame
 
-        DesignUtils.button(
-            self.scaffold.header,
-            text="Start pairing",
-            command=self._go_to_devices,
-            variant="primary",
-        ).pack(anchor="w", pady=(Spacing.SM, 0))
+        self._build_title(body)
+        self._build_status_section(body)
+        self._build_action_section(body)
+        
         # Apply the latest snapshot immediately so the UI reflects the current store state.
         self._apply_snapshot(self.ui_store.get_device_status())
-        self._go_to_devices()
+
+    def _build_title(self, parent):
+        """Build simple title section like chat page."""
+        title_wrap = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+        )
+        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
+
+        tk.Label(
+            title_wrap,
+            text="Welcome to Locomm",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
+
+        tk.Label(
+            title_wrap,
+            text="Secure LoRa messaging for desktop",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=640,
+            justify="left",
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
+
+    def _build_status_section(self, parent):
+        """Build simple content area like chat page."""
+        content = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Space.LG,
+            pady=Space.MD,
+        )
+        content.pack(fill=tk.BOTH, expand=True)
+    
+    def _build_status_section(self, parent):
+        """Build clean status section."""
+        status_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        status_frame.pack(fill=tk.X, pady=(0, Spacing.MD))
+        
+        # Status title
+        tk.Label(
+            status_frame,
+            text="Connection Status",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+            padx=Space.MD,
+            pady=Space.SM,
+        ).pack(anchor="w")
+        
+        # Status content
+        content_frame = tk.Frame(status_frame, bg=Colors.SURFACE_ALT)
+        content_frame.pack(fill=tk.X, padx=Space.MD, pady=(0, Space.MD))
+        
+        tk.Label(
+            content_frame,
+            textvariable=self.connection_title_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
+        
+        tk.Label(
+            content_frame,
+            textvariable=self.connection_subtitle_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+        
+        tk.Label(
+            content_frame,
+            textvariable=self.connection_detail_var,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            justify="left",
+        ).pack(anchor="w")
+    
+    def _build_action_section(self, parent):
+        """Build simple action section."""
+        action_frame = tk.Frame(parent, bg=Colors.SURFACE)
+        action_frame.pack(fill=tk.X, pady=(0, Space.LG))
+        
+        # Action button
+        DesignUtils.button(
+            action_frame,
+            text="Start Pairing",
+            command=self._go_to_devices,
+            variant="primary",
+        ).pack(anchor="w", pady=(Space.SM, 0))
 
     def _go_to_devices(self):
         if self.host and hasattr(self.host, "show_pair_page"):
@@ -78,27 +174,11 @@ class HomePage(BasePage):
     def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
         if snapshot is None:
             return
-        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
-        self.connection_badge_var.set(badge_text)
-        self.connection_title_var.set(snapshot.title)
-        self.connection_subtitle_var.set(snapshot.subtitle)
-        self.connection_detail_var.set(snapshot.detail)
-        # badge removed from UI
-
-    @staticmethod
-    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
-        mapping = {
-            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
-            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
-            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
-            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
-            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
-            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
-        }
-        return mapping.get(stage, mapping[DeviceStage.READY])
+        
+        self.connection_title_var.set(snapshot.title or "No device paired")
+        self.connection_subtitle_var.set(snapshot.subtitle or "Start by pairing a LoRa contact to open a secure chat.")
+        self.connection_detail_var.set(snapshot.detail or "Awaiting secure PIN handoff")
 
     def destroy(self):
         self._unsubscribe_from_store()
-        if hasattr(self, "scaffold"):
-            self.scaffold.destroy()
         return super().destroy()

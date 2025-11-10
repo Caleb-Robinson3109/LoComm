@@ -1,69 +1,125 @@
-"""Settings page leveraging the refreshed design system."""
+"""Settings page matching chat page's clean, simple design."""
 from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import Colors, Spacing, DesignUtils, ThemeManager, Typography
-from ui.helpers import create_page_scaffold
+from utils.design_system import Colors, Spacing, DesignUtils, ThemeManager, Typography, Space
+from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
 
 class SettingsPage(BasePage):
-    """Minimal page announcing that settings live here."""
+    """Settings page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
-        self.scaffold = create_page_scaffold(
-            self,
-            title="Locomm Desktop Settings",
-            subtitle="Configure notifications and diagnostics.",
-            padding=(0, Spacing.LG),
+        
+        # Simple scroll container like chat page
+        scroll = create_scroll_container(
+            self, 
+            bg=Colors.SURFACE, 
+            padding=(0, Spacing.LG)
         )
-        body = self.scaffold.body
+        body = scroll.frame
 
-        appearance_card, appearance_content = DesignUtils.card(body, "Appearance", "Adjust how Locomm looks.")
-        appearance_card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.LG))
-        self._build_theme_toggle(appearance_content)
+        self._build_title(body)
+        self._build_appearance_section(body)
+        self._build_settings_section(body)
 
-        card, content = DesignUtils.card(body, "Notifications & diagnostics", "Basic controls")
-        card.pack(fill=tk.BOTH, expand=True)
-        self._build_toggle(content, "Desktop notifications", True)
-        self._build_toggle(content, "Sound alerts", False)
-        # Toolbar button removed per latest spec
-
-    def _build_toggle(self, parent, label, initial):
-        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
-        row.pack(fill=tk.X, pady=(Spacing.XS, 0))
-        tk.Label(
-            row,
-            text=label,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=("TkDefaultFont", 11, "bold"),
-        ).pack(side=tk.LEFT)
-        var = tk.BooleanVar(master=self, value=initial)
-        btn = DesignUtils.button(row, text="On" if initial else "Off", variant="ghost")
-        btn.pack(side=tk.RIGHT)
-        def toggle():
-            var.set(not var.get())
-            btn.configure(text="On" if var.get() else "Off")
-        btn.configure(command=toggle)
-
-    def _build_theme_toggle(self, parent):
-        row = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.SM)
-        row.pack(fill=tk.X, pady=(Spacing.XS, 0))
+    def _build_title(self, parent):
+        """Build simple title section like chat page."""
+        title_wrap = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+        )
+        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
         tk.Label(
-            row,
-            text="Dark mode",
+            title_wrap,
+            text="Settings",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
+
+        tk.Label(
+            title_wrap,
+            text="Configure your Locomm experience",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=640,
+            justify="left",
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
+
+    def _build_appearance_section(self, parent):
+        """Build clean appearance section."""
+        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
+        section.pack(fill=tk.BOTH, expand=True)
+        
+        # Section title
+        tk.Label(
+            section,
+            text="Appearance",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+        
+        # Theme setting
+        self._build_theme_setting(section)
+        
+        # Accent color setting removed for simplicity
+    
+    def _build_settings_section(self, parent):
+        """Build simple settings section."""
+        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
+        section.pack(fill=tk.BOTH, expand=True)
+        
+        # Section title
+        tk.Label(
+            section,
+            text="Notifications & Diagnostics",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+        
+        # Settings toggles
+        self._build_toggle_setting(section, "Desktop notifications", True)
+        self._build_toggle_setting(section, "Sound alerts", False)
+
+    def _build_theme_setting(self, parent):
+        """Build theme setting with simple layout."""
+        setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
+        setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+        
+        # Setting label
+        tk.Label(
+            setting_frame,
+            text="Dark Mode",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-        ).pack(side=tk.LEFT)
-
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
+        
+        # Description
+        tk.Label(
+            setting_frame,
+            text="Use dark theme for better battery life and reduced eye strain",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+        
+        # Toggle button
         self.theme_var = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
         toggle_btn = DesignUtils.button(
-            row,
+            setting_frame,
             text="On" if self.theme_var.get() else "Off",
             variant="secondary",
             command=self._toggle_theme,
@@ -71,13 +127,103 @@ class SettingsPage(BasePage):
         toggle_btn.pack(side=tk.RIGHT)
         self._theme_button = toggle_btn
 
+    def _build_accent_color_setting(self, parent):
+        """Build accent color setting."""
+        setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
+        setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+        
+        # Setting label
+        tk.Label(
+            setting_frame,
+            text="Accent Color",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
+        
+        # Description
+        tk.Label(
+            setting_frame,
+            text="Choose your preferred accent color theme",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+        
+        # Color preview
+        preview_frame = tk.Frame(setting_frame, bg=Colors.SURFACE_ALT)
+        preview_frame.pack(anchor="w", pady=(Space.SM, 0))
+        
+        # Show current accent color
+        tk.Label(
+            preview_frame,
+            text="● Current: " + ThemeManager.get_current_accent_name(),
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.STATE_INFO,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+        ).pack(anchor="w")
+        
+        # Accent color cycling button
+        DesignUtils.button(
+            setting_frame,
+            text="Change Color",
+            command=self._cycle_accent_color,
+            variant="ghost",
+            width=15,
+        ).pack(side=tk.RIGHT)
+
+    def _build_toggle_setting(self, parent, label: str, initial: bool):
+        """Build a simple toggle setting."""
+        setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
+        setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+        
+        # Setting label
+        tk.Label(
+            setting_frame,
+            text=label,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
+        
+        # Toggle button
+        var = tk.BooleanVar(master=self, value=initial)
+        btn = DesignUtils.button(
+            setting_frame, 
+            text="On" if initial else "Off", 
+            variant="ghost",
+            width=8,
+        )
+        btn.pack(side=tk.RIGHT)
+        
+        def toggle():
+            var.set(not var.get())
+            btn.configure(text="On" if var.get() else "Off")
+        btn.configure(command=toggle)
+
     def _toggle_theme(self):
+        """Toggle between light and dark themes."""
         new_value = not self.theme_var.get()
         self.theme_var.set(new_value)
         if hasattr(self, "_theme_button"):
             self._theme_button.configure(text="On" if new_value else "Off")
         if self.context and hasattr(self.context.app, "toggle_theme"):
             self.context.app.toggle_theme(new_value)
+
+    def _cycle_accent_color(self):
+        """Cycle through accent colors."""
+        current = ThemeManager.get_current_accent_name()
+        accents = ['blue', 'purple', 'green', 'orange', 'pink', 'red']
+        current_index = accents.index(current) if current in accents else 0
+        next_index = (current_index + 1) % len(accents)
+        next_accent = accents[next_index]
+        
+        # Set the new accent color
+        ThemeManager.set_accent_color(next_accent)
+        
+        # Update the preview
+        if hasattr(self, 'accent_preview_label'):
+            self.accent_preview_label.configure(text=f"● Current: {next_accent.title()}")
 
     def on_show(self):
         current = ThemeManager.current_mode() == "dark"
@@ -87,6 +233,4 @@ class SettingsPage(BasePage):
                 self._theme_button.configure(text="On" if current else "Off")
 
     def destroy(self):
-        if hasattr(self, "scaffold"):
-            self.scaffold.destroy()
         return super().destroy()

@@ -1,67 +1,113 @@
-"""Guided help page covering the entire desktop experience."""
+"""Help page mirroring the about layout."""
 from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from utils.design_system import Colors, Typography, Spacing, Space
 from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
 
 class HelpPage(BasePage):
-    """Step-by-step navigation and feature guide."""
+    """Help page mirroring the About typography, spacing, and background."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
+
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
-        DesignUtils.hero_header(
-            body,
-            title="Help & Navigation",
-            subtitle="Everything you need to know about Locomm Desktop in one place."
+        self._build_title(body)
+        self._build_help_section(body)
+        self._build_topics_section(body)
+
+    def _build_title(self, parent):
+        title_wrap = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
         )
-        self._build_master_help_card(body)
+        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
-    def _build_master_help_card(self, parent):
-        card, content = DesignUtils.card(parent, "Complete guide", "")
-        card.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=(0, Spacing.LG))
-        content.configure(padx=Spacing.LG, pady=Spacing.MD)
+        tk.Label(
+            title_wrap,
+            text="Help & Navigation",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
 
-        sections = [
-            ("Getting started", [
-                "Use the left sidebar to switch between Home, Chat, Devices, Settings, About, and Help.",
-                "The top bar shows your local device name and current connection status. It updates as soon as a device connects or disconnects."
-            ]),
-            ("Chat basics", [
-                "Messages appear in colored bubbles: your messages on the right, peer messages on the left.",
-                "Disconnect ends the current session and clears the chat automatically."
-            ]),
-            ("Devices & pairing", [
-                "Open the Devices page to scan for LoRa hardware and click Connect on a selected device.",
-                "Use Disconnect to stop the session; the app routes you back to Devices from Home automatically."
-            ]),
-            ("Settings, About, Help", [
-                "Settings hosts placeholder toggles for notifications and diagnostics.",
-                "About lists build information and support links. Help (this page) summarizes navigation details."
-            ])
+        tk.Label(
+            title_wrap,
+            text="Everything you need to know about Locomm Desktop in one place.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            wraplength=640,
+            justify="left",
+        ).pack(anchor="w", pady=(Space.XXS, 0))
+
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
+
+    def _build_help_section(self, parent):
+        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
+        section.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            section,
+            text="Navigating Locomm",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+
+        content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
+        content.pack(fill=tk.X, pady=(0, Spacing.SM))
+
+        paragraphs = [
+            "Use the sidebar to switch between Home, Chat, Devices, Settings, About, and Help.",
+            "The top bar shows your local device name and connection badge. It updates whenever the transport state changes.",
         ]
-
-        for title, bullets in sections:
+        for paragraph in paragraphs:
             tk.Label(
                 content,
-                text=title,
+                text=paragraph,
                 bg=Colors.SURFACE_ALT,
-                fg=Colors.TEXT_PRIMARY,
-                font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
-            ).pack(anchor="w", pady=(Spacing.SM, Spacing.XXS))
-            for bullet in bullets:
-                tk.Label(
-                    content,
-                    text=f"• {bullet}",
-                    bg=Colors.SURFACE_ALT,
-                    fg=Colors.TEXT_SECONDARY,
-                    font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
-                    wraplength=720,
-                    justify="left",
-                ).pack(anchor="w")
+                fg=Colors.TEXT_SECONDARY,
+                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+                wraplength=720,
+                justify="left",
+            ).pack(anchor="w", pady=(0, Spacing.XXS))
+
+    def _build_topics_section(self, parent):
+        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
+        section.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            section,
+            text="Topics Covered",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w", pady=(0, Spacing.SM))
+
+        content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
+        content.pack(fill=tk.X)
+
+        topics = [
+            "Chat basics: how to read messaging colors, send text, and interpret status badges.",
+            "Devices & pairing: scanning, connecting, disconnecting, and demo sessions.",
+            "Settings & diagnostics: toggling notifications, toggling dark mode, and viewing build info.",
+            "About & support: build information, release notes, and documentation links.",
+        ]
+        for topic in topics:
+            tk.Label(
+                content,
+                text=f"• {topic}",
+                bg=Colors.SURFACE_ALT,
+                fg=Colors.TEXT_SECONDARY,
+                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+                wraplength=720,
+                justify="left",
+            ).pack(anchor="w", pady=(0, Spacing.XXS))

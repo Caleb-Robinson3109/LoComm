@@ -41,7 +41,7 @@ class PageScaffold:
 
 def create_scroll_container(parent: tk.Misc, *, bg: str | None = None, padding: tuple[int, int] = (0, Spacing.LG)) -> ScrollContainer:
     ensure_styles_initialized()
-    resolved_bg = bg or Colors.BG_PRIMARY
+    resolved_bg = bg or Colors.PANEL_BG
     wrapper = tk.Frame(parent, bg=resolved_bg)
     wrapper.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
 
@@ -73,6 +73,18 @@ def create_scroll_container(parent: tk.Misc, *, bg: str | None = None, padding: 
     wrapper.bind("<Destroy>", _on_destroy, add="+")
 
     return ScrollContainer(wrapper=wrapper, canvas=canvas, frame=scrollable_frame, scrollbar=scrollbar, window_id=window_id)
+
+
+def create_page_section(parent: tk.Misc, *, bg: str | None = None, padx: int = Spacing.LG, pady: tuple[int, int] | int = (Spacing.LG, Spacing.LG)) -> tk.Frame:
+    ensure_styles_initialized()
+    resolved_bg = bg or Colors.SURFACE
+    if isinstance(pady, tuple):
+        pady_top, pady_bottom = pady
+    else:
+        pady_top = pady_bottom = pady
+    frame = tk.Frame(parent, bg=resolved_bg)
+    frame.pack(fill=tk.BOTH, expand=True, padx=padx, pady=(pady_top, pady_bottom))
+    return frame
 
 
 class GlobalMousewheelManager:
@@ -148,20 +160,20 @@ def create_page_scaffold(parent: tk.Misc, *, title: str, subtitle: str = "", act
 def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
     card = tk.Frame(
         parent,
-        bg=Colors.SURFACE_ALT,
-        highlightbackground=Colors.BORDER,
+        bg=Colors.CARD_PANEL_BG,
+        highlightbackground=Colors.CARD_PANEL_BORDER,
         highlightthickness=1,
         bd=0,
     )
     card.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.MD))
     card.pack_propagate(False)
-    content = tk.Frame(card, bg=Colors.SURFACE_ALT)
+    content = tk.Frame(card, bg=Colors.CARD_PANEL_BG)
     content.pack(fill=tk.BOTH, expand=True, padx=padding, pady=padding)
 
-    table_wrapper = tk.Frame(content, bg=Colors.SURFACE_ALT)
+    table_wrapper = tk.Frame(content, bg=Colors.CARD_PANEL_BG)
     table_wrapper.pack(fill=tk.BOTH, expand=True)
 
-    footer = tk.Frame(content, bg=Colors.SURFACE_ALT)
+    footer = tk.Frame(content, bg=Colors.CARD_PANEL_BG)
     footer.pack(fill=tk.X, pady=(Spacing.SM, 0))
     return card, table_wrapper, footer
 

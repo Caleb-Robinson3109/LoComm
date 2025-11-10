@@ -1,5 +1,5 @@
 """
-Theme primitives for Locomm UI (palette, tokens, shared constants).
+Theme primitives for Locomm UI (VS Code-inspired palette, tokens, shared constants).
 """
 from __future__ import annotations
 
@@ -7,27 +7,64 @@ from dataclasses import dataclass
 
 
 class Palette:
-    """Signal-inspired palette."""
+    """User custom blue palette + VS Code-inspired palette."""
 
+    # User Custom Blue Color Scheme
+    CUSTOM_BLUE_DARK = "#0C2B4E"       # Deep dark blue (primary background)
+    CUSTOM_BLUE_MEDIUM = "#1A3D64"     # Darker blue (secondary background)
+    CUSTOM_BLUE_LIGHT = "#1D546C"      # Medium blue (tertiary background)
+    CUSTOM_TEXT_LIGHT = "#F4F4F4"      # Light gray/white (text)
+    
+    # Custom neutral palette
+    NEUTRAL_1 = "#016B61"  # darkest shade
+    NEUTRAL_2 = "#70B2B2"
+    NEUTRAL_3 = "#9ECFD4"
+    NEUTRAL_4 = "#E5E9C5"
+    STEEL = "#B49C83"
+    STEEL_LIGHT = "#D9CFC7"
+    NAVY = "#332A22"
+    NAVY_LIGHT = "#4A3D33"
+    MAIN_BROWN = "#0A1F3C"
+    
+    # VS Code Core Colors
     WHITE = "#FFFFFF"
-    CLOUD_050 = "#F7F9FC"
-    CLOUD_100 = "#EDF1F7"
-    CLOUD_200 = "#E0E6F0"
-    CLOUD_300 = "#CBD3E1"
-    CLOUD_500 = "#94A3B8"
-
-    SLATE_700 = "#3F4A5A"
-    SLATE_800 = "#2B323C"
-    SLATE_900 = "#1C1F26"
-
-    SIGNAL_BLUE = "#5E8BFF"
-    SIGNAL_BLUE_DARK = "#2F5FD8"
-    SIGNAL_BLUE_LIGHT = "#A8C6FF"
-    SIGNAL_TEAL = "#3AD0B1"
-    SIGNAL_RED = "#FF5C8D"
-    SIGNAL_WARNING = "#FFAF40"
-    SIGNAL_ORANGE = "#FF7F2D"
-    SIGNAL_PURPLE = "#B36DFF"
+    
+    # VS Code Dark Theme Backgrounds
+    VSCODE_BG_PRIMARY = "#1e1e1e"      # Main background (editor area)
+    VSCODE_BG_SECONDARY = "#252526"    # Sidebar background
+    VSCODE_BG_TERTIARY = "#2d2d30"     # Panel background
+    VSCODE_BG_QUATERNARY = "#3c3c3c"   # Input background
+    VSCODE_BG_ACTIVE = "#094771"       # Active selection background
+    
+    # VS Code Text Colors
+    VSCODE_TEXT_PRIMARY = "#ffffff"     # Primary text
+    VSCODE_TEXT_SECONDARY = "#cccccc"   # Secondary text  
+    VSCODE_TEXT_MUTED = "#969696"       # Muted text
+    VSCODE_TEXT_DISABLED = "#6c6c6c"    # Disabled text
+    
+    # VS Code Accent Colors
+    VSCODE_BLUE = "#0078d4"            # VS Code blue
+    VSCODE_BLUE_LIGHT = "#1ba1e2"      # Light blue
+    VSCODE_BLUE_DARK = "#005a9e"       # Dark blue
+    VSCODE_PURPLE = "#bf5af2"          # VS Code purple
+    VSCODE_PURPLE_LIGHT = "#c77dff"    # Light purple
+    VSCODE_PURPLE_DARK = "#7c3aed"     # Dark purple
+    
+    # VS Code Status Colors
+    VSCODE_GREEN = "#4caf50"           # Success green
+    VSCODE_RED = "#f85149"             # Error red  
+    VSCODE_ORANGE = "#ffa724"          # Warning orange
+    VSCODE_YELLOW = "#ffcc02"          # Info yellow
+    
+    # VS Code Border Colors
+    VSCODE_BORDER = "#3c3c3c"          # Primary border
+    VSCODE_BORDER_LIGHT = "#484848"    # Light border
+    VSCODE_BORDER_ACTIVE = "#0078d4"   # Active border
+    
+    # VS Code Interactive Colors
+    VSCODE_HOVER = "#2a2d2e"           # Hover background
+    VSCODE_SELECTED = "#37373d"        # Selected background
+    VSCODE_FOCUS = "#0078d4"           # Focus ring color
 
 
 class Colors:
@@ -41,6 +78,27 @@ class Colors:
     SURFACE_SELECTED = ""
     BORDER = ""
     DIVIDER = ""
+    HERO_PANEL_BG = ""
+    HERO_PANEL_TEXT = ""
+    CARD_PANEL_BG = ""
+    CARD_PANEL_BORDER = ""
+    PANEL_BG = ""
+    PANEL_BORDER = ""
+    MAIN_FRAME_BG = ""
+    BACKDROP_BG = ""
+    CHAT_SHELL_BG = ""
+    CHAT_HISTORY_BG = ""
+    CHAT_COMPOSER_BG = ""
+    CHAT_HEADER_BG = ""
+    CHAT_HEADER_TEXT = ""
+    CHAT_TEXTURE = ""
+    CHAT_BADGE_BG = ""
+    CHAT_BUBBLE_SELF_BG = ""
+    CHAT_BUBBLE_OTHER_BG = ""
+    CHAT_BUBBLE_SYSTEM_BG = ""
+    CHAT_BUBBLE_SELF_TEXT = ""
+    CHAT_BUBBLE_OTHER_TEXT = ""
+    CHAT_BUBBLE_SYSTEM_TEXT = ""
     TEXT_PRIMARY = ""
     TEXT_SECONDARY = ""
     TEXT_MUTED = ""
@@ -69,6 +127,18 @@ class Colors:
     MESSAGE_BUBBLE_OWN_BG = ""
     MESSAGE_BUBBLE_OTHER_BG = ""
     MESSAGE_BUBBLE_SYSTEM_BG = ""
+    
+    # Button hover and active states
+    BUTTON_DANGER_HOVER = ""
+    BUTTON_DANGER_ACTIVE = ""
+    BUTTON_SUCCESS_HOVER = ""
+    BUTTON_SUCCESS_ACTIVE = ""
+    
+    # Accent colors for customization
+    ACCENT_PRIMARY = ""
+    ACCENT_PRIMARY_HOVER = ""
+    ACCENT_SECONDARY = ""
+    ACCENT_VARIANTS = []
 
     STATUS_CONNECTED = ""
     STATUS_DISCONNECTED = ""
@@ -81,8 +151,8 @@ class Colors:
 class Typography:
     """Typography scale (8pt grid)."""
 
-    FONT_UI = "SF Pro Display"
-    FONT_MONO = "JetBrains Mono"
+    FONT_UI = "Segoe UI"
+    FONT_MONO = "Consolas"
 
     SIZE_10 = 10
     SIZE_12 = 12
