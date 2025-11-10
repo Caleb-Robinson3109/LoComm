@@ -8,8 +8,12 @@ def recv_thread():
         name, message = receive_message()
         print(f"{name}: {message}")
 
+i = 0
 while(not connect_to_device()):
-    pass
+    i = i + 1
+    if i == 10:
+        raise ValueError(f"tried to connect to device {i} times")
+
 enter_password("password")
 
 t =threading.Thread(target=recv_thread)

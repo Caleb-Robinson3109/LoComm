@@ -35,8 +35,11 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
 
             tag: int = random.randint(0, 0xFFFFFFFF)
             packet: bytes = craft_CONN_packet(tag)
-
-            ser = serial.Serial(port=port.name, baudrate=115200, timeout=10) #Adjust timout if it is not connection on first try -> make longer
+            try:
+                ser = serial.Serial(port=port.name, baudrate=115200, timeout=10) #Adjust timout if it is not connection on first try -> make longer
+            except Exception as e:
+                print(f"{e}")
+                continue
             #let ser init in device
             print_packet_debug(packet, True)
             ser.write(packet)
@@ -93,7 +96,7 @@ def locomm_api_connect_to_device() -> tuple[bool, serial.Serial | None]:
         if conn_port == None:
             raise ValueError("no COM ports found with device")
 
-        ser = serial.Serial(conn_port, 9600, timeout=None)
+        ser = serial.Serial(conn_port, 115200, timeout=None)
         print(f"Connected to {ser.name}")
         
         # Wait for device initialization
