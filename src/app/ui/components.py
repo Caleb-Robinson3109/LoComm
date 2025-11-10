@@ -128,18 +128,11 @@ class DesignUtils:
         content = tk.Frame(container, bg=Colors.SURFACE_ALT)
         content.pack(fill=tk.X, expand=True, anchor="e" if is_self else "w")
 
-        if is_self:
-            anchor = "e"
-            bubble_bg = Colors.BUTTON_PRIMARY_BG
-            text_fg = Colors.SURFACE
-            name_fg = Colors.TEXT_MUTED
-            bubble_padx = (0, Spacing.MD)
-        else:
-            anchor = "w"
-            bubble_bg = Colors.CHAT_BUBBLE_OTHER_BG
-            text_fg = Colors.CHAT_BUBBLE_OTHER_TEXT
-            name_fg = Colors.TEXT_PRIMARY
-            bubble_padx = (Spacing.MD, 0)
+        anchor = "e" if is_self else "w"
+        bubble_bg = Colors.SURFACE
+        text_fg = Colors.TEXT_PRIMARY
+        name_fg = Colors.TEXT_MUTED
+        bubble_padx = (0, Spacing.MD) if is_self else (Spacing.MD, 0)
 
         name_label = tk.Label(
             content,

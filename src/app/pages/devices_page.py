@@ -62,8 +62,14 @@ class DevicesPage(BasePage):
         )
         title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
+        text_wrap = tk.Frame(title_wrap, bg=Colors.SURFACE)
+        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        action_wrap = tk.Frame(title_wrap, bg=Colors.SURFACE)
+        action_wrap.pack(side=tk.RIGHT)
+
         tk.Label(
-            title_wrap,
+            text_wrap,
             text="Devices",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
@@ -71,7 +77,7 @@ class DevicesPage(BasePage):
         ).pack(anchor="w")
 
         tk.Label(
-            title_wrap,
+            text_wrap,
             text="Pair LoRa hardware, confirm PINs face-to-face",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
@@ -82,6 +88,13 @@ class DevicesPage(BasePage):
 
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
+
+        DesignUtils.button(
+            action_wrap,
+            text="Scan",
+            variant="primary",
+            command=self._scan_for_devices,
+        ).pack()
 
     def _build_devices_section(self, parent):
         """Build clean devices section."""
@@ -166,17 +179,10 @@ class DevicesPage(BasePage):
         """Build simple action buttons."""
         button_frame = tk.Frame(parent, bg=Colors.SURFACE)
         button_frame.pack(fill=tk.X)
-        
+        spacer = tk.Frame(button_frame, bg=Colors.SURFACE)
+        spacer.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         btn_width = 12
-        self.scan_btn = DesignUtils.button(
-            button_frame,
-            text="Scan for Devices",
-            command=self._scan_for_devices,
-            variant="primary",
-            width=btn_width,
-        )
-        self.scan_btn.pack(side=tk.LEFT)
-        
         self.connect_btn = DesignUtils.button(
             button_frame,
             text="Connect",
@@ -184,7 +190,7 @@ class DevicesPage(BasePage):
             variant="secondary",
             width=btn_width,
         )
-        self.connect_btn.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
+        self.connect_btn.pack(side=tk.RIGHT)
         self.connect_btn.configure(state="disabled")
 
     def _refresh_device_table(self):
@@ -289,7 +295,11 @@ class DevicesPage(BasePage):
         modal = tk.Toplevel(self)
         modal.title(f"Pair {device_name} - {device_id}")
         modal.configure(bg=Colors.SURFACE)
-        width, height = scale_dimensions(432, 378, 0.93, 0.75)
+        base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
+        width = int(base_width * 1.05)
+        height = base_height
+        width = max(width, 320)
+        height = max(height, 320)
         modal.geometry(f"{width}x{height}")
         modal.minsize(width, height)
         modal.resizable(True, True)

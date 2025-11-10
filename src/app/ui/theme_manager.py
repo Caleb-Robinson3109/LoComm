@@ -312,11 +312,11 @@ class ThemeManager:
         )
         style.configure(
             "Locomm.PinEntry.TEntry",
-            fieldbackground=Colors.SURFACE_ALT,
+            fieldbackground=Palette.PIN_ENTRY_BG,
             foreground=Colors.TEXT_PRIMARY,
             insertcolor=Colors.TEXT_PRIMARY,
             padding=(Spacing.XXS, Spacing.XXS),
-            bordercolor=Colors.SURFACE_SELECTED,
+            bordercolor=Palette.PIN_ENTRY_BORDER,
             borderwidth=1,
             relief="solid",
         )

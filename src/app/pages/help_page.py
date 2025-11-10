@@ -67,7 +67,8 @@ class HelpPage(BasePage):
 
         paragraphs = [
             "Use the sidebar to switch between Home, Chat, Devices, Settings, About, and Help.",
-            "The top bar shows your local device name and connection badge. It updates whenever the transport state changes.",
+            "The top bar shows your local device name and connection badge. ",
+            "It updates whenever the transport state changes.",
         ]
         for paragraph in paragraphs:
             tk.Label(

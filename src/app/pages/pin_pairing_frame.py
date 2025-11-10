@@ -53,8 +53,9 @@ class PINPairingFrame(tk.Frame):
         )
         self.subtitle_label.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
 
-        inputs_row = tk.Frame(content, bg=Colors.SURFACE)
+        inputs_row = tk.Frame(content, bg=Colors.SURFACE_ALT)
         inputs_row.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
+        inputs_row.pack_propagate(False)
         self._build_pin_inputs(inputs_row)
 
         control_row = tk.Frame(content, bg=Colors.SURFACE)

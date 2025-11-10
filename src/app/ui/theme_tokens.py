@@ -25,6 +25,8 @@ class Palette:
     SIGNAL_BLUE_LIGHT = "#3AA0FF"
     SIGNAL_TEAL = "#00C7B1"
     SIGNAL_RED = "#FF5A5F"
+    PIN_ENTRY_BG = "#228B22"
+    PIN_ENTRY_BORDER = "#FFD700"
     
     # VS Code Core Colors
     WHITE = "#FFFFFF"
@@ -239,7 +241,7 @@ class AppConfig:
     WINDOW_WIDTH = 1200
     WINDOW_HEIGHT = 820
     MIN_WINDOW_WIDTH = 848
-    MIN_WINDOW_HEIGHT = 648
+    MIN_WINDOW_HEIGHT = 583
     APP_TITLE = "Locomm"
 
     STATUS_UPDATE_DELAY = 2000
@@ -252,4 +254,4 @@ class AppConfig:
     CHAT_EXPORT_FILENAME_PATTERN = "locomm_chat_{device}.txt"
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
     WINDOW_WIDTH_RATIO = 0.595502
-    WINDOW_HEIGHT_RATIO = 0.817938
+    WINDOW_HEIGHT_RATIO = 0.736144
