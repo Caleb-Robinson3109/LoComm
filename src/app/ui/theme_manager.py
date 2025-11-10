@@ -82,7 +82,9 @@ _THEME_DEFINITIONS = {
         "CHAT_BUBBLE_SYSTEM_TEXT": "#9CA3AF",
         "NAV_BUTTON_BG": "#252526",
         "NAV_BUTTON_HOVER": "#2D2D2D",
-        "NAV_BUTTON_ACTIVE": "#0B7CFF",
+        "NAV_BUTTON_ACTIVE_BG": "#0B7CFF",
+        "NAV_BUTTON_ACTIVE_FG": "#FFFFFF",
+        "NAV_BUTTON_BORDER": "#2F2F2F",
         "SCROLLBAR_TRACK": "#1E1E1E",
         "SCROLLBAR_THUMB": "#3C3C3C",
         "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
@@ -156,9 +158,11 @@ _THEME_DEFINITIONS = {
         "CHAT_BUBBLE_SELF_TEXT": Palette.WHITE,
         "CHAT_BUBBLE_OTHER_TEXT": Palette.SLATE_900,
         "CHAT_BUBBLE_SYSTEM_TEXT": Palette.SLATE_700,
-        "NAV_BUTTON_BG": Palette.CLOUD_050,
-        "NAV_BUTTON_HOVER": Palette.CLOUD_100,
-        "NAV_BUTTON_ACTIVE": Palette.PRIMARY,
+        "NAV_BUTTON_BG": "#F3F4F6",
+        "NAV_BUTTON_HOVER": "#E5E7EB",
+        "NAV_BUTTON_ACTIVE_BG": Palette.PRIMARY,
+        "NAV_BUTTON_ACTIVE_FG": "#FFFFFF",
+        "NAV_BUTTON_BORDER": "#D1D5DB",
         "SCROLLBAR_TRACK": Palette.WHITE,
         "SCROLLBAR_THUMB": "#D1D5DB",
         "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
@@ -316,33 +320,86 @@ class ThemeManager:
     def _configure_nav_buttons(style):
         ThemeManager._apply_button_layout(style, "Locomm.Nav.TButton")
         ThemeManager._apply_button_layout(style, "Locomm.NavActive.TButton")
-        def _configure(name: str, font_weight: str):
-            style.configure(
-                name,
-                background=Colors.NAV_BUTTON_BG,
-                foreground=Colors.TEXT_MUTED,
-                relief="flat",
-                anchor="center",
-                padding=(Spacing.MD, Spacing.SM),
-                font=(Typography.FONT_UI, Typography.SIZE_14, font_weight),
-                borderwidth=0,
-                highlightthickness=0,
-                focusthickness=1,
-                focuscolor=Colors.NAV_BUTTON_ACTIVE,
-            )
-            style.map(
-                name,
-                background=[
-                    ("active", Colors.NAV_BUTTON_ACTIVE),
-                    ("pressed", Colors.NAV_BUTTON_HOVER),
-                ],
-                foreground=[
-                    ("active", Colors.TEXT_PRIMARY),
-                ],
-            )
 
-        _configure("Locomm.Nav.TButton", Typography.WEIGHT_MEDIUM)
-        _configure("Locomm.NavActive.TButton", Typography.WEIGHT_BOLD)
+        layout = [
+            (
+                "Button.border",
+                {
+                    "sticky": "nswe",
+                    "children": [
+                        (
+                            "Button.padding",
+                            {
+                                "sticky": "nswe",
+                                "children": [
+                                    ("Button.label", {"sticky": "w"})
+                                ],
+                            },
+                        )
+                    ],
+                },
+            )
+        ]
+        style.layout("Locomm.Nav.TButton", layout)
+        style.layout("Locomm.NavActive.TButton", layout)
+
+        style.configure(
+            "Locomm.Nav.TButton",
+            background=Colors.NAV_BUTTON_BG,
+            foreground=Colors.TEXT_MUTED,
+            bordercolor=Colors.NAV_BUTTON_BORDER,
+            borderwidth=1,
+            relief="flat",
+            padding=(12, 8),
+            anchor="w",
+            focusthickness=0,
+            highlightthickness=0,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        )
+        style.map(
+            "Locomm.Nav.TButton",
+            background=[
+                ("hover", Colors.NAV_BUTTON_HOVER),
+                ("active", Colors.NAV_BUTTON_HOVER),
+            ],
+            foreground=[
+                ("hover", Colors.TEXT_PRIMARY),
+                ("active", Colors.TEXT_PRIMARY),
+            ],
+            bordercolor=[
+                ("hover", Colors.NAV_BUTTON_BORDER),
+                ("active", Colors.NAV_BUTTON_BORDER),
+            ],
+        )
+
+        style.configure(
+            "Locomm.NavActive.TButton",
+            background=Colors.NAV_BUTTON_ACTIVE_BG,
+            foreground=Colors.NAV_BUTTON_ACTIVE_FG,
+            bordercolor=Colors.NAV_BUTTON_BORDER,
+            borderwidth=1,
+            relief="flat",
+            padding=(12, 8),
+            anchor="w",
+            focusthickness=0,
+            highlightthickness=0,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        )
+        style.map(
+            "Locomm.NavActive.TButton",
+            background=[
+                ("hover", Colors.NAV_BUTTON_ACTIVE_BG),
+                ("active", Colors.NAV_BUTTON_ACTIVE_BG),
+            ],
+            foreground=[
+                ("hover", Colors.NAV_BUTTON_ACTIVE_FG),
+                ("active", Colors.NAV_BUTTON_ACTIVE_FG),
+            ],
+            bordercolor=[
+                ("hover", Colors.NAV_BUTTON_BORDER),
+                ("active", Colors.NAV_BUTTON_BORDER),
+            ],
+        )
 
     @staticmethod
     def _configure_entry_styles(style):
@@ -709,7 +766,8 @@ class ThemeManager:
 def _update_theme_colors(theme: Dict[str, str]):
     """Update theme colors without reinitializing styles (optimized for theme switching)."""
     for key, value in theme.items():
-        setattr(Colors, key, value)
+        if hasattr(Colors, key):
+            setattr(Colors, key, value)
     _update_status_colors()
 
 def _apply_theme_definition(theme: Dict[str, str]):

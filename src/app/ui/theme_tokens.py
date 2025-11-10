@@ -84,9 +84,6 @@ class Colors:
     BG_ELEVATED = ""
     BG_ELEVATED_2 = ""
     BG_STRIP = ""
-
-    BG_MAIN = ""
-    BG_ELEVATED = ""
     BG_SOFT = ""
 
     SURFACE = ""
@@ -120,7 +117,9 @@ class Colors:
     CHAT_BUBBLE_SYSTEM_TEXT = ""
     NAV_BUTTON_BG = ""
     NAV_BUTTON_HOVER = ""
-    NAV_BUTTON_ACTIVE = ""
+    NAV_BUTTON_ACTIVE_BG = ""
+    NAV_BUTTON_ACTIVE_FG = ""
+    NAV_BUTTON_BORDER = ""
     BORDER_SUBTLE = ""
     TEXT_PRIMARY = ""
     TEXT_SECONDARY = ""
