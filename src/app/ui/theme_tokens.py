@@ -7,24 +7,24 @@ from dataclasses import dataclass
 
 
 class Palette:
-    """User custom blue palette + VS Code-inspired palette."""
+    """Signal-inspired palette."""
 
-    # User Custom Blue Color Scheme
-    CUSTOM_BLUE_DARK = "#0C2B4E"       # Deep dark blue (primary background)
-    CUSTOM_BLUE_MEDIUM = "#1A3D64"     # Darker blue (secondary background)
-    CUSTOM_BLUE_LIGHT = "#1D546C"      # Medium blue (tertiary background)
-    CUSTOM_TEXT_LIGHT = "#F4F4F4"      # Light gray/white (text)
-    
-    # Custom neutral palette
-    NEUTRAL_1 = "#016B61"  # darkest shade
-    NEUTRAL_2 = "#70B2B2"
-    NEUTRAL_3 = "#9ECFD4"
-    NEUTRAL_4 = "#E5E9C5"
-    STEEL = "#B49C83"
-    STEEL_LIGHT = "#D9CFC7"
-    NAVY = "#332A22"
-    NAVY_LIGHT = "#4A3D33"
-    MAIN_BROWN = "#0A1F3C"
+    WHITE = "#FFFFFF"
+    CLOUD_050 = "#F7F9FC"
+    CLOUD_100 = "#EDF1F7"
+    CLOUD_200 = "#E0E6F0"
+    CLOUD_300 = "#CBD3E1"
+    CLOUD_500 = "#94A3B8"
+
+    SLATE_700 = "#3F4A5A"
+    SLATE_800 = "#2B323C"
+    SLATE_900 = "#1C1F26"
+
+    SIGNAL_BLUE = "#0B7CFF"
+    SIGNAL_BLUE_DARK = "#075AC6"
+    SIGNAL_BLUE_LIGHT = "#3AA0FF"
+    SIGNAL_TEAL = "#00C7B1"
+    SIGNAL_RED = "#FF5A5F"
     
     # VS Code Core Colors
     WHITE = "#FFFFFF"
