@@ -8,7 +8,7 @@ from tkinter import ttk
 import time
 
 from mock.peer_bridge import get_peer_bridge
-from utils.design_system import Colors, ensure_styles_initialized
+from utils.design_system import Colors, ensure_styles_initialized, DesignUtils
 
 _WINDOW_INSTANCE = None
 
@@ -54,7 +54,13 @@ class MockPeerChatWindow(tk.Toplevel):
             font=("SF Pro Display", 14, "bold"),
         )
         self.header_name_label.pack(side=tk.LEFT, padx=(8, 0), expand=True)
-        self.disconnect_btn = ttk.Button(self.header, text="Disconnect", command=self._trigger_disconnect)
+        self.disconnect_btn = DesignUtils.button(
+            self.header,
+            text="Disconnect",
+            command=self._trigger_disconnect,
+            variant="danger",
+            width=8,
+        )
         self.disconnect_btn.pack(side=tk.RIGHT)
 
         # History area
@@ -97,10 +103,16 @@ class MockPeerChatWindow(tk.Toplevel):
         self.composer = tk.Frame(self.wrapper)
         self.composer.pack(fill=tk.X, pady=(12, 0))
         self.msg_var = tk.StringVar()
-        self.entry = ttk.Entry(self.composer, textvariable=self.msg_var)
+        self.entry = DesignUtils.create_chat_entry(self.composer, textvariable=self.msg_var)
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.entry.bind("<Return>", self._send_message)
-        self.send_btn = ttk.Button(self.composer, text="Send", command=self._send_message)
+        self.send_btn = DesignUtils.button(
+            self.composer,
+            text="Send",
+            command=self._send_message,
+            variant="primary",
+            width=10,
+        )
         self.send_btn.pack(side=tk.LEFT, padx=(8, 0))
 
     def _apply_theme(self):
