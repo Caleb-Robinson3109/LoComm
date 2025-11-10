@@ -3,6 +3,7 @@ Service layer helpers for the Locomm desktop app.
 """
 
 from .app_controller import AppController
+from .lora_transport import LoCommTransport
 from .transport_contract import (
     PairingContext,
     TransportMessage,
@@ -17,6 +18,7 @@ from .transport_registry import (
 
 __all__ = [
     "AppController",
+    "LoCommTransport",
     "PairingContext",
     "TransportMessage",
     "TransportStatus",

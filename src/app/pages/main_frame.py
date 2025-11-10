@@ -3,7 +3,7 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils
+from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils, Palette
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
 
 from .chat_page import ChatPage
@@ -87,12 +87,12 @@ class MainFrame(ttk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
 
         # Main container - sidebar + content
-        main_container = tk.Frame(self, bg=Colors.SURFACE)
+        main_container = tk.Frame(self, bg=Colors.BG_MAIN)
         main_container.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=(int(Spacing.SM / 4), 0))
 
         self.top_bar = self._build_top_bar(main_container)
 
-        body = tk.Frame(main_container, bg=Colors.SURFACE)
+        body = tk.Frame(main_container, bg=Colors.BG_MAIN)
         body.pack(fill=tk.BOTH, expand=True)
 
         # ---------- Left Sidebar ---------- #
@@ -107,7 +107,7 @@ class MainFrame(ttk.Frame):
         self.sidebar.pack_propagate(False)
 
         # ---------- Right Content Area ---------- #
-        self.content_frame = tk.Frame(body, bg=Colors.SURFACE)
+        self.content_frame = tk.Frame(body, bg=Colors.BG_MAIN)
         content_pad = int(Spacing.PAGE_PADDING / 2)
         self.content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(content_pad, 0), pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING))
 
@@ -119,7 +119,7 @@ class MainFrame(ttk.Frame):
         """Create placeholder containers for each view."""
         pack_opts = {"fill": tk.BOTH, "expand": True, "padx": Spacing.SM, "pady": Spacing.SM}
         for route in self.routes:
-            container = tk.Frame(self.content_frame, bg=Colors.SURFACE, relief="flat", bd=0)
+            container = tk.Frame(self.content_frame, bg=Colors.BG_MAIN, relief="flat", bd=0)
             self._view_containers[route.route_id] = container
             self._view_manager.register_view(route.route_id, container, pack_options=pack_opts.copy())
 
@@ -140,7 +140,7 @@ class MainFrame(ttk.Frame):
     def _build_top_bar(self, parent):
         pad_x = Spacing.XS
         pad_y = max(Spacing.XS, int((Spacing.XXS / 1.5) * 1.2 * 1.15))
-        bar = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR, padx=pad_x, pady=pad_y, height=int(Spacing.HEADER_HEIGHT * 1.15))
+        bar = tk.Frame(parent, bg=Colors.BG_ELEVATED, padx=pad_x, pady=pad_y, height=int(Spacing.HEADER_HEIGHT * 1.15))
         bar.pack(fill=tk.X, side=tk.TOP)
 
         bar.grid_columnconfigure(0, weight=1)
@@ -149,37 +149,39 @@ class MainFrame(ttk.Frame):
         initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
         self._default_local_device_name = initial_name
 
-        info_wrap = tk.Frame(bar, bg=Colors.SURFACE_HEADER)
+        info_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
         info_wrap.grid(row=0, column=0, sticky="w")
 
         self.local_device_label = tk.Label(
             info_wrap,
             text=initial_name,
-            bg=Colors.SURFACE_HEADER,
+            bg=Colors.BG_ELEVATED,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         )
-        self.local_device_label.pack(side=tk.LEFT, padx=(0, Space.XS))
+        self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
 
         self.status_badge = tk.Label(
             info_wrap,
             text="Disconnected",
-            bg=Colors.STATE_ERROR,
-            fg=Colors.SURFACE,
+            bg=Colors.BG_SOFT,
+            fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
         self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
+        self.status_indicator = tk.Frame(info_wrap, bg=Palette.PRIMARY, height=3)
+        self.status_indicator.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
         brand_label = tk.Label(
             bar,
             text="Locomm",
-            bg=Colors.SURFACE_HEADER,
+            bg=Colors.BG_ELEVATED,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
         )
-        brand_label.grid(row=0, column=1, sticky="e")
+        brand_label.grid(row=0, column=1, sticky="e", padx=(0, Space.BASE * 5))
         return bar
 
     def _show_view(self, view_name: str):
@@ -247,7 +249,7 @@ class MainFrame(ttk.Frame):
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
         mapping = {
-            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
+            DeviceStage.READY: ("Ready", Colors.STATE_READY),
             DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
             DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
             DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),

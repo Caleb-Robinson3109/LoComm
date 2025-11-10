@@ -142,8 +142,8 @@ class MockPeerChatWindow(tk.Toplevel):
         col = 1 if is_self else 0
         anchor = "e" if is_self else "w"
         name_color = Colors.TEXT_MUTED if is_self else Colors.TEXT_PRIMARY
-        bubble_bg = Colors.BUTTON_PRIMARY_BG if is_self else Colors.MESSAGE_BUBBLE_OTHER_BG
-        text_color = Colors.SURFACE if is_self else Colors.TEXT_PRIMARY
+        bubble_bg = Colors.CHAT_BUBBLE_SELF_BG if is_self else Colors.CHAT_BUBBLE_OTHER_BG
+        text_color = Colors.CHAT_BUBBLE_SELF_TEXT if is_self else Colors.CHAT_BUBBLE_OTHER_TEXT
         pad = (0, 32) if is_self else (32, 0)
 
         tk.Label(

@@ -11,7 +11,7 @@ from utils.state.status_manager import get_status_manager
 from pages.pin_pairing_frame import PINPairingFrame
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
-from utils.window_sizing import calculate_initial_window_size, calculate_minimum_window_size
+from utils.window_sizing import calculate_initial_window_size
 from mock.peer_chat_window import refresh_mock_peer_window_theme
 
 MAX_UI_PENDING_MESSAGES = 500
@@ -24,6 +24,7 @@ class App(tk.Tk):
         super().__init__()
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
+        self.configure(bg=Colors.BG_MAIN)
         self._init_fullscreen_window()
         self.protocol("WM_DELETE_WINDOW", self._handle_app_close)
         self.after(0, self._focus_window)
@@ -211,8 +212,7 @@ class App(tk.Tk):
         offset_x = max(screen_w - target_w, 0)
         offset_y = 0
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        min_w, min_h = calculate_minimum_window_size(target_w, target_h)
-        self.minsize(min_w, min_h)
+        self.minsize(target_w, target_h)
         self.resizable(True, True)
 
 

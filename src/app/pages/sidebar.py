@@ -16,7 +16,7 @@ class Sidebar(tk.Frame):
     def __init__(self, master, nav_items: list[tuple[str, str]],
                  on_nav_select: Optional[Callable[[str], None]] = None,
                  on_theme_toggle: Optional[Callable[[bool], None]] = None):
-        super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.SURFACE_SIDEBAR)
+        super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
         self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
         self.nav_items = nav_items

@@ -451,7 +451,7 @@ class ChatPage(BasePage):
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
         mapping = {
-            DeviceStage.READY: ("Ready", Colors.STATE_INFO),
+            DeviceStage.READY: ("Ready", Colors.STATE_READY),
             DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
             DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
             DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),

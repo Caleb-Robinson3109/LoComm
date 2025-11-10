@@ -123,14 +123,14 @@ class DesignUtils:
     @staticmethod
     def create_message_bubble(parent: tk.Frame, *, sender: str, message: str, timestamp: float, is_self: bool, wraplength: int):
         container = tk.Frame(parent, bg=Colors.SURFACE_ALT)
-        container.pack(fill=tk.X, expand=True, pady=(Spacing.XXS, Spacing.XXS), padx=(Spacing.MD, Spacing.MD))
+        container.pack(fill=tk.X, expand=True, pady=0, padx=(Spacing.MD, Spacing.MD))
 
         content = tk.Frame(container, bg=Colors.SURFACE_ALT)
         content.pack(fill=tk.X, expand=True, anchor="e" if is_self else "w")
 
         anchor = "e" if is_self else "w"
-        bubble_bg = Colors.SURFACE
-        text_fg = Colors.TEXT_PRIMARY
+        bubble_bg = Colors.CHAT_BUBBLE_SELF_BG if is_self else Colors.CHAT_BUBBLE_OTHER_BG
+        text_fg = Colors.CHAT_BUBBLE_SELF_TEXT if is_self else Colors.CHAT_BUBBLE_OTHER_TEXT
         name_fg = Colors.TEXT_MUTED
         bubble_padx = (0, Spacing.MD) if is_self else (Spacing.MD, 0)
 

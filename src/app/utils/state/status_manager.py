@@ -122,7 +122,7 @@ class StatusManager:
             "disconnected": Colors.STATE_ERROR or "#FF5A5F",
             "error": Colors.STATE_ERROR or "#FF5A5F",
             "warning": Colors.STATE_WARNING or "#F2A93B",
-            "ready": Colors.STATE_INFO or "#3AA0FF",
+            "ready": Colors.STATE_READY or "#0B7CFF",
             "transport_error": Colors.STATE_ERROR or "#FF5A5F",
         }
 

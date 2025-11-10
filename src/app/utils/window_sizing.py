@@ -12,7 +12,8 @@ def calculate_initial_window_size(root: tk.Misc) -> tuple[int, int]:
     """Calculate the initial dimensions based on screen size and configured ratios."""
     screen_w = root.winfo_screenwidth()
     screen_h = root.winfo_screenheight()
-    target_w = int(screen_w * AppConfig.WINDOW_WIDTH_RATIO)
+    width_ratio = AppConfig.WINDOW_WIDTH_RATIO * 0.94
+    target_w = int(screen_w * width_ratio)
     target_h = int(screen_h * AppConfig.WINDOW_HEIGHT_RATIO)
     return target_w, target_h
 

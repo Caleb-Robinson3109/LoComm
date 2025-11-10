@@ -89,12 +89,13 @@ class DevicesPage(BasePage):
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
 
-        DesignUtils.button(
+        self.scan_btn = DesignUtils.button(
             action_wrap,
             text="Scan",
-            variant="primary",
+            variant="secondary",
             command=self._scan_for_devices,
-        ).pack()
+        )
+        self.scan_btn.pack()
 
     def _build_devices_section(self, parent):
         """Build clean devices section."""
@@ -296,8 +297,10 @@ class DevicesPage(BasePage):
         modal.title(f"Pair {device_name} - {device_id}")
         modal.configure(bg=Colors.SURFACE)
         base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
-        width = max(int(base_width * 1.08), 320)
-        height = max(int(base_height * 1.06), 340)
+        default_width = max(int(base_width * 1.08), 320)
+        default_height = max(int(base_height * 1.06), 340)
+        width = max(int(default_width * 0.7632), 240)
+        height = max(int(default_height * 1.145), 280)
         modal.geometry(f"{width}x{height}")
         modal.minsize(width, height)
         modal.resizable(True, True)

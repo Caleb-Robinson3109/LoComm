@@ -27,23 +27,23 @@ class Palette:
     SIGNAL_RED = "#FF5A5F"
     PIN_ENTRY_BG = "#228B22"
     PIN_ENTRY_BORDER = "#FFD700"
-    
+
     # VS Code Core Colors
     WHITE = "#FFFFFF"
-    
+
     # VS Code Dark Theme Backgrounds
     VSCODE_BG_PRIMARY = "#1e1e1e"      # Main background (editor area)
     VSCODE_BG_SECONDARY = "#252526"    # Sidebar background
     VSCODE_BG_TERTIARY = "#2d2d30"     # Panel background
     VSCODE_BG_QUATERNARY = "#3c3c3c"   # Input background
     VSCODE_BG_ACTIVE = "#094771"       # Active selection background
-    
+
     # VS Code Text Colors
     VSCODE_TEXT_PRIMARY = "#ffffff"     # Primary text
-    VSCODE_TEXT_SECONDARY = "#cccccc"   # Secondary text  
+    VSCODE_TEXT_SECONDARY = "#cccccc"   # Secondary text
     VSCODE_TEXT_MUTED = "#969696"       # Muted text
     VSCODE_TEXT_DISABLED = "#6c6c6c"    # Disabled text
-    
+
     # VS Code Accent Colors
     VSCODE_BLUE = "#0078d4"            # VS Code blue
     VSCODE_BLUE_LIGHT = "#1ba1e2"      # Light blue
@@ -51,26 +51,43 @@ class Palette:
     VSCODE_PURPLE = "#bf5af2"          # VS Code purple
     VSCODE_PURPLE_LIGHT = "#c77dff"    # Light purple
     VSCODE_PURPLE_DARK = "#7c3aed"     # Dark purple
-    
+
     # VS Code Status Colors
     VSCODE_GREEN = "#4caf50"           # Success green
-    VSCODE_RED = "#f85149"             # Error red  
+    VSCODE_RED = "#f85149"             # Error red
     VSCODE_ORANGE = "#ffa724"          # Warning orange
     VSCODE_YELLOW = "#ffcc02"          # Info yellow
-    
+
     # VS Code Border Colors
     VSCODE_BORDER = "#3c3c3c"          # Primary border
     VSCODE_BORDER_LIGHT = "#484848"    # Light border
     VSCODE_BORDER_ACTIVE = "#0078d4"   # Active border
-    
+
     # VS Code Interactive Colors
     VSCODE_HOVER = "#2a2d2e"           # Hover background
     VSCODE_SELECTED = "#37373d"        # Selected background
     VSCODE_FOCUS = "#0078d4"           # Focus ring color
 
+    # Custom primary/danger variants
+    PRIMARY = "#0B7CFF"
+    PRIMARY_HOVER = "#0A6FE0"
+    PRIMARY_SOFT = "#1E293B"
+    DANGER = "#C63C3C"
+    DANGER_HOVER = "#B23535"
+    DANGER_SOFT = "#451A1A"
+
 
 class Colors:
     """Runtime theme values populated via ThemeManager."""
+
+    BG_MAIN = ""
+    BG_ELEVATED = ""
+    BG_ELEVATED_2 = ""
+    BG_STRIP = ""
+
+    BG_MAIN = ""
+    BG_ELEVATED = ""
+    BG_SOFT = ""
 
     SURFACE = ""
     SURFACE_ALT = ""
@@ -101,6 +118,10 @@ class Colors:
     CHAT_BUBBLE_SELF_TEXT = ""
     CHAT_BUBBLE_OTHER_TEXT = ""
     CHAT_BUBBLE_SYSTEM_TEXT = ""
+    NAV_BUTTON_BG = ""
+    NAV_BUTTON_HOVER = ""
+    NAV_BUTTON_ACTIVE = ""
+    BORDER_SUBTLE = ""
     TEXT_PRIMARY = ""
     TEXT_SECONDARY = ""
     TEXT_MUTED = ""
@@ -129,13 +150,18 @@ class Colors:
     MESSAGE_BUBBLE_OWN_BG = ""
     MESSAGE_BUBBLE_OTHER_BG = ""
     MESSAGE_BUBBLE_SYSTEM_BG = ""
-    
+    SCROLLBAR_TRACK = ""
+    SCROLLBAR_THUMB = ""
+    SCROLLBAR_THUMB_HOVER = ""
+
     # Button hover and active states
     BUTTON_DANGER_HOVER = ""
     BUTTON_DANGER_ACTIVE = ""
     BUTTON_SUCCESS_HOVER = ""
     BUTTON_SUCCESS_ACTIVE = ""
-    
+    BUTTON_WARNING_HOVER = ""
+    BUTTON_WARNING_ACTIVE = ""
+
     # Accent colors for customization
     ACCENT_PRIMARY = ""
     ACCENT_PRIMARY_HOVER = ""
@@ -158,6 +184,7 @@ class Typography:
 
     SIZE_10 = 10
     SIZE_12 = 12
+    SIZE_13 = 13
     SIZE_14 = 14
     SIZE_16 = 16
     SIZE_18 = 18
@@ -202,7 +229,7 @@ class Spacing:
     MESSAGE_GROUP_GAP = Space.XXS
     MESSAGE_MARGIN = (Space.SM, Space.XXS)
     CHAT_AREA_PADDING = Space.MD
-    SIDEBAR_WIDTH = int(260 * 0.85 * 0.9 * 0.92)
+    SIDEBAR_WIDTH = int(260 * 0.85 * 0.9 * 0.92 * 0.9)
     HEADER_HEIGHT = 64
     XXS = Space.XXS
     XS = Space.XXS

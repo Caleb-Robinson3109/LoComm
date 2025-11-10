@@ -180,13 +180,13 @@ def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
 
 def sidebar_container(parent: tk.Misc, *, padding: tuple[int, int] | None = None):
     padding = padding or (Spacing.MD, Spacing.MD)
-    container = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    container = tk.Frame(parent, bg=Colors.BG_ELEVATED)
     container.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
     return container
 
 
 def sidebar_nav_section(parent: tk.Misc, items: list[tuple[str, str]], click_handler: Callable[[str], None], register_button: Callable[[str, tk.Widget], None] | None = None):
-    section = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    section = tk.Frame(parent, bg=Colors.BG_ELEVATED)
     section.pack(fill=tk.X)
     for key, label in items:
         btn = DesignUtils.create_nav_button(section, label, lambda k=key: click_handler(k))
@@ -197,7 +197,7 @@ def sidebar_nav_section(parent: tk.Misc, items: list[tuple[str, str]], click_han
 
 
 def sidebar_footer(parent: tk.Misc, version_label: str):
-    footer = tk.Frame(parent, bg=Colors.SURFACE_SIDEBAR)
+    footer = tk.Frame(parent, bg=Colors.BG_ELEVATED)
     footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(Spacing.XS, Spacing.XS))
     tk.Label(
         footer,

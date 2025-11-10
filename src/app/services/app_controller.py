@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from lora_transport_locomm import LoCommTransport
+from services.lora_transport import LoCommTransport
 from services.transport_contract import PairingContext
 from utils.state.session import Session
 from utils.design_system import AppConfig

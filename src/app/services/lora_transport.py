@@ -65,8 +65,6 @@ class LoCommTransport:
             )
 
         try:
-            # Debug logging moved to conditional block above
-
             raw_mode = None
             if isinstance(pairing_context, PairingContext):
                 raw_mode = pairing_context.mode
@@ -178,7 +176,6 @@ class LoCommTransport:
                 message = self._backend.receive()
                 if message and self.on_receive:
                     timestamp = time.time()
-                    # Ensure callback is callable before calling
                     callback = self.on_receive
                     if callback:
                         if DEBUG:

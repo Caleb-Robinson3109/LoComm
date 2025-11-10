@@ -46,14 +46,14 @@ class PINPairingFrame(tk.Frame):
 
         self.subtitle_label = tk.Label(
             header_frame,
-            text="Enter the 8-character code shared during pairing.",
+            text="Enter the 8-digit pairing pin.",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR),
         )
         self.subtitle_label.pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
 
-        inputs_row = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Spacing.SM)
+        inputs_row = tk.Frame(content, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.SM)
         inputs_row.pack(fill=tk.X, pady=(0, Spacing.SM))
         self._build_pin_inputs(inputs_row)
 
