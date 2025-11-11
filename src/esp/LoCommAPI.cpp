@@ -258,13 +258,14 @@ void handle_SEND_packet(){
     //lcd.setCursor(0,0);
     //lcd.print("handle SEND packet");
     //delay(1000);
-    memcpy(device_out_packet, computer_in_packet, MAX_PACKET_SIZE);
+    uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
+    
+    memcpy(device_out_packet, computer_in_packet, packet_size);
 
     //set the message_to_device flag
     message_to_device_flag = true;
 
     //gets the packet size
-    uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
     device_out_size = packet_size;
 
     //build SACK

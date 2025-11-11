@@ -1,15 +1,16 @@
 //Libraries for LoRa
 #include "functions.h"
 
+#include "globals.h"
+
 //api functions
-#include "LoCommAPI.h"
-#include "LoCommLib.h"
+#include "apiCode.h"
 
 uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at boot
 
@@ -35,7 +36,7 @@ CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE> ackToSendBuffer; //Queue for Acks
 
 //Serial TX Related Variables
 //TODO for sake of performance, this should probably be a CyclicArrayList
-SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Queue for sending data out to serial //(location in the rxMessageBuffer, size)
+//SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray; //Queue for sending data out to serial //(location in the rxMessageBuffer, size)
 
 //Since both the lora code and api code may need access to the lora rx and tx buffers, both need locks
 portMUX_TYPE loraRxSpinLock = portMUX_INITIALIZER_UNLOCKED;
@@ -120,28 +121,6 @@ void setup() {
 
   //init the password and keys
   init_password();
-}
-
-void apiCode( void* params ) {
-  while (1) {
-    if(serialReadyToSendArray.size() > 0){
-      handle_message_from_device();
-    }
-
-    //there is a message from the device and the subsaquent funcs check and handle that
-    recive_packet_from_computer();
-    if(message_from_computer_flag){
-      //Serial.println("Received message from computer");
-      handle_message_from_computer();
-    }
-    if(message_to_device_flag){
-      handle_message_to_device();
-    }
-    if(message_to_computer_flag){
-      handle_message_to_computer();
-    }
-  }
-  
 }
 
 void loop() {
@@ -761,7 +740,12 @@ void sendAck(const uint8_t dstID, const uint16_t messageNumber, const uint8_t se
 //NOTE whatever function that calls this needs to handle acquiring the correct lock
 bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
   //first, make sure the data isn't too big
-  if (size > SEQUENCE_MAX_SIZE * 8) {
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.printf("addMessageToTxArray");
+  display.display();
+
+if (size > SEQUENCE_MAX_SIZE * 8) {
     LWarn("Message will not be added to tx array because it is too long");
     return false;
   }
@@ -886,6 +870,8 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
     LDebug("Finished writing new data to tx message buffer:");
     Debug(dumpArrayToSerial(&(txMessageBuffer[0]), 10 + messageLength));
   }
+  display.printf("------ done ");
+  display.display();
   return true;
 }
 

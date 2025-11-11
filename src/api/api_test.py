@@ -27,6 +27,6 @@ while True:
         disconnect_from_device()
         break
     else:
-        send_message("test name", cmd)
+        send_message("test_name", cmd)
 
 t.join()
