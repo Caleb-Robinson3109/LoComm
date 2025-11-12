@@ -33,7 +33,7 @@ void sec_deinit();
  * @brief Sets the initial password during device provisioning.
  * This should be forced on the user during the first setup.
  */
-// CALLED INSIDE OF sec_init() DOES NOT NEED TO BE CALLED EXTERNALLY
+// CALLED INSIDE OF sec_init() OR can be called externally if needed. It is probably not needed.
 bool sec_setInitialPassword(const char* password);
 
 /**
@@ -66,19 +66,27 @@ void sec_logout();
 bool sec_isLoggedIn();
 
 
-// --- Device-to-Device: Pairing Sequence --- NOTE: WILL BE CHANGED
+// --- Device-to-Device: Manual Key Provisioning ---
 
 /**
- * @brief Begins the pairing sequence by generating a new key pair.
- * Provides the public key to be sent to the other device.
+ * @brief Generates a new D2D key and encodes it for display.
+ * This is for the "master" device. The user must be logged in.
+ * The new key is stored, and the Base85 string is returned to be shown on-screen.
+ * @param outputBase85Buffer An empty buffer to write the Base85 string into.
+ * @param bufferSize The size of the outputBase85Buffer (must be > 20).
+ * @return true on success, false on failure (not logged in, etc.).
  */
-bool sec_startPairing(uint8_t* publicKeyBuffer, size_t bufferSize, size_t* publicKeyLen);
+bool sec_generate_key(char* outputBase85Buffer, size_t bufferSize);
 
 /**
- * @brief Completes the pairing sequence using the other device's public key.
- * Computes the shared secret and establishes the symmetric key for the D2D session.
+ * @brief Provisions the D2D key from a manually entered string.
+ * This is for the "member" device. The user must be logged in.
+ * The string is decoded, and the resulting key is stored.
+ * @param inputBase85String The 20-character Base85 string entered by the user.
+ * @return true on success, false on failure (not logged in, invalid string, etc.).
  */
-bool sec_finalizePairing(const uint8_t* theirPublicKey, size_t theirKeyLen);
+bool sec_log_key(const char* inputBase85String);
+
 
 /**
  * @brief Checks if a secure D2D channel has been established.
@@ -99,12 +107,57 @@ void sec_resetPairing();
  * @brief Encrypts and authenticates a message using the shared D2D key.
  * Uses an AEAD cipher like AES-GCM to provide confidentiality and integrity.
  */
+//plaintext: Pointer to the data you want to encrypt
+//plaintextLen: Length of the data you want to encrypt
+//ciphertextBuffer: Where you want the encrypted message to be stored
+//bufferSize: maximum size of the buffer (to prevent overflow)
+//ciphertextLen: the size of the ciphertext
+/* * * * * * * * * * * * * * * * *    EXAMPLE USAGE    * * * * * * * * * * * * * * *   
+// Your message to send
+const char* message = "This is a secret message.";
+size_t messageLen = strlen(message); // Length is 25
+
+// --- 1. Prepare Buffers ---
+
+// Define a buffer for the output. This is to prevent memory leakage.
+// We know it needs to be at least 25 + 28 = 53 bytes.
+// We'll make it 100 to be safe. You could also just make it messageLen + encryption_overhead
+uint8_t encryptedBuffer[100];
+size_t maxBufferSize = 100;
+
+// This variable will hold the *actual* final size
+size_t actualEncryptedLen = 0; 
+
+// --- 2. Call the Function ---
+bool success = sec_encryptD2DMessage(
+    (const uint8_t*)message, // The data to encrypt
+    messageLen,              // The length of that data
+    encryptedBuffer,         // The empty buffer for the result
+    maxBufferSize,           // The *max* size of our empty buffer (for safety!)
+    &actualEncryptedLen      // A pointer to our length variable
+);
+
+// --- 3. Check the Result ---
+if (success) {
+    // It worked!
+    // 'encryptedBuffer' now contains the encrypted data.
+    // 'actualEncryptedLen' is now 53 (25 + 28).
+    // You can now send 'actualEncryptedLen' bytes from 'encryptedBuffer'.
+    //
+    // e.g., lora_send(encryptedBuffer, actualEncryptedLen);
+
+} else {
+    // Encryption failed.
+    // This could be because you're not logged in, or some other error.
+}
+*/
 bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen);
 
 /**
  * @brief Decrypts and verifies an incoming message using the shared D2D key.
  * Will fail if the message has been tampered with or is not from the paired device.
  */
+// Example usage is nearly the same as above, except bufferSize should be ciphertextLen - encryption_overhead
 bool sec_decryptD2DMessage(const uint8_t* ciphertext, size_t ciphertextLen, uint8_t* plaintextBuffer, size_t bufferSize, size_t* plaintextLen);
 
 
