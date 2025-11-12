@@ -254,7 +254,7 @@ void handle_CONN_packet(){
         ((uint32_t)computer_in_packet[14] << 8)  |
         ((uint32_t)computer_in_packet[15]);
 
-    epochAtBoot = epoch;
+    epochAtBoot = epoch - (millis() / 1000);
 
     build_CACK_packet();
     message_to_computer_flag = true;
