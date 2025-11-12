@@ -162,15 +162,13 @@ class MainFrame(ttk.Frame):
         self.status_badge = tk.Label(
             info_wrap,
             text="Disconnected",
-            bg=Colors.BG_SOFT,
-            fg=Colors.TEXT_PRIMARY,
+            bg=Colors.STATE_ERROR,
+            fg=Colors.SURFACE,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
         self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
-        self.status_indicator = tk.Frame(info_wrap, bg=Palette.PRIMARY, height=3)
-        self.status_indicator.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
         brand_label = tk.Label(
             bar,

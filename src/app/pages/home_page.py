@@ -86,7 +86,7 @@ class HomePage(BasePage):
         # Section title
         tk.Label(
             content,
-            text="Incoming Devices",
+            text="Incoming Peers",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
@@ -136,7 +136,8 @@ class HomePage(BasePage):
 
     def _open_chat(self, device):
         """Open chat window for the device."""
-        ChatWindow(self, peer_name=device.name)
+        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        ChatWindow(self, peer_name=device.name, local_device_name=local_name)
 
     def _go_to_chatroom(self):
         """Navigate to the chatroom modal."""

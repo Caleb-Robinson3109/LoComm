@@ -74,7 +74,7 @@ class ChatroomPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Manage your chatroom devices and connections",
+            text="Manage your chatroom peers and connections",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
@@ -106,7 +106,7 @@ class ChatroomPage(BasePage):
         # Section title
         tk.Label(
             content,
-            text="Available Devices",
+            text="Available Peers",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
@@ -127,7 +127,8 @@ class ChatroomPage(BasePage):
             from utils.design_system import AppConfig
             self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
         from .chat_window import ChatWindow
-        ChatWindow(self, peer_name=self._active_device_name)
+        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        ChatWindow(self, peer_name=self._active_device_name, local_device_name=local_name)
 
     def _build_device_list(self, parent):
         """Build simple device list."""
@@ -228,7 +229,7 @@ class ChatroomPage(BasePage):
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
         if hasattr(self, "scan_btn"):
-            self.scan_btn.configure(state="normal", text="Scan for Devices")
+            self.scan_btn.configure(state="normal", text="Scan for Peers")
 
     
 

@@ -14,22 +14,34 @@ from utils.design_system import Colors, ensure_styles_initialized, DesignUtils, 
 class ChatWindow(tk.Toplevel):
     """Modern chat window with beautiful UI design."""
 
-    def __init__(self, master: tk.Misc, peer_name: str | None = None, on_disconnect=None):
+    _open_windows: dict[str, 'ChatWindow'] = {}
+
+    def __init__(self, master: tk.Misc, peer_name: str | None = None, local_device_name: str | None = None):
+        # Check if window already open for this peer
+        if peer_name and peer_name in self._open_windows:
+            existing = self._open_windows[peer_name]
+            if existing.winfo_exists():
+                existing.lift()
+                existing.focus_set()
+                return
+            else:
+                # Window was destroyed, remove from dict
+                del self._open_windows[peer_name]
+
         super().__init__(master)
         ensure_styles_initialized()
         self.peer_name = peer_name or "Peer"
-        self.local_device_name = "Orion"  # TODO: Get from session
-        self.title(f"💬 Chat - {self.peer_name}")
-        self.geometry("650x750")
-        self.minsize(550, 650)
+        self.local_device_name = local_device_name or "Orion"
+        self.title("Chat")
+        self.geometry("387x465")
+        self.minsize(387, 465)
         self.resizable(True, True)
         self.configure(bg=Colors.SURFACE)
         self._bridge = get_peer_bridge()
-        self._on_disconnect = on_disconnect
 
         self._build_ui()
         self._bridge.register_peer_callback(self._handle_incoming)
-        self.protocol("WM_DELETE_WINDOW", self._trigger_disconnect)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.entry.focus_set()
 
     # ------------------------------------------------------------------ UI
@@ -51,15 +63,9 @@ class ChatWindow(tk.Toplevel):
         # Header content
         header_content = tk.Frame(self.header, bg=Colors.SURFACE_HEADER)
         header_content.pack(fill=tk.X)
-
-        # Status indicator
-        self.status_indicator = tk.Frame(
-            header_content,
-            bg=Colors.STATE_SUCCESS,
-            width=8,
-            height=8
-        )
-        self.status_indicator.pack(side=tk.LEFT, pady=(0, Spacing.XS))
+        header_content.grid_columnconfigure(0, weight=1)
+        header_content.grid_columnconfigure(1, weight=0)
+        header_content.grid_columnconfigure(2, weight=1)
 
         # Peer name with modern typography
         self.header_name_label = tk.Label(
@@ -69,7 +75,7 @@ class ChatWindow(tk.Toplevel):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         )
-        self.header_name_label.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
+        self.header_name_label.grid(row=0, column=0, sticky="w")
 
         # Connection status badge
         self.connection_badge = tk.Label(
@@ -79,17 +85,7 @@ class ChatWindow(tk.Toplevel):
             fg=Colors.STATE_SUCCESS,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
         )
-        self.connection_badge.pack(side=tk.LEFT, padx=(Spacing.SM, 0))
-
-        # Disconnect button with better styling
-        self.disconnect_btn = DesignUtils.button(
-            header_content,
-            text="Disconnect",
-            command=self._trigger_disconnect,
-            variant="danger",
-            width=10,
-        )
-        self.disconnect_btn.pack(side=tk.RIGHT)
+        self.connection_badge.grid(row=0, column=2, sticky="e")
 
         # Chat area with modern styling
         chat_frame = tk.Frame(
@@ -142,13 +138,13 @@ class ChatWindow(tk.Toplevel):
         composer_frame = tk.Frame(
             self.main_container,
             bg=Colors.SURFACE,
-            padx=Spacing.LG,
+            padx=0,
             pady=Spacing.SM
         )
         composer_frame.pack(fill=tk.X)
 
         # Input area
-        input_frame = tk.Frame(composer_frame, bg=Colors.SURFACE_ALT, padx=Spacing.MD, pady=Spacing.MD)
+        input_frame = tk.Frame(composer_frame, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.MD)
         input_frame.pack(fill=tk.X)
 
         self.msg_var = tk.StringVar()
@@ -161,7 +157,7 @@ class ChatWindow(tk.Toplevel):
             text="Send",
             command=self._send_message,
             variant="primary",
-            width=12,
+            width=10,
         )
         self.send_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 
@@ -174,7 +170,6 @@ class ChatWindow(tk.Toplevel):
         self.configure(bg=surface)
         self.main_container.configure(bg=surface)
         self.header.configure(bg=header_bg)
-        self.status_indicator.configure(bg=accent)
         self.header_name_label.configure(bg=header_bg, fg=Colors.TEXT_PRIMARY)
         self.connection_badge.configure(bg=header_bg, fg=accent)
         self.history_container.configure(bg=Colors.SURFACE_ALT)
@@ -259,10 +254,6 @@ class ChatWindow(tk.Toplevel):
         self._add_message(text, sender=self.local_device_name, is_self=True)
         self.msg_var.set("")
 
-    def _trigger_disconnect(self):
-        if callable(self._on_disconnect):
-            self._on_disconnect()
-        self._on_close()
 
     def _on_close(self):
         self._bridge.unregister_peer_callback(self._handle_incoming)
@@ -272,13 +263,11 @@ class ChatWindow(tk.Toplevel):
         self.peer_name = name or "Peer"
         if hasattr(self, "header_name_label"):
             self.header_name_label.configure(text=self.peer_name)
-        self.title(f"💬 Chat - {self.peer_name}")
+        self.title("Chat")
 
     def set_status(self, text: str, *, color: str = "#1f7a4f"):
         if hasattr(self, "connection_badge"):
             self.connection_badge.configure(text=f"● {text}", fg=color)
-        if hasattr(self, "status_indicator"):
-            self.status_indicator.configure(bg=color)
 
     def _widgets_alive(self) -> bool:
         try:

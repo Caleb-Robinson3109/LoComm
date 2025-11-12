@@ -242,16 +242,18 @@ class LoginModal:
         
         # Set validation flag
         self._is_password_validated = True
-        
+
+        # Enable login button
+        self.login_btn.configure(state="normal")
+
         # Focus on device name field
         if self.modal_window:
             self.modal_window.after(100, lambda: self.device_name_entry.focus_set() if self.modal_window else None)
             self.modal_window.after(150, lambda: self.device_name_entry.icursor(tk.END) if self.modal_window else None)  # Move cursor to end
 
     def _on_device_name_change(self, *args):
-        """Enable/disable login button based on device name length."""
-        device_name = self.device_name_var.get().strip()
-        if len(device_name) >= 3:
+        """Enable/disable login button based on validation state."""
+        if self._is_password_validated:
             self.login_btn.configure(state="normal")
         else:
             self.login_btn.configure(state="disabled")
@@ -262,12 +264,7 @@ class LoginModal:
             self._show_validation_error("Please validate your password first")
             return
             
-        device_name = self.device_name_var.get().strip()
-        
-        # Basic validation
-        if not device_name:
-            self._show_validation_error("Please enter a device name")
-            return
+        device_name = self.device_name_var.get().strip() or "Orion"
         
         # Disable button and show loading state
         self.login_btn.configure(state="disabled", text="Logging in...")
