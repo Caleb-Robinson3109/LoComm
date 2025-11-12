@@ -494,7 +494,11 @@ void loop() {
         
         {
           ScopeLock(serialLoraBridgeSpinLock, serialLoraBridgeLock);
-          serialReadyToSendArray.add(&(tempBuf[0]));
+          if (serialReadyToSendArray.add(&(tempBuf[0]))) {
+            LDebug("Dispatched message to readytosendarray");
+          } else {
+            LError("Failed to dispatch message ot readytosendarray");
+          }
         }
         //now remove it from rxMessageArray
         rxMessageArray.remove(i);
@@ -739,6 +743,16 @@ void sendAck(const uint8_t dstID, const uint16_t messageNumber, const uint8_t se
 //This function will take the data in src
 //NOTE whatever function that calls this needs to handle acquiring the correct lock
 bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
+  if (lastDeviceMode == SLEEP_MODE) {
+    LDebug("Ignoring add to message array request, device is not enabled");
+    return false;
+  }
+
+  if (destinationID == deviceID) {
+    LWarn("Ignoring message attempting to be sent to own device");
+    return false;
+  }
+
   //first, make sure the data isn't too big
   display.clearDisplay();
   display.setCursor(0,0);
