@@ -36,11 +36,13 @@ static bool g_is_paired = false; // Note: 'is_paired' will be true if a D2D key 
 // NVM-backed data (loaded into RAM at init)
 static uint8_t g_password_hash[32];     // The SHA-256 hash of the password
 static uint8_t g_password_salt[16];     // 16-byte salt for hashing
-static uint8_t g_encrypted_d2d_key[48]; // 32-byte key + 16-byte GCM tag
+// MODIFIED: 16-byte key + 16-byte GCM tag = 32 bytes total
+static uint8_t g_encrypted_d2d_key[32]; 
 
 // The "golden" key. This is the most sensitive data.
 // It ONLY exists in RAM and ONLY when logged in.
-static uint8_t g_decrypted_d2d_key[32];
+// MODIFIED: Key size is now 16 bytes (128-bit)
+static uint8_t g_decrypted_d2d_key[16];
 
 // --- Internal Helper Functions ---
 
@@ -124,17 +126,20 @@ bool sec_init() {
 
     // 5. Load the D2D key if it exists.
     if (storage.isKey(NVM_KEY_D2D_KEY)) {
-        storage.getBytes(NVM_KEY_D2D_KEY, g_encrypted_d2d_key, 48);
+        // MODIFIED: Size changed to 32
+        storage.getBytes(NVM_KEY_D2D_KEY, g_encrypted_d2d_key, 32);
         g_is_paired = true; // We have a key, so we are "paired"
     } else {
         // No D2D key exists yet
-        memset(g_encrypted_d2d_key, 0, 48); // Clear the buffer
+        // MODIFIED: Size changed to 32
+        memset(g_encrypted_d2d_key, 0, 32); // Clear the buffer
         g_is_paired = false;
     }
 
     // 6. Finalize state
     g_is_logged_in = false;                // ALWAYS start in logged-out state
-    memset(g_decrypted_d2d_key, 0, 32); // Securely wipe the target RAM
+    // MODIFIED: Size changed to 16
+    memset(g_decrypted_d2d_key, 0, 16); // Securely wipe the target RAM
     
     // We don't close storage with storage.end() here, 
     // as we'll need it for other functions.
@@ -144,10 +149,12 @@ bool sec_init() {
 
 void sec_deinit() {
     // Securely wipe all sensitive data from RAM
-    memset(g_decrypted_d2d_key, 0, 32);
+    // MODIFIED: Size changed to 16
+    memset(g_decrypted_d2d_key, 0, 16);
     memset(g_password_hash, 0, 32);
     memset(g_password_salt, 0, 16);
-    memset(g_encrypted_d2d_key, 0, 48);
+    // MODIFIED: Size changed to 32
+    memset(g_encrypted_d2d_key, 0, 32);
 
     g_is_logged_in = false;
     g_is_paired = false;
@@ -185,8 +192,10 @@ bool sec_setInitialPassword(const char* password) {
     // The user must re-pair after a password reset.
     if (storage.isKey(NVM_KEY_D2D_KEY)) {
         storage.remove(NVM_KEY_D2D_KEY);
-        memset(g_encrypted_d2d_key, 0, 48);
-        memset(g_decrypted_d2d_key, 0, 32);
+        // MODIFIED: Size changed to 32
+        memset(g_encrypted_d2d_key, 0, 32);
+        // MODIFIED: Size changed to 16
+        memset(g_decrypted_d2d_key, 0, 16);
         g_is_paired = false;
     }
 
@@ -227,23 +236,37 @@ bool sec_isLoggedIn() {
 }
 
 
-// --- Device-to-Device: Pairing Sequence ---
+// --- Device-to-Device: Manual Key Provisioning ---
 
-bool sec_startPairing(uint8_t* publicKeyBuffer, size_t bufferSize, size_t* publicKeyLen) {
+bool sec_generate_key(char* outputBase85Buffer, size_t bufferSize) {
     // STUB: To be implemented
-    // 1. Check if logged in (g_is_logged_in == true).
-    // 2. Use mbedtls_ecdh_gen_public to generate keys.
+    // 1. Check if g_is_logged_in == true.
+    // 2. Check bufferSize > 20.
+    // 3. Generate 16 random bytes (mbedtls_ctr_drbg_random) -> g_decrypted_d2d_key.
+    // 4. Encode g_decrypted_d2d_key to Base85 -> outputBase85Buffer.
+    // 5. Encrypt g_decrypted_d2d_key with password-derived key.
+    // 6. Save encrypted key to NVM (g_encrypted_d2d_key and storage.putBytes).
+    // 7. Set g_is_paired = true.
     return false;
 }
 
-bool sec_finalizePairing(const uint8_t* theirPublicKey, size_t theirKeyLen) {
+bool sec_log_key(const char* inputBase85String) {
     // STUB: To be implemented
-    // 1. Check if logged in.
-    // 2. Use mbedtls_ecdh_calc_secret to get shared secret.
-    // 3. KDF the secret into g_decrypted_d2d_key.
-    // 4. Encrypt g_decrypted_d2d_key using password-derived key.
-    // 5. Store result in g_encrypted_d2d_key and save to NVM.
+    // 1. Check if g_is_logged_in == true.
+    // 2. Check string length == 20 and chars are valid Base85.
+    // 3. Decode string -> g_decrypted_d2d_key.
+    // 4. Encrypt g_decrypted_d2d_key with password-derived key.
+    // 5. Save encrypted key to NVM (g_encrypted_d2d_key and storage.putBytes).
     // 6. Set g_is_paired = true.
+    return false;
+}
+
+bool sec_display_key(char* outputBase85Buffer, size_t bufferSize) {
+    // STUB: To be implemented
+    // 1. Check if g_is_logged_in == true AND g_is_paired == true.
+    // 2. Check bufferSize > 20.
+    // 3. Encode g_decrypted_d2d_key (already in RAM) to Base85 -> outputBase85Buffer.
+    // 4. Return true.
     return false;
 }
 
