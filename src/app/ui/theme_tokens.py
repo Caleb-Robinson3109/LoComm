@@ -153,6 +153,10 @@ class Colors:
     SCROLLBAR_THUMB = ""
     SCROLLBAR_THUMB_HOVER = ""
 
+    # Link colors for interactive text
+    LINK_PRIMARY = ""
+    LINK_HOVER = ""
+
     # Button hover and active states
     BUTTON_DANGER_HOVER = ""
     BUTTON_DANGER_ACTIVE = ""

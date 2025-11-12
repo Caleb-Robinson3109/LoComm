@@ -9,13 +9,11 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils, Space
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container
-from utils.window_sizing import scale_dimensions
 from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
-from .pin_pairing_frame import PINPairingFrame
 
 
-class DevicesPage(BasePage):
+class ChatroomPage(BasePage):
     """Devices page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
@@ -34,8 +32,6 @@ class DevicesPage(BasePage):
         self.selected_device_var = tk.StringVar(value="No device selected")
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
-        self._pin_modal: Optional[tk.Toplevel] = None
-        self._pin_modal_frame: Optional[PINPairingFrame] = None
         self._suppress_selection_event = False
         self._last_selected_id: Optional[str] = None
 
@@ -70,7 +66,7 @@ class DevicesPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Devices",
+            text="My Chatroom",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
@@ -78,7 +74,7 @@ class DevicesPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Pair LoRa hardware, confirm PINs face-to-face",
+            text="Manage your chatroom devices and connections",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
@@ -125,6 +121,14 @@ class DevicesPage(BasePage):
         # Action buttons
         self._build_action_buttons(content)
 
+    def _go_to_chat(self):
+        """Open the peer chat window and set status to Connected."""
+        if self.controller:
+            from utils.design_system import AppConfig
+            self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
+        from .chat_window import ChatWindow
+        ChatWindow(self, peer_name=self._active_device_name)
+
     def _build_device_list(self, parent):
         """Build simple device list."""
         # Configure treeview style
@@ -146,12 +150,12 @@ class DevicesPage(BasePage):
         )
         style.map(
             "Devices.Treeview",
-            background=[("selected", Colors.SURFACE_HEADER)],
+            background=[("selected", Colors.STATE_INFO)],
             foreground=[("selected", Colors.TEXT_PRIMARY)],
         )
 
         # Create treeview
-        columns = ("Name", "Device ID", "Status")
+        columns = ("Name", "Device ID")
         self.device_tree = ttk.Treeview(
             parent,
             columns=columns,
@@ -186,13 +190,12 @@ class DevicesPage(BasePage):
         btn_width = 12
         self.connect_btn = DesignUtils.button(
             button_frame,
-            text="Connect",
-            command=self._connect_selected_device,
+            text="Chat",
+            command=self._go_to_chat,
             variant="secondary",
             width=btn_width,
         )
         self.connect_btn.pack(side=tk.RIGHT)
-        self.connect_btn.configure(state="disabled")
 
     def _refresh_device_table(self):
         if not hasattr(self, "device_tree"):
@@ -201,7 +204,7 @@ class DevicesPage(BasePage):
             self.device_tree.delete(row)
         devices = self.device_service.list_devices()
         for device in devices:
-            self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row())
+            self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row()[:2])
         if devices:
             # Re-select previous device if still present
             target = self._last_selected_id if self._last_selected_id in self.device_tree.get_children() else devices[0].device_id
@@ -227,53 +230,7 @@ class DevicesPage(BasePage):
         if hasattr(self, "scan_btn"):
             self.scan_btn.configure(state="normal", text="Scan for Devices")
 
-    def _connect_selected_device(self):
-        selected = self.device_tree.selection()
-        if not selected:
-            self._set_stage(DeviceStage.READY)
-            return
-        node_id = selected[0]
-        device = self.device_service.get_device(node_id)
-        if not device:
-            return
-        device_id = device.device_id
-        name = device.name
-        self._active_device_name = name
-        self._active_device_id = device_id
-        self.selected_device_var.set(f"{name} ({device_id})")
-
-        self._set_stage(DeviceStage.AWAITING_PIN, name)
-        self._open_pin_modal(device_id, name)
-
-    def _handle_pin_pair_success(self, device_id: str, device_name: str):
-        self._set_stage(DeviceStage.CONNECTING, device_name)
-        if self.app:
-            self.app.start_transport_session(device_id, device_name)
-        self._close_pin_modal()
-
-    def _disconnect_device(self):
-        if not self.connection_manager.is_connected():
-            return
-        if self.controller:
-            self.controller.stop_session()
-        if self.app:
-            self.app.clear_chat_history(confirm=False)
-        self.connection_manager.disconnect_device()
-        last_device = self.selected_device_var.get()
-        label = last_device if last_device != "No device selected" else None
-        self._set_stage(DeviceStage.DISCONNECTED, label)
-
-    def _handle_demo_login(self):
-        label = self._active_device_name or self.selected_device_var.get()
-        if label == "No device selected" or not label:
-            label = "Demo Device"
-        self._set_stage(DeviceStage.CONNECTING, label)
-        if self.app:
-            self.app.start_transport_session("demo-device", label, mode="demo")
-        self._set_stage(DeviceStage.CONNECTED, label)
-        self._close_pin_modal()
-        if self.on_device_paired:
-            self.on_device_paired("demo-device", label)
+    
 
     def _on_device_select(self, _event=None):
         if self._suppress_selection_event:
@@ -291,44 +248,7 @@ class DevicesPage(BasePage):
         self._last_selected_id = device.device_id
         self._sync_connect_button_state()
 
-    def _open_pin_modal(self, device_id: str, device_name: str):
-        self._close_pin_modal()
-        modal = tk.Toplevel(self)
-        modal.title(f"Pair {device_name} - {device_id}")
-        modal.configure(bg=Colors.SURFACE)
-        base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
-        default_width = max(int(base_width * 1.08), 320)
-        default_height = max(int(base_height * 1.06), 340)
-        width = max(int(default_width * 0.7632), 240)
-        height = max(int(default_height * 1.145), 280)
-        modal.geometry(f"{width}x{height}")
-        modal.minsize(width, height)
-        modal.resizable(True, True)
-        modal.transient(self.winfo_toplevel())
-        modal.grab_set()
-        modal.protocol("WM_DELETE_WINDOW", self._close_pin_modal)
-        self._pin_modal = modal
-
-        pin_frame = PINPairingFrame(
-            modal,
-            lambda d_id, d_name: self._handle_pin_pair_success(d_id, d_name),
-            self._handle_demo_login
-        )
-        pin_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
-        if hasattr(pin_frame, "set_pending_device"):
-            pin_frame.set_pending_device(device_name, device_id)
-        if hasattr(pin_frame, "focus_input"):
-            pin_frame.focus_input()
-        self._pin_modal_frame = pin_frame
-
-    def _close_pin_modal(self):
-        self._pin_modal_frame = None
-        if self._pin_modal and self._pin_modal.winfo_exists():
-            try:
-                self._pin_modal.destroy()
-            except Exception:
-                pass
-        self._pin_modal = None
+    
 
     def _set_stage(self, stage: DeviceStage, device_name: Optional[str] = None):
         """Update local labels and push consolidated status via the UI store."""
@@ -427,4 +347,4 @@ class DevicesPage(BasePage):
         self._unsubscribe_from_store()
         return super().destroy()
 
-PairPage = DevicesPage
+PairPage = ChatroomPage

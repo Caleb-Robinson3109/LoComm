@@ -6,10 +6,10 @@ from typing import Callable, List
 from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils, Palette
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
 
-from .chat_page import ChatPage
+
 from .settings_page import SettingsPage
 from .home_page import HomePage
-from .devices_page import DevicesPage
+from .chatroom_page import ChatroomPage
 from .about_page import AboutPage
 from .help_page import HelpPage
 from .sidebar import Sidebar
@@ -71,9 +71,7 @@ class MainFrame(ttk.Frame):
         ctx = self._page_context
         routes = [
             RouteConfig("home", "Home", lambda parent, ctx=ctx: HomePage(parent, ctx)),
-            RouteConfig("chat", "Chat", lambda parent, ctx=ctx: ChatPage(parent, ctx,
-                                                                        on_disconnect=self._handle_disconnect)),
-            RouteConfig("pair", "Devices", lambda parent, ctx=ctx: DevicesPage(parent, ctx,
+            RouteConfig("pair", "Chatroom", lambda parent, ctx=ctx: ChatroomPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
             RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
@@ -202,9 +200,7 @@ class MainFrame(ttk.Frame):
         """Switch to the home view."""
         self.navigate_to("home")
 
-    def _show_chat_view(self):
-        """Switch to the chat view."""
-        self.navigate_to("chat")
+    
 
     def _show_pair_view(self):
         """Switch to the pair view."""
@@ -222,9 +218,7 @@ class MainFrame(ttk.Frame):
         """Show the home page."""
         self.navigate_to("home")
 
-    def show_chat_page(self):
-        """Show the chat page."""
-        self.navigate_to("chat")
+    
 
     def show_pair_page(self):
         """Show the pair page."""
@@ -272,9 +266,7 @@ class MainFrame(ttk.Frame):
         pass
 
     # Compatibility properties to access lazily-created pages -----------------
-    @property
-    def chat_page(self):
-        return self._ensure_view("chat")
+    
 
     @property
     def home_page(self):
@@ -297,8 +289,8 @@ class MainFrame(ttk.Frame):
         if device_id and device_name:
             # Device is connected
             self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
-            self._show_chat_view()
-            self.chat_page.sync_session_info()
+            # Navigate to home since chat page is removed
+            self.navigate_to("home")
         else:
             # Device is disconnected
             self.controller.status_manager.update_status(AppConfig.STATUS_DISCONNECTED)

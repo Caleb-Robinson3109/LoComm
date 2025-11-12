@@ -174,12 +174,12 @@ class AppController:
                         "mode": mode,
                     })
                     if self.transport.is_mock:
-                        from mock.peer_chat_window import ensure_mock_peer_window
+                        from pages.chat_window import ChatWindow
 
                         local_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
                         self.root.after(
                             0,
-                            lambda: ensure_mock_peer_window(
+                            lambda: ChatWindow(
                                 self.root,
                                 peer_name=local_name,
                                 on_disconnect=lambda: self.root.after(0, self.stop_session)
@@ -330,12 +330,6 @@ class AppController:
         try:
             self.transport.stop()
         finally:
-            try:
-                from mock.peer_chat_window import close_mock_peer_window
-            except ImportError:
-                close_mock_peer_window = None
-            if close_mock_peer_window:
-                close_mock_peer_window()
             self.connection_manager.disconnect_device()
             self.session.clear()
             self._persist_session()

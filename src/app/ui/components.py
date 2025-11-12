@@ -94,6 +94,27 @@ class DesignUtils:
         return ttk.Entry(parent, style=entry_style, **kwargs)
 
     @staticmethod
+    def create_compact_entry(parent, **kwargs):
+        """Create an entry with reduced internal padding for tighter spacing."""
+        ThemeManager.ensure()
+        style = ttk.Style()
+        # Create a compact style for password fields
+        compact_style = "Locomm.Compact.TEntry"
+        try:
+            # Configure compact entry style with minimal padding
+            style.configure(compact_style,
+                          fieldbackground=Colors.SURFACE_RAISED,
+                          foreground=Colors.TEXT_PRIMARY,
+                          bordercolor=Colors.BORDER,
+                          lightcolor=Colors.BORDER,
+                          darkcolor=Colors.BORDER)
+            return ttk.Entry(parent, style=compact_style, **kwargs)
+        except tk.TclError:
+            # Fallback to regular entry style if compact style fails
+            entry_style = "Locomm.Input.TEntry"
+            return ttk.Entry(parent, style=entry_style, **kwargs)
+
+    @staticmethod
     def create_pin_entry(parent, **kwargs):
         ThemeManager.ensure()
         style = ttk.Style()

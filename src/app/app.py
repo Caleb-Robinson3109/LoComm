@@ -5,14 +5,16 @@ import tkinter as tk
 from tkinter import messagebox
 import time
 from collections import deque
+from typing import Optional
 
 from services import AppController
 from utils.state.status_manager import get_status_manager
-from pages.pin_pairing_frame import PINPairingFrame
+
+from pages.login_modal import LoginModal
+from pages.chatroom_pairing_frame import ChatroomPairingFrame
 from pages.main_frame import MainFrame
-from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
-from utils.window_sizing import calculate_initial_window_size
-from mock.peer_chat_window import refresh_mock_peer_window_theme
+from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
+from utils.window_sizing import calculate_initial_window_size, scale_dimensions
 
 MAX_UI_PENDING_MESSAGES = 500
 
@@ -25,7 +27,7 @@ class App(tk.Tk):
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)
-        self._init_fullscreen_window()
+        self._init_main_window()  # Initialize in proper position
         self.protocol("WM_DELETE_WINDOW", self._handle_app_close)
         self.after(0, self._focus_window)
 
@@ -36,11 +38,14 @@ class App(tk.Tk):
         self.current_frame = None
         self._ui_connected = False
         self._ui_pending_messages = deque(maxlen=MAX_UI_PENDING_MESSAGES)
+        self.login_modal = None
+        self.chatroom_modal: Optional[tk.Toplevel] = None
+        self.chatroom_modal_frame: Optional[ChatroomPairingFrame] = None
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
-        # Initialize UI
-        self.show_main()
+        # Initialize UI with login modal
+        self.show_login_modal()
 
     # ------------------------------------------------------------------ #
     def show_main(self, device_id: str | None = None, device_name: str | None = None,
@@ -48,6 +53,9 @@ class App(tk.Tk):
         """Show the main chat interface."""
         if self.current_frame:
             self.current_frame.destroy()
+
+        # Reset to full screen dimensions for main interface
+        self._init_fullscreen_window()
 
         # Use business logic controller for session management
         session = self.app_controller.session
@@ -70,8 +78,7 @@ class App(tk.Tk):
             except Exception:
                 pass
 
-        if hasattr(self.current_frame, "chat_page"):
-            self.current_frame.chat_page.sync_session_info()
+        # Chat page removed, no sync needed
 
         # Process pending UI messages
         if self._ui_pending_messages:
@@ -85,12 +92,21 @@ class App(tk.Tk):
                 )
             self._ui_pending_messages.clear()
 
-    def show_login(self):
-        """Show the PIN pairing screen."""
+    def show_login_modal(self):
+        """Show the login page as initial interface."""
+        # Clear any existing frames
         if self.current_frame:
             self.current_frame.destroy()
-        self.current_frame = PINPairingFrame(self, self._handle_pair_success, self._handle_demo_login)
-        self.current_frame.pack(fill=tk.BOTH, expand=True)
+            self.current_frame = None
+
+        # Create login modal if not exists
+        if not self.login_modal:
+            self.login_modal = LoginModal(
+                self,
+                on_login=self._handle_login_success,
+                on_register=self._handle_register_click,
+                on_forgot_password=self._handle_forgot_password_click
+            )
 
     # ------------------------------------------------------------------ #
     def start_transport_session(self, device_id: str, device_name: str, *, mode: str = "pin",
@@ -101,33 +117,116 @@ class App(tk.Tk):
         def on_complete(success: bool, error_msg: str | None):
             if success:
                 # Jump straight into chat once transport succeeds.
-                self.show_main(device_id, device_name, route_id="chat")
+                self.show_main(device_id, device_name, route_id="home")
             else:
                 messagebox.showerror(failure_title, error_msg or failure_message)
                 self._clear_session()
 
         self.app_controller.start_session(device_id, device_name, mode=mode, callback=on_complete)
 
-    def _handle_pair_success(self, device_id: str, device_name: str):
-        """Handle successful PIN pairing with timeout protection."""
-        self.start_transport_session(device_id, device_name)
 
-    def _handle_demo_login(self):
-        """Handle demo login (skip PIN pairing)."""
-        self.start_transport_session(
-            "demo-device",
-            "Demo Device",
-            mode="demo",
-            failure_title="Demo Failed",
-            failure_message="Demo connection failed."
+
+    # Login modal callbacks
+    def _handle_login_success(self, device_name: str, password: str):
+        """Handle successful login from modal."""
+        # Set local device name for the session
+        session = self.app_controller.session
+        session.local_device_name = device_name
+
+        # Close login modal
+        if self.login_modal:
+            self.login_modal.close_modal()
+            self.login_modal = None
+
+        # Show main interface and go to home page
+        self.show_main(route_id="home")
+
+    def _open_chatroom_modal(self):
+        """Open the chatroom modal using the same pattern as PIN pairing."""
+        self._close_chatroom_modal()
+        modal = tk.Toplevel(self)
+        modal.title("Enter Chatroom")
+        modal.configure(bg=Colors.SURFACE)
+
+        # Calculate proper modal size (smaller than main window but larger than PIN modal)
+        base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
+        default_width = max(int(base_width * 1.08), 420)
+        default_height = max(int(base_height * 1.06), 420)
+        width = max(int(default_width * 1.1 * 0.93), 360)  # 7% smaller than original
+        height = max(int(default_height * 1.2 * 0.93), 380)  # 7% smaller than original
+        modal.minsize(width, height)
+        modal.resizable(True, True)
+        modal.transient(self.winfo_toplevel())
+        modal.protocol("WM_DELETE_WINDOW", self._close_chatroom_modal)
+
+        # Center the modal window on screen
+        modal.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        pos_x = (screen_w - width) // 2
+        pos_y = (screen_h - height) // 2
+        modal.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
+
+        self.chatroom_modal = modal
+
+        # Create chatroom pairing frame inside the modal
+        chatroom_frame = ChatroomPairingFrame(
+            modal,
+            lambda chatroom_code: self._handle_chatroom_success(chatroom_code)
         )
+        chatroom_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
+        if hasattr(chatroom_frame, "focus_input"):
+            chatroom_frame.focus_input()
+        self.chatroom_modal_frame = chatroom_frame
+
+    def _close_chatroom_modal(self):
+        """Close the chatroom modal."""
+        self.chatroom_modal_frame = None
+        if self.chatroom_modal and self.chatroom_modal.winfo_exists():
+            try:
+                self.chatroom_modal.destroy()
+            except Exception:
+                pass
+        self.chatroom_modal = None
+
+    def show_chatroom_modal(self):
+        """Show the chatroom modal for 20-digit code entry."""
+        # Clear any existing frames
+        if self.current_frame:
+            self.current_frame.destroy()
+            self.current_frame = None
+
+        # Open the chatroom modal
+        self._open_chatroom_modal()
+
+    def _handle_chatroom_success(self, chatroom_code: str):
+        """Handle successful chatroom code entry."""
+        # Close chatroom modal
+        self._close_chatroom_modal()
+
+        # Show main interface and navigate to devices page
+        self.show_main(route_id="pair")
+
+
+
+
+    def _handle_register_click(self):
+        """Handle register link click."""
+        messagebox.showinfo("Register", "Registration feature will be implemented in the future.")
+
+    def _handle_forgot_password_click(self):
+        """Handle forgot password link click."""
+        messagebox.showinfo("Forgot Password", "Password recovery feature will be implemented in the future.")
+
+
 
     def _handle_logout(self):
         """Handle user logout with proper cleanup."""
         self.app_controller.stop_session()
         self._clear_session()
         self._ui_pending_messages.clear()
-        self.show_main()
+        # Show login modal instead of main interface
+        self.show_login_modal()
 
     def _clear_session(self):
         """Clear session data safely."""
@@ -152,12 +251,8 @@ class App(tk.Tk):
             return
         is_system = bool(sender and sender.lower() == "system")
         if isinstance(self.current_frame, MainFrame):
-            display_name = sender or "Peer"
-            self.current_frame.chat_page.append_line(
-                display_name,
-                msg,
-                is_system=is_system,
-            )
+            # Chat page removed, messages not displayed in main interface
+            pass
         else:
             self._ui_pending_messages.append((sender, msg, ts))
 
@@ -182,14 +277,9 @@ class App(tk.Tk):
             self.destroy()
 
     def clear_chat_history(self, *, confirm: bool = True):
-        """Clear chat history, optionally skipping confirmation."""
-        if not isinstance(self.current_frame, MainFrame):
-            return
-        proceed = True
-        if confirm:
-            proceed = messagebox.askyesno("Clear Chat", "Are you sure you want to clear the current chat log?")
-        if proceed:
-            self.current_frame.chat_page.clear_history()
+        """Clear chat history - disabled since chat page removed."""
+        # Chat page removed, no history to clear
+        pass
 
     def toggle_theme(self, use_dark: bool):
         """Toggle between light and dark themes."""
@@ -197,20 +287,41 @@ class App(tk.Tk):
         if isinstance(self.current_frame, MainFrame):
             prev_route = getattr(self.current_frame.sidebar, "current_view", None)
         ThemeManager.toggle_mode(use_dark)
-        refresh_mock_peer_window_theme()
         # Get current session info from business logic layer
         session = self.app_controller.session
         self.configure(bg=Colors.SURFACE)
         self.show_main(session.device_id or None, session.device_name or None, route_id=prev_route)
 
     # ------------------------------------------------------------------ #
-    def _init_fullscreen_window(self):
-        """Force the app to occupy the full screen and prevent shrinking."""
+    def _init_main_window(self):
+        """Initialize the main application window in center position with compact login dimensions."""
         self.update_idletasks()
         target_w, target_h = calculate_initial_window_size(self)
         screen_w = self.winfo_screenwidth()
-        offset_x = max(screen_w - target_w, 0)
-        offset_y = 0
+        screen_h = self.winfo_screenheight()
+
+        # Calculate compact dimensions for login page (50% width and height)
+        compact_w = max(target_w // 2, 400)  # 50% of original width, minimum 400px
+        compact_h = max(target_h // 2, 300)  # 50% of original height, minimum 300px
+        target_w = compact_w  # Use compact width for login
+        target_h = compact_h  # Use compact height for login
+
+        # Position window in center of screen
+        offset_x = (screen_w - target_w) // 2
+        offset_y = (screen_h - target_h) // 2
+        self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
+        self.minsize(target_w, target_h)
+        self.resizable(True, True)
+
+    def _init_fullscreen_window(self):
+        """Force the app to occupy the full screen and center position it."""
+        self.update_idletasks()
+        target_w, target_h = calculate_initial_window_size(self)
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        # Center the window on screen instead of right-aligning
+        offset_x = max((screen_w - target_w) // 2, 0)
+        offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
         self.minsize(target_w, target_h)
         self.resizable(True, True)

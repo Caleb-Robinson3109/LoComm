@@ -88,6 +88,8 @@ _THEME_DEFINITIONS = {
         "SCROLLBAR_TRACK": "#1E1E1E",
         "SCROLLBAR_THUMB": "#3C3C3C",
         "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
+        "LINK_PRIMARY": Palette.PRIMARY,
+        "LINK_HOVER": Palette.PRIMARY_HOVER,
     },
     "light": {
         "BG_MAIN": Palette.WHITE,
@@ -166,6 +168,8 @@ _THEME_DEFINITIONS = {
         "SCROLLBAR_TRACK": Palette.WHITE,
         "SCROLLBAR_THUMB": "#D1D5DB",
         "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
+        "LINK_PRIMARY": Palette.PRIMARY,
+        "LINK_HOVER": Palette.PRIMARY_HOVER,
     },
 }
 class ThemeManager:
@@ -438,12 +442,12 @@ class ThemeManager:
     @classmethod
     def current_mode(cls):
         return cls._current_mode
-    
+
     @classmethod
     def get_current_accent_name(cls):
         """Get the current accent color name."""
         return cls._current_accent_color or "blue"
-    
+
     @classmethod
     def set_accent_color(cls, accent_name: str):
         """Set the accent color by name."""
@@ -453,37 +457,32 @@ class ThemeManager:
             cls.refresh_styles()
         else:
             raise ValueError(f"Unknown accent color: {accent_name}")
-    
+
     @classmethod
     def _notify_theme_change(cls):
         """Notify components of theme change for smooth updates."""
         # This would be used to trigger theme change events in a more sophisticated system
-        # For now, we'll use the optimized approach to refresh mock windows and other components
-        try:
-            from mock.peer_chat_window import refresh_mock_peer_window_theme
-            refresh_mock_peer_window_theme()
-        except ImportError:
-            pass
-    
+        pass
+
     @classmethod
     def get_available_modes(cls):
         """Get list of available theme modes."""
         return cls._available_modes.copy()
-    
+
     @classmethod
     def set_mode(cls, mode_name: str):
         """Set theme mode by name."""
         if mode_name not in cls._available_modes:
             raise ValueError(f"Unknown theme mode: {mode_name}")
-        
+
         if mode_name == cls._current_mode:
             return
-        
+
         cls._current_mode = mode_name
         _update_theme_colors(_THEME_DEFINITIONS[mode_name])
         cls.refresh_styles()
         cls._notify_theme_change()
-    
+
     @classmethod
     def get_mode_info(cls):
         """Get current mode information including accessibility features."""
@@ -493,18 +492,18 @@ class ThemeManager:
             "accessibility_features": cls._get_accessibility_features(cls._current_mode)
         }
         return mode_info
-    
+
     @classmethod
     def _get_mode_display_name(cls, mode_name: str) -> str:
         """Get human-readable display name for theme mode."""
         display_names = {
             "dark": "Dark Mode",
-            "light": "Light Mode", 
+            "light": "Light Mode",
             "high_contrast_dark": "High Contrast (Dark)",
             "colorblind_friendly": "Colorblind Friendly"
         }
         return display_names.get(mode_name, mode_name)
-    
+
     @classmethod
     def _get_accessibility_features(cls, mode_name: str) -> list:
         """Get accessibility features for the specified mode."""
@@ -515,7 +514,7 @@ class ThemeManager:
             "colorblind_friendly": ["colorblind_safe", "deuteranopia_safe", "protanopia_safe", "tritanopia_safe"]
         }
         return features.get(mode_name, [])
-    
+
     @classmethod
     def validate_contrast_ratio(cls, foreground: str, background: str) -> float:
         """Calculate WCAG contrast ratio between two colors."""
@@ -523,57 +522,57 @@ class ThemeManager:
             # Handle empty or invalid colors
             if not color or not isinstance(color, str):
                 return 0.5  # Return mid-gray luminance for invalid colors
-            
+
             # Remove # if present
             color = color.lstrip('#')
-            
+
             # Ensure we have exactly 6 characters
             if len(color) != 6:
                 return 0.5  # Return mid-gray for invalid format
-            
+
             try:
                 # Convert to RGB
                 r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
             except ValueError:
                 return 0.5  # Return mid-gray for invalid hex values
-            
+
             # Calculate relative luminance
             def linearize(c):
                 c = c / 255.0
                 return c / 12.92 if c <= 0.03928 else pow((c + 0.055) / 1.055, 2.4)
-            
+
             r_lin = linearize(r)
             g_lin = linearize(g)
             b_lin = linearize(b)
-            
+
             return 0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
-        
+
         l1 = get_luminance(foreground)
         l2 = get_luminance(background)
-        
+
         # Ensure l1 is the lighter color
         if l1 < l2:
             l1, l2 = l2, l1
-        
+
         # Calculate contrast ratio
         return (l1 + 0.05) / (l2 + 0.05)
-    
+
     @classmethod
     def check_wcag_compliance(cls, foreground: str, background: str, level: str = "AA") -> dict:
         """Check WCAG compliance for color contrast."""
         ratio = cls.validate_contrast_ratio(foreground, background)
-        
+
         # WCAG thresholds
         thresholds = {
             "AA": {"normal": 4.5, "large": 3.0},
             "AAA": {"normal": 7.0, "large": 4.5}
         }
-        
+
         if level not in thresholds:
             level = "AA"
-        
+
         thresholds = thresholds[level]
-        
+
         return {
             "ratio": round(ratio, 2),
             "aa_normal": ratio >= thresholds["normal"],
@@ -582,14 +581,14 @@ class ThemeManager:
             "aaa_large": ratio >= thresholds.get("large", 3.0) * 4.5/3.0,
             "compliant": ratio >= thresholds["normal"]
         }
-    
+
     @classmethod
     def simulate_colorblindness(cls, color: str, type_: str = "deuteranopia") -> str:
         """Simulate how a color appears to people with different types of colorblindness."""
         # Remove # if present
         color = color.lstrip('#')
         r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-        
+
         # Color blindness simulation matrices (simplified)
         matrices = {
             "protanopia": [
@@ -608,24 +607,24 @@ class ThemeManager:
                 [0.000, 0.475, 0.525]
             ]
         }
-        
+
         if type_ not in matrices:
             type_ = "deuteranopia"
-        
+
         matrix = matrices[type_]
-        
+
         # Apply transformation
         new_r = int(r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2])
         new_g = int(r * matrix[1][0] + g * matrix[1][1] + b * matrix[1][2])
         new_b = int(r * matrix[2][0] + g * matrix[2][1] + b * matrix[2][2])
-        
+
         # Ensure values are in range
         new_r = max(0, min(255, new_r))
         new_g = max(0, min(255, new_g))
         new_b = max(0, min(255, new_b))
-        
+
         return f"#{new_r:02x}{new_g:02x}{new_b:02x}"
-    
+
     @classmethod
     def validate_theme_accessibility(cls) -> dict:
         """Validate the current theme for accessibility compliance."""
@@ -637,48 +636,48 @@ class ThemeManager:
             "error_color_distinct": cls.validate_contrast_ratio(Colors.STATE_ERROR, Colors.SURFACE) > 3.0,
             "success_color_distinct": cls.validate_contrast_ratio(Colors.STATE_SUCCESS, Colors.SURFACE) > 3.0,
         }
-        
+
         overall_compliance = all(
-            check.get("compliant", True) if isinstance(check, dict) else check 
+            check.get("compliant", True) if isinstance(check, dict) else check
             for check in checks.values()
         )
-        
+
         return {
             "overall_compliant": overall_compliance,
             "checks": checks,
             "recommendations": cls._get_accessibility_recommendations(checks)
         }
-    
+
     @classmethod
     def _get_accessibility_recommendations(cls, checks: dict) -> list:
         """Get accessibility improvement recommendations."""
         recommendations = []
-        
+
         if not checks.get("text_contrast", {}).get("compliant", True):
             recommendations.append("Increase contrast between primary text and background")
-        
+
         if not checks.get("secondary_text_contrast", {}).get("compliant", True):
             recommendations.append("Increase contrast between secondary text and background")
-        
+
         if not checks.get("button_contrast", {}).get("compliant", True):
             recommendations.append("Increase contrast between button text and background")
-        
+
         if not checks.get("error_color_distinct", True):
             recommendations.append("Make error state color more distinct from background")
-        
+
         if not checks.get("success_color_distinct", True):
             recommendations.append("Make success state color more distinct from background")
-        
+
         if not checks.get("focus_indicator_visible", True):
             recommendations.append("Add visible focus indicators for keyboard navigation")
-        
+
         return recommendations
-    
+
     @classmethod
     def auto_adjust_contrast(cls) -> dict:
         """Automatically adjust colors to improve contrast while maintaining visual appeal."""
         adjustments = {}
-        
+
         # Check and adjust primary text contrast
         text_contrast = cls.validate_contrast_ratio(Colors.TEXT_PRIMARY, Colors.SURFACE)
         if text_contrast < 4.5:  # WCAG AA standard
@@ -698,24 +697,24 @@ class ThemeManager:
                 new_g = max(0, int(current_rgb[1] * 0.8))
                 new_b = max(0, int(current_rgb[2] * 0.8))
                 adjustments["TEXT_PRIMARY"] = f"#{new_r:02x}{new_g:02x}{new_b:02x}"
-        
+
         return adjustments
-    
+
     @classmethod
     def get_accessibility_summary(cls) -> dict:
         """Get a comprehensive accessibility summary for the current theme."""
         validation = cls.validate_theme_accessibility()
         mode_info = cls.get_mode_info()
-        
+
         return {
             "current_mode": mode_info,
             "validation": validation,
-            "compliance_score": sum(1 for check in validation["checks"].values() 
-                                  if (check.get("compliant", True) if isinstance(check, dict) else check)) / 
+            "compliance_score": sum(1 for check in validation["checks"].values()
+                                  if (check.get("compliant", True) if isinstance(check, dict) else check)) /
                               len(validation["checks"]) * 100,
             "improvements_applied": len(cls.auto_adjust_contrast()) > 0
         }
-    
+
     @classmethod
     def refresh_styles(cls):
         """Refresh ttk styles after theme change for immediate visual update."""
@@ -724,27 +723,27 @@ class ThemeManager:
             # Update button styles
             for style_name in ["Locomm.Primary.TButton", "Locomm.Secondary.TButton", "Locomm.Ghost.TButton", "Locomm.Danger.TButton", "Locomm.Success.TButton"]:
                 try:
-                    style.configure(style_name, 
+                    style.configure(style_name,
                                   background=getattr(Colors, "BUTTON_PRIMARY_BG", Palette.VSCODE_BLUE),
                                   foreground=Colors.SURFACE)
                 except tk.TclError:
                     pass  # Style may not exist yet
-            
+
             # Update nav styles
             try:
-                style.configure("Locomm.Nav.TButton", 
+                style.configure("Locomm.Nav.TButton",
                               background=Colors.SURFACE,
                               foreground=Colors.TEXT_SECONDARY)
             except tk.TclError:
                 pass
-            
+
             try:
                 style.configure("Locomm.NavActive.TButton",
                               background=Colors.SURFACE_SELECTED,
                               foreground=Colors.TEXT_PRIMARY)
             except tk.TclError:
                 pass
-            
+
             # Update entry styles
             try:
                 style.configure("Locomm.Input.TEntry",
@@ -753,7 +752,7 @@ class ThemeManager:
                               bordercolor=Colors.BORDER)
             except tk.TclError:
                 pass
-            
+
             try:
                 style.configure("Locomm.PinEntry.TEntry",
                               fieldbackground=Colors.SURFACE_ALT,
@@ -770,12 +769,14 @@ def _update_theme_colors(theme: Dict[str, str]):
             setattr(Colors, key, value)
     _update_status_colors()
 
+
 def _apply_theme_definition(theme: Dict[str, str]):
     """Full theme application including style initialization."""
     _update_theme_colors(theme)
     ThemeManager._initialized = False
     # Don't call ensure() here to avoid recursion - this is called from ensure() itself
     # ThemeManager._register_button_styles() will be called from ensure()
+
 
 def _update_status_colors():
     """Update derived status colors."""
@@ -786,25 +787,21 @@ def _update_status_colors():
     Colors.STATUS_READY = Colors.STATE_READY
     Colors.STATUS_TRANSPORT_ERROR = Colors.STATE_TRANSPORT_ERROR
 
+
 def _notify_theme_change():
     """Notify components of theme change for smooth updates."""
     # This would be used to trigger theme change events in a more sophisticated system
-    # For now, we'll use the optimized approach to refresh mock windows and other components
-    try:
-        from mock.peer_chat_window import refresh_mock_peer_window_theme
-        refresh_mock_peer_window_theme()
-    except ImportError:
-        pass
+    pass
 
 
 def _is_dark_color(hex_color: str) -> bool:
     """Determine if a color is dark or light."""
     hex_color = hex_color.lstrip('#')
     r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-    
+
     # Calculate luminance
     luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-    
+
     return luminance < 0.5
 
 
