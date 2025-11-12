@@ -1,5 +1,6 @@
 #include "LoCommAPI.h"
 #include "functions.h"
+#include "globals.h"
 
 uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
 uint8_t computer_out_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -246,6 +247,14 @@ void handle_CONN_packet(){
     
     //gets the password hash from sorage
     storage.getBytes("password", password_hash, 32);
+
+    //sets the epoch time
+    uint32_t epoch = ((uint32_t)computer_in_packet[12] << 24) |
+        ((uint32_t)computer_in_packet[13] << 16) |
+        ((uint32_t)computer_in_packet[14] << 8)  |
+        ((uint32_t)computer_in_packet[15]);
+
+    epochAtBoot = epoch;
 
     build_CACK_packet();
     message_to_computer_flag = true;

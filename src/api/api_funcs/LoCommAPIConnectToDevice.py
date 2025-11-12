@@ -8,11 +8,11 @@ from api_funcs.LoCommDebugPacket import print_packet_debug
 
 def craft_CONN_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
-    packet_size: int = 16
+    packet_size: int = 20
     message_type: bytes = b"CONN"
-    
+    message: int  = int(time.time())
     #compute checksum for payload
-    payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag)
+    payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag) + struct.pack(">I", message)
     crc: int = binascii.crc_hqx(payload, 0)
     
     end_bytes: int = 0x5678

@@ -56,7 +56,7 @@ def reset_passoword(password: str) -> bool:
 def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
     return locomm_api_send_message(sender_name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
-#this function receives messages from the ESP. Returns the name of the sender and the message -> name, message.
+#this function receives messages from the ESP. Returns the name of the sender and the message -> sender_name, message.
 def receive_message() -> tuple[str, str] | tuple[None, None]:
     return locomm_api_receive_message()
 

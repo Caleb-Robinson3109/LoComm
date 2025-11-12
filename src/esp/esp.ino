@@ -12,7 +12,7 @@ uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
-uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at boot
+//uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at boot
 
 //State tracking variables
 bool receiveReady = false;
