@@ -1,0 +1,26 @@
+pariing mode 8 digits for now .
+new page: delete the dvices page no scanning for devices add a secuity page instead
+
+new page: we wil need a passowrd to login user and passowrd the on the begiinng popoup page
+
+put the key on both devices (the key )
+  it is stored on the devices both devices
+  have an option for the user to delete the code if they believie they have bee n comproomiszed(security page)
+
+have a button on the app that tells the lora to show the key code on the lora device
+  the button calls from the api
+  gernate a new pairing code on one device
+  if there is now code generated previously it tells the device to gernerate the code
+
+
+this is how the flow would work,
+assuming we got 2 new devices
+  got to pairing mode on c1
+  hit show pairing key number button
+  on the device it will say "no detected key gerenating key"
+  now we go to c2 go to the pairing page
+  enter a device pairing key
+  so you eneter the generated key that is dispalyed on the lora 1
+  press enter
+  it will send taht key to lora 2
+  now if you send a message from lora 1 to 2 it would understand it

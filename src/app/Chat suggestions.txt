@@ -1,0 +1,122 @@
+Perfect — I can see what you’ve written in the image.
+You’re basically designing a manual pairing flow between two LoRa devices with 8-digit pairing keys and a desktop security/login layer.
+
+Let’s rewrite that into a clear word-only app flow (no code, just logic + UI sequence) that matches exactly what you’ve described on your screen:
+
+⸻
+
+⚙️ Updated LoRa Desktop App Flow (Manual Pairing & Key System)
+
+[START]
+   ↓
+-----------------------------------------
+🔐 LOGIN SCREEN (popup at startup)
+-----------------------------------------
+Fields:
+  - Username
+  - Password
+Buttons:
+  - [Login]
+  - [Create Account]
+  - [Forgot Password]
+  ↓
+Successful login → DASHBOARD
+
+-----------------------------------------
+🏠 MAIN DASHBOARD
+-----------------------------------------
+Sections:
+  - “My Devices” list
+  - [Pair New Device] button
+  - [Security] button
+  - [Settings] button
+  ↓
+User clicks [Pair New Device] → PAIRING PAGE
+
+-----------------------------------------
+🔑 PAIRING PAGE (manual 8-digit key system)
+-----------------------------------------
+Buttons:
+  - [Show My Pairing Key]
+  - [Enter Pairing Key]
+Displays:
+  - Instructions: “You must be physically with the other device to pair.”
+  ↓
+When user clicks [Show My Pairing Key]:
+    → App checks LoRa module for stored key
+    → If no key exists:
+         → Generate new random 8-digit code
+         → Display code on screen
+         → Store it locally on this device
+    → If key already exists:
+         → Display existing key
+         → Message: “Key already generated.”
+  ↓
+Other device user clicks [Enter Pairing Key]:
+    → Enter the code from the first device
+    → Press [Confirm]
+    → App sends that key over LoRa to the first device
+    → Both devices now have same shared key
+    → Pairing complete
+  ↓
+User returns to DASHBOARD
+  (New peer added automatically if pairing confirmed)
+
+-----------------------------------------
+🛡️ SECURITY PAGE
+-----------------------------------------
+Purpose: Manage keys and device trust
+Options:
+  - [Delete Stored Key]
+  - [Regenerate Pairing Key]
+  - [Wipe All Pairings]
+  - Info text: “Use this if you believe your key was compromised.”
+  ↓
+Actions:
+  - Delete key → removes local key file
+  - Regenerate → creates new 8-digit code and overwrites old one
+
+-----------------------------------------
+💬 CHAT WINDOW
+-----------------------------------------
+Once paired:
+  - Type message → app encrypts using stored key
+  - Send via LoRa
+  - Receiving device decrypts with same key
+  - Display message on both sides
+  ↓
+If keys mismatch → messages ignored or marked “Invalid key”
+
+-----------------------------------------
+⚙️ SETTINGS PAGE
+-----------------------------------------
+- LoRa Config (frequency, power, SF)
+- Username / Display name
+- Theme (light/dark)
+- Save / Back buttons
+
+-----------------------------------------
+📦 EXIT FLOW
+-----------------------------------------
+Logout → confirmation popup → back to LOGIN
+-----------------------------------------
+[END]
+
+
+⸻
+
+🔁 Example Pairing Scenario (Step-by-Step)
+
+1️⃣ Device A → open Pairing Page → click [Show My Pairing Key]
+    → App generates: "KEY: 48291735"
+    → Displays “Your pairing key is 48291735”
+
+2️⃣ Device B → open Pairing Page → click [Enter Pairing Key]
+    → Type: 48291735
+    → Press [Confirm]
+
+3️⃣ Device B sends that key via LoRa to Device A
+    → Both devices store same key locally
+
+✅ Result: Devices A & B are now paired.
+   Any messages sent between them will be understood.
