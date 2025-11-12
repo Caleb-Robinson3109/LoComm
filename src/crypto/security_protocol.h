@@ -23,7 +23,7 @@ bool sec_init();
  * @brief Securely deinitializes the module.
  * Wipes any sensitive data (like decrypted keys) from RAM.
  */
-// CALL THIS UPON DEVICE SHUTDOWN (USE esp_register_shutdown_handler())
+// Maybe there is a use for this? It simply clears all sensitive data from RAM.
 void sec_deinit();
 
 
@@ -87,11 +87,21 @@ bool sec_generate_key(char* outputBase85Buffer, size_t bufferSize);
  */
 bool sec_log_key(const char* inputBase85String);
 
+/**
+ * @brief Retrieves the existing D2D key and encodes it for display.
+ * This allows a new device to join an existing group.
+ * The user must be logged in, and the device must already be paired.
+ * @param outputBase85Buffer An empty buffer to write the Base85 string into.
+ * @param bufferSize The size of the outputBase85Buffer (must be > 20).
+ * @return true on success, false on failure (not logged in, not paired, etc.).
+ */
+bool sec_display_key(char* outputBase85Buffer, size_t bufferSize);
 
 /**
  * @brief Checks if a secure D2D channel has been established.
  * Returns true if a shared symmetric key exists from a successful pairing.
  */
+// General use, for isntance, sec_display_key requires a pairing to have already happened, along with encrypting messages
 bool sec_isPaired();
 
 /**
