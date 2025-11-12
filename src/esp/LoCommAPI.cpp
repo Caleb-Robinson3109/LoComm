@@ -328,6 +328,7 @@ void handle_message_from_device(){
 
       Serial.write(&(rxMessageBuffer[addr]), size);
       rxMessageBuffer.free(addr);
+      serialReadyToSendArray.remove(0);
     }
 
     Serial.flush();

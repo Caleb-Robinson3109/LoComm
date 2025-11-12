@@ -6,7 +6,7 @@
 //api functions
 #include "apiCode.h"
 
-uint8_t deviceID = 1; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -18,7 +18,7 @@ uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at bo
 bool receiveReady = false;
 bool messageDispatched = false;
 bool ackDispatched = false;
-bool enableLora = false;
+bool enableLora = true;
 CyclicArrayList<uint16_t, 128> previouslySeenIds;
 CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 

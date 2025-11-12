@@ -53,13 +53,15 @@ def reset_passoword(password: str) -> bool:
     return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn)
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
-def send_message(name: str, message: str) -> bool:
-    return locomm_api_send_message(name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
+def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
+    return locomm_api_send_message(sender_name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> name, message.
 def receive_message() -> tuple[str, str] | tuple[None, None]:
     return locomm_api_receive_message()
 
+#these functions are not going to be in use rn
+"""
 #this function sends a signal to the ESP to go into pairing mode. Returns true if there was successful pairing, false otherwise.
 def pair_devices() -> bool:
     return locomm_api_pair_devices()
@@ -71,3 +73,34 @@ def stop_pair() -> bool:
 #this function deletes all the keys that are stored on the device. Returns ture if successful, false otherwise
 def delete_keys() -> bool:
     return False
+"""
+
+#this function stores the name of the device on the device. returns true if successful, false if not
+def store_name(name: str) -> bool:
+    return True
+
+
+#show pairing key
+def show_pairing_key() -> bool:
+    return True
+
+#hides the pairing key (shows LoComm Devices or something)
+def hide_pairing_key() -> bool:
+    return True
+
+#generate a key (don't show pairing key)
+def generate_pairing_key() -> bool:
+    return True
+
+
+#enter a key
+def enter_pairing_key(key: str) -> bool:
+    return True
+
+#delete pairing key from the device
+def delete_pairing_key() -> bool:
+    return True
+
+#scan returns list of ids 
+def scan_for_devices() -> list[tuple[str, int]]:
+    return 
