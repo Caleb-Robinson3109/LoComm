@@ -55,7 +55,7 @@ extern size_t computer_in_size;
 extern size_t device_in_size;
 
 //this is the defalt password
-extern const uint8_t default_password[32];
+//extern const uint8_t default_password[32];
 
 //this is where the password hash is held the default is the hash of password
 extern uint8_t password_hash[32];
