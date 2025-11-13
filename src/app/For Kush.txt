@@ -5,7 +5,6 @@ make the design consistenet and working
   for example naming, some are named pages, others are modal and frame.
     Identify which naming convesion is for each and so on
 
-back button functionality on the top of all the pages.
 
 
 
@@ -13,3 +12,5 @@ when enlarging and resizing windows the ui shouldnt look bad
   set a standarsdixzed configurationpalace where we can edit the minimum and miximum windows size if that is not possible
 
 the close (x) button
+back button functionality on the top of all the pages.
+
