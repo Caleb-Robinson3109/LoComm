@@ -5,6 +5,7 @@ import tkinter as tk
 from typing import Optional, Callable
 
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
+from utils.chatroom_registry import add_member, get_active_code, get_active_members
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
@@ -33,6 +34,7 @@ class PeersPage(BasePage):
         self._selected_device_id: Optional[str] = None
         self._device_row_frames: dict[str, tk.Frame] = {}
         self._scan_timer_id: Optional[str] = None
+        self._chatroom_code_label: Optional[tk.Label] = None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -44,6 +46,7 @@ class PeersPage(BasePage):
 
         self._build_title(body)
         self._build_devices_section(body)
+        self._build_chatroom_code_display(body)
 
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
@@ -117,6 +120,26 @@ class PeersPage(BasePage):
         
         self._build_device_list(list_frame)
 
+    def _build_chatroom_code_display(self, parent):
+        code_frame = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Spacing.MD)
+        code_frame.pack(fill=tk.X)
+        tk.Label(
+            code_frame,
+            text="Current Chatroom",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w")
+        self._chatroom_code_label = tk.Label(
+            code_frame,
+            text="No chatroom selected.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_ACCENT or Colors.STATE_INFO,
+            font=(Typography.FONT_MONO, Typography.SIZE_14),
+        )
+        self._chatroom_code_label.pack(anchor="w", pady=(Spacing.XXS, 0))
+        self._update_chatroom_code_label()
+
     def _go_to_chat(self):
         """Open the peer chat window and set status to Connected."""
         if self.controller:
@@ -134,6 +157,7 @@ class PeersPage(BasePage):
         self._active_device_name = device.name
         self._select_device_row(device.device_id)
         self._set_stage(DeviceStage.CONNECTED, device.name)
+        add_member(device.device_id)
         self._go_to_chat()
 
     def _build_device_list(self, parent):
@@ -201,7 +225,7 @@ class PeersPage(BasePage):
             child.destroy()
         self._device_row_frames.clear()
 
-        devices = self.device_service.list_devices()
+        devices = self._get_filtered_devices()
         prev_selected = self._selected_device_id
         device_ids = []
         for idx, device in enumerate(devices):
@@ -215,6 +239,34 @@ class PeersPage(BasePage):
             self._select_device_row(devices[0].device_id)
         else:
             self._clear_device_selection()
+        self._update_chatroom_code_label()
+
+    def _get_filtered_devices(self):
+        """Return the current device list filtered to active chatroom members (if any)."""
+        devices = self.device_service.list_devices()
+        members = get_active_members()
+        if not members:
+            return devices
+        return [device for device in devices if device.device_id in members]
+
+    def _update_chatroom_code_label(self):
+        if not self._chatroom_code_label:
+            return
+        code = get_active_code()
+        display = "No chatroom selected." if not code else self._format_code(code)
+        self._chatroom_code_label.configure(text=display)
+
+    def _format_code(self, code: str) -> str:
+        clean = ''.join(ch for ch in code if ch.isalnum()).upper()
+        return '-'.join(clean[i:i+5] for i in range(0, len(clean), 5))
+
+    def _generate_mock_members(self):
+        """Simulate a set of members for a newly created chatroom."""
+        devices = self.device_service.list_devices()
+        members = {device.device_id for device in devices[:3]}
+        if not members and devices:
+            members = {devices[0].device_id}
+        return members
 
     def _create_device_row(self, device: MockDevice, index: int):
         """Render a single row with a chat action button."""

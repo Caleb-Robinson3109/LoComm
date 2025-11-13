@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from utils.design_system import AppConfig, Colors, DesignUtils, Spacing, Typography, Space
 from utils.pin_authentication import generate_chatroom_code
+from utils.chatroom_registry import set_active_chatroom
 from utils.state.status_manager import get_status_manager
 
 
@@ -175,6 +176,7 @@ class ChatroomWindow(tk.Frame):
         self._current_chatroom_code = formatted
         if self._code_display:
             self._code_display.configure(text=formatted)
+        set_active_chatroom(code, [])
         get_status_manager().update_status(AppConfig.STATUS_READY)
 
     def _format_code(self, code: str) -> str:

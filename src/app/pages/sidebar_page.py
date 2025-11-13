@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from utils.design_system import Colors, Typography, Spacing
+from utils.design_system import Colors, ThemeManager, Typography, Spacing
 from ui.components import DesignUtils
 from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 
@@ -16,6 +16,7 @@ class SidebarPage(tk.Frame):
     def __init__(self, master, nav_items: list[tuple[str, str]],
                  on_nav_select: Optional[Callable[[str], None]] = None,
                  on_theme_toggle: Optional[Callable[[bool], None]] = None):
+        ThemeManager.ensure()
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
         self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
