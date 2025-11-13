@@ -190,13 +190,7 @@ class App(tk.Tk):
         self.chatroom_modal = None
 
     def show_chatroom_modal(self):
-        """Show the chatroom modal for 20-digit code entry."""
-        # Clear any existing frames
-        if self.current_frame:
-            self.current_frame.destroy()
-            self.current_frame = None
-
-        # Open the chatroom modal
+        """Show the chatroom modal for 20-digit code entry without destroying the main view."""
         self._open_chatroom_modal()
 
     def _handle_chatroom_success(self, chatroom_code: str):

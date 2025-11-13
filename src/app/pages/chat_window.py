@@ -4,7 +4,7 @@ Modern chat window with beautiful UI design.
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import time
 
 from mock.peer_bridge import get_peer_bridge
@@ -43,6 +43,9 @@ class ChatWindow(tk.Toplevel):
         self._bridge.register_peer_callback(self._handle_incoming)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.entry.focus_set()
+
+        ChatWindow._open_windows[self.peer_name] = self
+        self._has_history = False
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self):
@@ -244,6 +247,7 @@ class ChatWindow(tk.Toplevel):
         if not self._widgets_alive():
             return
         sender = sender or "Peer"
+        self._has_history = True
         self._add_message(text, sender=sender, is_self=False)
 
     def _send_message(self, _event=None):
@@ -251,12 +255,24 @@ class ChatWindow(tk.Toplevel):
         if not text:
             return
         self._bridge.send_from_peer(text)
+        self._has_history = True
         self._add_message(text, sender=self.local_device_name, is_self=True)
         self.msg_var.set("")
 
 
     def _on_close(self):
+        if self._has_history:
+            result = messagebox.askyesno(
+                "Close chat",
+                "Closing this window will destroy the chat history. Continue?",
+                parent=self,
+            )
+            if not result:
+                return
+
         self._bridge.unregister_peer_callback(self._handle_incoming)
+        if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
+            del self._open_windows[self.peer_name]
         self.destroy()
 
     def set_peer_name(self, name: str | None):

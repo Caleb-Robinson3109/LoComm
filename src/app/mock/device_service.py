@@ -14,14 +14,13 @@ from typing import Any, Dict, List, Optional
 class MockDevice:
     device_id: str
     name: str
-    status: str
     last_seen: str
     metadata: Dict[str, Any]
     telemetry: Dict[str, Any]
 
-    def to_table_row(self) -> tuple[str, str, str]:
-        """Convenience helper for ttk tree usage."""
-        return (self.name, self.device_id, self.status)
+    def to_table_row(self) -> tuple[str, str]:
+        """Convenience helper for legacy tables."""
+        return (self.name, self.device_id)
 
 
 class MockDeviceService:
@@ -49,7 +48,6 @@ class MockDeviceService:
             device = MockDevice(
                 device_id=entry.get("id", ""),
                 name=entry.get("name", "Unnamed device"),
-                status="Available",
                 last_seen=entry.get("last_seen", "Unknown"),
                 metadata=entry.get("metadata") or {},
                 telemetry=entry.get("telemetry") or {},
@@ -93,7 +91,6 @@ class MockDeviceService:
             device = MockDevice(
                 device_id=device_id,
                 name=name,
-                status="Available",
                 last_seen="Just found",
                 metadata=metadata,
                 telemetry=telemetry,

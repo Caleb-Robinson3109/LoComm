@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk, messagebox
 from typing import Optional, Callable
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils, Space
+from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
-from ui.helpers import create_scroll_container
+from ui.helpers import create_scroll_container, enable_global_mousewheel
 from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
 
@@ -29,11 +28,10 @@ class ChatroomPage(BasePage):
         self.device_service = get_mock_device_service()
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
-        self.selected_device_var = tk.StringVar(value="No device selected")
         self._active_device_name: Optional[str] = None
         self._active_device_id: Optional[str] = None
-        self._suppress_selection_event = False
-        self._last_selected_id: Optional[str] = None
+        self._selected_device_id: Optional[str] = None
+        self._device_row_frames: dict[str, tk.Frame] = {}
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -66,7 +64,7 @@ class ChatroomPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="My Chatroom",
+            text="Chatroom",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
@@ -85,13 +83,13 @@ class ChatroomPage(BasePage):
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
 
-        self.scan_btn = DesignUtils.button(
+        self.refresh_btn = DesignUtils.button(
             action_wrap,
-            text="Scan",
+            text="Refresh",
             variant="secondary",
             command=self._scan_for_devices,
         )
-        self.scan_btn.pack()
+        self.refresh_btn.pack()
 
     def _build_devices_section(self, parent):
         """Build clean devices section."""
@@ -117,107 +115,181 @@ class ChatroomPage(BasePage):
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
         
         self._build_device_list(list_frame)
-        
-        # Action buttons
-        self._build_action_buttons(content)
 
     def _go_to_chat(self):
         """Open the peer chat window and set status to Connected."""
         if self.controller:
-            from utils.design_system import AppConfig
             self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
         from .chat_window import ChatWindow
         local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
         ChatWindow(self, peer_name=self._active_device_name, local_device_name=local_name)
 
-    def _build_device_list(self, parent):
-        """Build simple device list."""
-        # Configure treeview style
-        style = ttk.Style()
-        style.configure(
-            "Devices.Treeview",
-            background=Colors.SURFACE_ALT,
-            fieldbackground=Colors.SURFACE_ALT,
-            foreground=Colors.TEXT_PRIMARY,
-            rowheight=30,
-            bordercolor=Colors.SURFACE_ALT,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-        )
-        style.configure(
-            "Devices.Treeview.Heading",
-            background=Colors.SURFACE_HEADER,
-            foreground=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-        )
-        style.map(
-            "Devices.Treeview",
-            background=[("selected", Colors.STATE_INFO)],
-            foreground=[("selected", Colors.TEXT_PRIMARY)],
-        )
+    def _handle_chat_action(self, device_id: str):
+        """Treat the inline action column as a shortcut to the chat flow."""
+        device = self.device_service.get_device(device_id)
+        if not device:
+            return
+        self._active_device_id = device.device_id
+        self._active_device_name = device.name
+        self._select_device_row(device.device_id)
+        self._set_stage(DeviceStage.CONNECTED, device.name)
+        self._go_to_chat()
 
-        # Create treeview
-        columns = ("Name", "Device ID")
-        self.device_tree = ttk.Treeview(
-            parent,
-            columns=columns,
-            show="headings",
-            height=8,
-            style="Devices.Treeview",
+    def _build_device_list(self, parent):
+        """Build simple device list with an action column button."""
+        header = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        header.pack(fill=tk.X, pady=(0, Spacing.XXS))
+        header.grid_columnconfigure(0, weight=3)
+        header.grid_columnconfigure(1, weight=2)
+        header.grid_columnconfigure(2, weight=1)
+
+        tk.Label(
+            header,
+            text="Name",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            anchor="center",
+        ).grid(row=0, column=0, sticky="ew")
+        tk.Label(
+            header,
+            text="Device ID",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            anchor="center",
+        ).grid(row=0, column=1, sticky="ew")
+        tk.Label(
+            header,
+            text="Action",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            anchor="center",
+        ).grid(row=0, column=2, sticky="ew")
+
+        scroll_wrapper = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        scroll_wrapper.pack(fill=tk.BOTH, expand=True)
+        canvas = tk.Canvas(
+            scroll_wrapper,
+            bg=Colors.SURFACE_ALT,
+            highlightthickness=0,
         )
-        column_width = 180
-        column_minwidth = 140
-        for col in columns:
-            self.device_tree.heading(col, text=col, anchor="center")
-            self.device_tree.column(
-                col,
-                anchor="center",
-                width=column_width,
-                minwidth=column_minwidth,
-                stretch=True,
-            )
-        self.device_tree.pack(fill=tk.BOTH, expand=True, padx=(0, 0), pady=(0, Spacing.SM))
-        self.device_tree.bind("<<TreeviewSelect>>", self._on_device_select)
-        
-        # Populate devices
+        scrollbar = tk.Scrollbar(scroll_wrapper, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.device_rows_container = tk.Frame(canvas, bg=Colors.SURFACE_ALT)
+        self._device_icon_canvas_window = canvas.create_window((0, 0), window=self.device_rows_container, anchor="nw")
+        canvas.bind(
+            "<Configure>",
+            lambda event, canvas=canvas: canvas.itemconfigure(self._device_icon_canvas_window, width=event.width),
+        )
+        self.device_rows_container.bind(
+            "<Configure>",
+            lambda event, canvas=canvas: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        enable_global_mousewheel(canvas)
         self._refresh_device_table()
 
-    def _build_action_buttons(self, parent):
-        """Build simple action buttons."""
-        button_frame = tk.Frame(parent, bg=Colors.SURFACE)
-        button_frame.pack(fill=tk.X)
-        spacer = tk.Frame(button_frame, bg=Colors.SURFACE)
-        spacer.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        btn_width = 12
-        self.connect_btn = DesignUtils.button(
-            button_frame,
-            text="Chat",
-            command=self._go_to_chat,
-            variant="secondary",
-            width=btn_width,
-        )
-        self.connect_btn.pack(side=tk.RIGHT)
-
     def _refresh_device_table(self):
-        if not hasattr(self, "device_tree"):
+        if not hasattr(self, "device_rows_container"):
             return
-        for row in self.device_tree.get_children():
-            self.device_tree.delete(row)
+        for child in self.device_rows_container.winfo_children():
+            child.destroy()
+        self._device_row_frames.clear()
+
         devices = self.device_service.list_devices()
-        for device in devices:
-            self.device_tree.insert("", tk.END, iid=device.device_id, values=device.to_table_row()[:2])
-        if devices:
-            # Re-select previous device if still present
-            target = self._last_selected_id if self._last_selected_id in self.device_tree.get_children() else devices[0].device_id
-            self._select_device_in_tree(target)
+        prev_selected = self._selected_device_id
+        device_ids = []
+        for idx, device in enumerate(devices):
+            self._create_device_row(device, idx)
+            device_ids.append(device.device_id)
+
+        if prev_selected and prev_selected in device_ids:
+            self._selected_device_id = None
+            self._select_device_row(prev_selected)
+        elif devices:
+            self._select_device_row(devices[0].device_id)
+        else:
+            self._clear_device_selection()
+
+    def _create_device_row(self, device: MockDevice, index: int):
+        """Render a single row with a chat action button."""
+        row = tk.Frame(self.device_rows_container, bg=Colors.SURFACE_ALT, pady=Spacing.XS)
+        row.pack(fill=tk.X, pady=(0, Spacing.XXS), padx=(Spacing.SM, Spacing.SM))
+        row.grid_columnconfigure(0, weight=3)
+        row.grid_columnconfigure(1, weight=2)
+        row.grid_columnconfigure(2, weight=1)
+
+        name_label = tk.Label(
+            row,
+            text=device.name,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
+            anchor="w",
+        )
+        name_label.grid(row=0, column=0, sticky="w", padx=(Spacing.SM, 0))
+
+        device_label = tk.Label(
+            row,
+            text=device.device_id,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            anchor="w",
+        )
+        device_label.grid(row=0, column=1, sticky="w", padx=(Spacing.SM, 0))
+
+        chat_btn = DesignUtils.button(
+            row,
+            text="Chat",
+            command=lambda d=device: self._handle_chat_action(d.device_id),
+            variant="primary",
+            width=10,
+        )
+        chat_btn.grid(row=0, column=2, sticky="e", padx=(Spacing.SM, Spacing.SM))
+
+        for widget in (row, name_label, device_label):
+            widget.bind(
+                "<Button-1>",
+                lambda event, d=device: self._select_device_row(d.device_id),
+            )
+
+        self._device_row_frames[device.device_id] = row
+
+    def _select_device_row(self, device_id: Optional[str]):
+        """Highlight the selected device row and keep it in sync with the action button."""
+        if not device_id:
+            return
+        previous = self._selected_device_id
+        if previous and previous in self._device_row_frames:
+            self._device_row_frames[previous].configure(bg=Colors.SURFACE_ALT)
+        row = self._device_row_frames.get(device_id)
+        if row:
+            row.configure(bg=Colors.SURFACE_SELECTED)
+        self._selected_device_id = device_id
+        device = self.device_service.get_device(device_id)
+        if device:
+            self._active_device_id = device.device_id
+            self._active_device_name = device.name
+    def _clear_device_selection(self):
+        """Clear the visual selection state from the list."""
+        if self._selected_device_id and self._selected_device_id in self._device_row_frames:
+            self._device_row_frames[self._selected_device_id].configure(bg=Colors.SURFACE_ALT)
+        self._selected_device_id = None
+        self._active_device_name = None
+        self._active_device_id = None
 
     # ------------------------------------------------------------------ #
     def _scan_for_devices(self):
         if self.is_scanning:
             return
         self.is_scanning = True
-        if hasattr(self, "scan_btn"):
-            self.scan_btn.configure(state="disabled", text="Scanning…")
+        if hasattr(self, "refresh_btn"):
+            self.refresh_btn.configure(state="disabled", text="Refreshing…")
         self._set_stage(DeviceStage.SCANNING)
         self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
 
@@ -228,26 +300,8 @@ class ChatroomPage(BasePage):
         self._refresh_device_table()
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
-        if hasattr(self, "scan_btn"):
-            self.scan_btn.configure(state="normal", text="Scan for Peers")
-
-    
-
-    def _on_device_select(self, _event=None):
-        if self._suppress_selection_event:
-            return
-        if not self.device_tree.selection():
-            self.connect_btn.configure(state="disabled")
-            return
-        selection = self.device_tree.selection()[0]
-        device = self.device_service.get_device(selection)
-        if not device:
-            return
-        self.selected_device_var.set(f"{device.name} ({device.device_id})")
-        self._active_device_name = device.name
-        self._active_device_id = device.device_id
-        self._last_selected_id = device.device_id
-        self._sync_connect_button_state()
+        if hasattr(self, "refresh_btn"):
+            self.refresh_btn.configure(state="normal", text="Refresh")
 
     
 
@@ -258,22 +312,15 @@ class ChatroomPage(BasePage):
         snapshot = self.ui_store.get_device_status()
         self._apply_snapshot(snapshot)
         if label:
-            self.selected_device_var.set(label)
             self._active_device_name = label
         if stage == DeviceStage.READY:
-            if not self._last_selected_id:
-                self.selected_device_var.set("No device selected")
             self._active_device_name = None
             self._active_device_id = None
-        self._sync_connect_button_state()
-        if stage in (DeviceStage.DISCONNECTED, DeviceStage.READY):
-            if self._last_selected_id:
-                self._select_device_in_tree(self._last_selected_id)
+            self._clear_device_selection()
         if self._active_device_id:
             device = self.device_service.get_device(self._active_device_id)
             if device:
-                self.selected_device_var.set(f"{device.name} ({device.device_id})")
-                self._select_device_in_tree(device.device_id)
+                self._select_device_row(device.device_id)
 
     # ------------------------------------------------------------------ #
     def on_show(self):
@@ -302,47 +349,11 @@ class ChatroomPage(BasePage):
         if not snapshot:
             return
         if snapshot.stage == DeviceStage.READY:
-            self.selected_device_var.set("No device selected")
+            self._clear_device_selection()
             self._active_device_name = None
+            self._active_device_id = None
         elif snapshot.device_name:
-            self.selected_device_var.set(snapshot.device_name)
             self._active_device_name = snapshot.device_name
-
-        # Update disconnect button state based on connection status
-        is_connected = snapshot.stage == DeviceStage.CONNECTED
-        self._sync_connect_button_state()
-
-    def _sync_connect_button_state(self):
-        if not hasattr(self, "connect_btn"):
-            return
-        if not hasattr(self, "device_tree"):
-            self.connect_btn.configure(state="disabled")
-            return
-        selection = self.device_tree.selection()
-        if not selection:
-            self.connect_btn.configure(state="disabled")
-            return
-        self.connect_btn.configure(state="normal")
-
-    def _select_device_in_tree(self, device_id: str | None):
-        if not device_id or not hasattr(self, "device_tree"):
-            return
-        if not self.device_tree.exists(device_id):
-            return
-        current = self.device_tree.selection()
-        if current and current[0] == device_id:
-            return
-        self._suppress_selection_event = True
-        self.device_tree.selection_set(device_id)
-        self.device_tree.focus(device_id)
-        self.device_tree.see(device_id)
-
-        def _release_and_notify():
-            self._suppress_selection_event = False
-            if self.device_tree.selection():
-                self._on_device_select()
-
-        self.after_idle(_release_and_notify)
 
     def destroy(self):
         self._unsubscribe_from_store()

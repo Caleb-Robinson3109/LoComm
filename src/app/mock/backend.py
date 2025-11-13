@@ -60,7 +60,6 @@ class MockLoCommBackend:
             device = MockDevice(
                 device_id=device_id or "MOCK",
                 name=provided_name,
-                status="Available",
                 last_seen="Just paired",
                 metadata={"source": pairing_context.mode if pairing_context else "mock"},
                 telemetry={"rssi": -70, "snr": 4.0, "battery": 80},
