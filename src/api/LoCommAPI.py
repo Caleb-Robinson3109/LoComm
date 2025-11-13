@@ -13,9 +13,25 @@ import api_funcs.LoCommGlobals as LoCommGlobals
 from api_funcs.LoCommAPIStoreNameOnDevice import locomm_store_name_on_devide
 
 import threading
+import time
+import random
+
+deviceless_mode: bool = False
+dm_password: str = "password"
+
+
+
+def run_deviceless_mode():
+    global deviceless_mode
+    deviceless_mode = True
+
 
 #this function allows you to connect to a device.Returns true if connection is successful, false otherwise.
 def connect_to_device() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
+    
     ret, LoCommGlobals.serial_conn = locomm_api_connect_to_device()
     if(ret):
         LoCommGlobals.connected = True
@@ -28,6 +44,10 @@ def connect_to_device() -> bool:
 
 #disconnects from the device, tells the device to overwight keys and password from memory
 def disconnect_from_device() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
+    
     ret: bool =  locomm_api_disconnect_from_device(LoCommGlobals.serial_conn, LoCommGlobals.context)
     LoCommGlobals.connected = False
     LoCommGlobals.context = None
@@ -43,22 +63,52 @@ def disconnect_from_device() -> bool:
 
 #this function inputs the password. If the password matches the password stored on the ESP, then the function returns true, false otherwise.
 def enter_password(password: str) -> bool:
+    global deviceless_mode, dm_password
+    if deviceless_mode:
+        return (True if password == dm_password else False) 
+
     return locomm_api_enter_password(password, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function sets a new password. Returns true if successful, false otherwise.
 def set_password(old: str, new: str) -> bool:
+    global deviceless_mode, dm_password
+    if deviceless_mode:
+        if old != dm_password:
+            return False
+        dm_password = new
+        return True
+
     return locomm_api_set_password(old, new, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function resets the password, this results in all your device-to-device communication keys on the ESP to be deleted. Only use it if you cannot remember the password. Returns true if successful, false otherwise
 def reset_passoword(password: str) -> bool:
+    global deviceless_mode, dm_password
+    if deviceless_mode:
+        dm_password = password
+        return True
+
     return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn)
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
 def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return  True
+
     return locomm_api_send_message(sender_name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> sender_name, message.
 def receive_message() -> tuple[str, str] | tuple[None, None]:
+    global deviceless_mode
+    if deviceless_mode:
+        time.sleep(10)
+        x: int = random.randint(1,9)
+        if x % 3 == 0:
+            return "Bob", "Hello this is Bob!"
+        else:
+            return "Alice", "Hello this is Alice!"
+        
+
     return locomm_api_receive_message()
 
 #these functions are not going to be in use rn
@@ -78,6 +128,10 @@ def delete_keys() -> bool:
 
 #this function stores the name of the device on the device. returns true if successful, false if not
 def store_name_on_device(name: str) -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
+
     if len(name) > 32:
         print("name must be 32 chars or less")
         return False
@@ -86,25 +140,43 @@ def store_name_on_device(name: str) -> bool:
 
 #show pairing key
 def show_pairing_key() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
     return True
 
 #hides the pairing key (shows LoComm Devices or something)
 def hide_pairing_key() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
     return True
 
 #generate a key (don't show pairing key)
 def generate_pairing_key() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
     return True
 
 
 #enter a key
 def enter_pairing_key(key: str) -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
     return True
 
 #delete pairing key from the device
 def delete_pairing_key() -> bool:
+    global deviceless_mode
+    if deviceless_mode:
+        return True
     return True
 
 #scan returns list of ids 
 def scan_for_devices() -> list[tuple[str, int]]:
+    global deviceless_mode
+    if deviceless_mode:
+        return [("Alice", 128), ("Bob", 82)]
     return 
