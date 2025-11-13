@@ -8,6 +8,7 @@ class LoCommContext:
         self.RPAK_flag: bool = False
         self.SACK_flag: bool = False
         self.DCAK_flag: bool = False
+        self.SNAK_flag: bool = False
         self.packet: bytes
 
         self.SEND_flag: bool = False

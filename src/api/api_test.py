@@ -15,6 +15,7 @@ while(not connect_to_device()):
         raise ValueError(f"tried to connect to device {i} times")
 
 enter_password("password")
+store_name_on_device("caleb robinson")
 
 t =threading.Thread(target=recv_thread)
 t.start()

@@ -10,6 +10,7 @@ from api_funcs.LoCommAPIDisconnectFromDevice import locomm_api_disconnect_from_d
 from api_funcs.LoCommContext import LoCommContext
 from api_funcs.LoCommSerailRead import serial_read
 import api_funcs.LoCommGlobals as LoCommGlobals
+from api_funcs.LoCommAPIStoreNameOnDevice import locomm_store_name_on_devide
 
 import threading
 
@@ -76,8 +77,11 @@ def delete_keys() -> bool:
 """
 
 #this function stores the name of the device on the device. returns true if successful, false if not
-def store_name(name: str) -> bool:
-    return True
+def store_name_on_device(name: str) -> bool:
+    if len(name) > 32:
+        print("name must be 32 chars or less")
+        return False
+    return locomm_store_name_on_devide(name)
 
 
 #show pairing key

@@ -17,7 +17,7 @@ def craft_CONN_packet(tag: int) -> bytes:
     
     end_bytes: int = 0x5678
 
-    packet: bytes = struct.pack(">HH4sIHH", start_bytes, packet_size, message_type, tag, crc, end_bytes)
+    packet: bytes = struct.pack(">HH4sIIHH", start_bytes, packet_size, message_type, tag, message, crc, end_bytes)
 
     return packet
 

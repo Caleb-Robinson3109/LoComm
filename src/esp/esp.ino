@@ -754,10 +754,10 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
   }
 
   //first, make sure the data isn't too big
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.printf("addMessageToTxArray");
-  display.display();
+  //display.clearDisplay();
+  //display.setCursor(0,0);
+  //display.printf("addMessageToTxArray");
+  //display.display();
 
 if (size > SEQUENCE_MAX_SIZE * 8) {
     LWarn("Message will not be added to tx array because it is too long");
@@ -884,8 +884,8 @@ if (size > SEQUENCE_MAX_SIZE * 8) {
     LDebug("Finished writing new data to tx message buffer:");
     Debug(dumpArrayToSerial(&(txMessageBuffer[0]), 10 + messageLength));
   }
-  display.printf("------ done ");
-  display.display();
+  //display.printf("------ done ");
+  //display.display();
   return true;
 }
 

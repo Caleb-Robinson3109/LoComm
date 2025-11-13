@@ -3,10 +3,10 @@
 void apiCode( void* params ) {
   while (1) {
     delay(1000);
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.printf("SerialReady2SendArr: %lu", serialReadyToSendArray.size());
-    display.display();
+    //display.clearDisplay();
+    //display.setCursor(0,0);
+    //display.printf("SerialReady2SendArr: %lu", serialReadyToSendArray.size());
+    //display.display();
     if(serialReadyToSendArray.size() > 0){
       handle_message_from_device();
     }

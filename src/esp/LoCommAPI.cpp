@@ -123,6 +123,9 @@ void handle_message_from_computer(){
     else if(message_type_match(message_type, "SEND", MESSAGE_TYPE_SIZE)){
         handle_SEND_packet();
     }
+    else if(message_type_match(message_type, "SNOD", MESSAGE_TYPE_SIZE)){
+        handle_SNOD_packet();
+    }
 
     else{
         Serial.write("FAIL");
@@ -255,6 +258,10 @@ void handle_CONN_packet(){
         ((uint32_t)computer_in_packet[15]);
 
     epochAtBoot = epoch - (millis() / 1000);
+
+    display.setCursor(0,0);
+    display.printf("----%d----", epoch);
+    display.display();
 
     build_CACK_packet();
     message_to_computer_flag = true;
@@ -391,4 +398,14 @@ void handle_message_from_device(){
 
     //complete and set the appropate flags
     device_out_size = 0;
+}
+
+void handle_SNOD_packet(){
+    memcpy(device_name, &computer_in_packet[12], 32);
+
+    displayName();
+
+    build_SNAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }
