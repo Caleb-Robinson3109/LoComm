@@ -9,10 +9,10 @@ from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
 
 from .settings_page import SettingsPage
 from .home_page import HomePage
-from .chatroom_page import ChatroomPage
+from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
-from .sidebar import Sidebar
+from .sidebar_page import SidebarPage
 from .view_manager import ViewManager
 from .base_page import PageContext
 from utils.state.ui_store import get_ui_store
@@ -71,7 +71,7 @@ class MainFrame(ttk.Frame):
         ctx = self._page_context
         routes = [
             RouteConfig("home", "Home", lambda parent, ctx=ctx: HomePage(parent, ctx)),
-            RouteConfig("pair", "Chatroom", lambda parent, ctx=ctx: ChatroomPage(parent, ctx,
+            RouteConfig("pair", "Peers", lambda parent, ctx=ctx: PeersPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
             RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
@@ -95,7 +95,7 @@ class MainFrame(ttk.Frame):
 
         # ---------- Left Sidebar ---------- #
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
-        self.sidebar = Sidebar(
+        self.sidebar = SidebarPage(
             body,
             nav_items=nav_items,
             on_nav_select=self.navigate_to,

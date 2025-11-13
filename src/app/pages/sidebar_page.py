@@ -10,7 +10,7 @@ from ui.components import DesignUtils
 from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 
 
-class Sidebar(tk.Frame):
+class SidebarPage(tk.Frame):
     """Left sidebar navigation component for main navigation."""
 
     def __init__(self, master, nav_items: list[tuple[str, str]],

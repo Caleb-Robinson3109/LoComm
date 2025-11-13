@@ -11,7 +11,7 @@ from services import AppController
 from utils.state.status_manager import get_status_manager
 
 from pages.login_modal import LoginModal
-from pages.chatroom_pairing_frame import ChatroomPairingFrame
+from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
 from utils.window_sizing import calculate_initial_window_size, scale_dimensions
@@ -40,7 +40,7 @@ class App(tk.Tk):
         self._ui_pending_messages = deque(maxlen=MAX_UI_PENDING_MESSAGES)
         self.login_modal = None
         self.chatroom_modal: Optional[tk.Toplevel] = None
-        self.chatroom_modal_frame: Optional[ChatroomPairingFrame] = None
+        self.chatroom_modal_frame: Optional[ChatroomWindow] = None
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
@@ -171,7 +171,7 @@ class App(tk.Tk):
         self.chatroom_modal = modal
 
         # Create chatroom pairing frame inside the modal
-        chatroom_frame = ChatroomPairingFrame(
+        chatroom_frame = ChatroomWindow(
             modal,
             lambda chatroom_code: self._handle_chatroom_success(chatroom_code)
         )

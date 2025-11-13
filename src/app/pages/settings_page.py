@@ -4,6 +4,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from utils.design_system import Colors, Spacing, DesignUtils, ThemeManager, Typography, Space
+from utils.user_settings import get_user_settings, save_user_settings
 from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
@@ -13,6 +14,10 @@ class SettingsPage(BasePage):
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
+        self.user_settings = get_user_settings()
+        self._toggle_vars: dict[str, tk.BooleanVar] = {}
+        self._toggle_buttons: dict[str, tk.Widget] = {}
+        self._theme_button: tk.Widget | None = None
         
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -90,8 +95,8 @@ class SettingsPage(BasePage):
         ).pack(anchor="w", pady=(0, Spacing.SM))
         
         # Settings toggles
-        self._build_toggle_setting(section, "Desktop notifications", True)
-        self._build_toggle_setting(section, "Sound alerts", False)
+        self._build_toggle_setting(section, "Desktop notifications", "notifications_enabled", True)
+        self._build_toggle_setting(section, "Sound alerts", "sound_alerts_enabled", False)
 
     def _build_theme_setting(self, parent):
         """Build theme setting with simple layout."""
@@ -117,7 +122,7 @@ class SettingsPage(BasePage):
         ).pack(anchor="w", pady=(Space.XXS, 0))
         
         # Toggle button
-        self.theme_var = tk.BooleanVar(value=ThemeManager.current_mode() == "dark")
+        self.theme_var = tk.BooleanVar(value=self.user_settings.theme_mode == "dark")
         toggle_btn = DesignUtils.button(
             setting_frame,
             text="On" if self.theme_var.get() else "Off",
@@ -126,6 +131,7 @@ class SettingsPage(BasePage):
         )
         toggle_btn.pack(side=tk.RIGHT)
         self._theme_button = toggle_btn
+        self._sync_theme_button()
 
     def _build_accent_color_setting(self, parent):
         """Build accent color setting."""
@@ -172,7 +178,7 @@ class SettingsPage(BasePage):
             width=15,
         ).pack(side=tk.RIGHT)
 
-    def _build_toggle_setting(self, parent, label: str, initial: bool):
+    def _build_toggle_setting(self, parent, label: str, attr: str, initial: bool):
         """Build a simple toggle setting."""
         setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
         setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
@@ -187,28 +193,34 @@ class SettingsPage(BasePage):
         ).pack(anchor="w")
         
         # Toggle button
-        var = tk.BooleanVar(master=self, value=initial)
+        current_value = getattr(self.user_settings, attr, initial)
+        var = tk.BooleanVar(master=self, value=current_value)
         btn = DesignUtils.button(
             setting_frame, 
-            text="On" if initial else "Off", 
+            text="On" if current_value else "Off", 
             variant="ghost",
             width=8,
         )
         btn.pack(side=tk.RIGHT)
         
-        def toggle():
+        def toggle_setting():
             var.set(not var.get())
             btn.configure(text="On" if var.get() else "Off")
-        btn.configure(command=toggle)
+            setattr(self.user_settings, attr, var.get())
+            save_user_settings(self.user_settings)
+        btn.configure(command=toggle_setting)
+        self._toggle_vars[attr] = var
+        self._toggle_buttons[attr] = btn
 
     def _toggle_theme(self):
         """Toggle between light and dark themes."""
         new_value = not self.theme_var.get()
         self.theme_var.set(new_value)
-        if hasattr(self, "_theme_button"):
-            self._theme_button.configure(text="On" if new_value else "Off")
+        self._sync_theme_button(new_value)
         if self.context and hasattr(self.context.app, "toggle_theme"):
             self.context.app.toggle_theme(new_value)
+        self.user_settings.theme_mode = "dark" if new_value else "light"
+        save_user_settings(self.user_settings)
 
     def _cycle_accent_color(self):
         """Cycle through accent colors."""
@@ -226,11 +238,26 @@ class SettingsPage(BasePage):
             self.accent_preview_label.configure(text=f"● Current: {next_accent.title()}")
 
     def on_show(self):
-        current = ThemeManager.current_mode() == "dark"
+        self.user_settings = get_user_settings()
+        current = self.user_settings.theme_mode == "dark"
         if hasattr(self, "theme_var"):
             self.theme_var.set(current)
-            if hasattr(self, "_theme_button"):
-                self._theme_button.configure(text="On" if current else "Off")
+            self._sync_theme_button(current)
+        for attr, btn in self._toggle_buttons.items():
+            value = getattr(self.user_settings, attr, False)
+            var = self._toggle_vars.get(attr)
+            if var:
+                var.set(value)
+            btn.configure(text="On" if value else "Off")
 
     def destroy(self):
         return super().destroy()
+
+    def _sync_theme_button(self, value: bool | None = None):
+        if not self._theme_button:
+            return
+        if value is None and hasattr(self, "theme_var"):
+            value = self.theme_var.get()
+        if value is None:
+            value = False
+        self._theme_button.configure(text="On" if value else "Off")

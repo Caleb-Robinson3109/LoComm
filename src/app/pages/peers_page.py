@@ -1,13 +1,10 @@
-"""Pair page component matching chat page's clean, simple design."""
+"""Peers page component matching chat-style design."""
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox
 from typing import Optional, Callable
-import uuid
 
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
-from utils.pin_authentication import generate_pairing_pin
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
@@ -15,7 +12,7 @@ from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
 
 
-class ChatroomPage(BasePage):
+class PeersPage(BasePage):
     """Devices page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
@@ -36,8 +33,6 @@ class ChatroomPage(BasePage):
         self._selected_device_id: Optional[str] = None
         self._device_row_frames: dict[str, tk.Frame] = {}
         self._scan_timer_id: Optional[str] = None
-        self._chatroom_pin: Optional[str] = None
-        self._code_popup: Optional[tk.Toplevel] = None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -49,7 +44,6 @@ class ChatroomPage(BasePage):
 
         self._build_title(body)
         self._build_devices_section(body)
-        self._build_chatroom_actions(body)
 
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
@@ -71,7 +65,7 @@ class ChatroomPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Chatroom",
+            text="Peers",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
@@ -79,7 +73,7 @@ class ChatroomPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Manage your chatroom peers and connections",
+            text="Manage your peers and device sessions inside the chatroom",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
@@ -122,31 +116,6 @@ class ChatroomPage(BasePage):
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
         
         self._build_device_list(list_frame)
-
-    def _build_chatroom_actions(self, parent):
-        """Create chatroom management controls below the device list."""
-        actions = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.MD, padx=Space.LG)
-        actions.pack(fill=tk.X)
-        spacer = tk.Frame(actions, bg=Colors.SURFACE)
-        spacer.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        create_btn = DesignUtils.button(
-            actions,
-            text="Create Chatroom",
-            variant="primary",
-            width=18,
-            command=self._create_chatroom,
-        )
-        create_btn.pack(side=tk.RIGHT, padx=(0, Spacing.SM))
-
-        show_btn = DesignUtils.button(
-            actions,
-            text="Show Chatroom Code",
-            variant="ghost",
-            width=18,
-            command=self._show_chatroom_code,
-        )
-        show_btn.pack(side=tk.RIGHT)
 
     def _go_to_chat(self):
         """Open the peer chat window and set status to Connected."""
@@ -246,77 +215,6 @@ class ChatroomPage(BasePage):
             self._select_device_row(devices[0].device_id)
         else:
             self._clear_device_selection()
-
-    def _clear_device_rows(self):
-        """Remove every peer row, representing a new chatroom context."""
-        if hasattr(self, "device_rows_container"):
-            for child in self.device_rows_container.winfo_children():
-                child.destroy()
-        self._device_row_frames.clear()
-        self._selected_device_id = None
-
-    def _create_chatroom(self):
-        """Generate a new chatroom PIN and clear the current peer list."""
-        device_id = str(uuid.uuid4())
-        device_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
-        pin = generate_pairing_pin(device_id, device_name)
-        self._chatroom_pin = pin
-        self._clear_device_rows()
-        if self.controller:
-            self.controller.status_manager.update_status(AppConfig.STATUS_READY)
-        self._show_chatroom_code_popup(pin, title="Chatroom Code")
-
-    def _show_chatroom_code(self):
-        """Show the last generated chatroom code (if any)."""
-        if not self._chatroom_pin:
-            messagebox.showinfo("Chatroom code", "No chatroom PIN has been created yet.")
-            return
-        self._show_chatroom_code_popup(self._chatroom_pin, title="Chatroom Code")
-
-    def _show_chatroom_code_popup(self, pin: str, title: str):
-        """Display the supplied PIN inside a modal dialog with a single close button."""
-        if self._code_popup and self._code_popup.winfo_exists():
-            self._code_popup.lift()
-            return
-        popup = tk.Toplevel(self)
-        popup.title(title)
-        popup.configure(bg=Colors.SURFACE)
-        popup.resizable(False, False)
-        popup.transient(self)
-        message = tk.Frame(popup, bg=Colors.SURFACE, padx=Spacing.LG, pady=Spacing.LG)
-        message.pack(fill=tk.BOTH, expand=True)
-        tk.Label(
-            message,
-            text="Share this code so others can join your room:",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-            wraplength=360,
-            justify="left",
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-        code_label = tk.Label(
-            message,
-            text=pin,
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_ACCENT or Colors.STATE_INFO,
-            font=(Typography.FONT_MONO, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-        )
-        code_label.pack(anchor="center", pady=(0, Spacing.SM))
-        def _close_popup():
-            if self._code_popup is popup:
-                self._code_popup = None
-            popup.destroy()
-
-        close_btn = DesignUtils.button(
-            message,
-            text="Close",
-            variant="ghost",
-            command=_close_popup,
-            width=12,
-        )
-        close_btn.pack(pady=(Spacing.SM, 0))
-        popup.protocol("WM_DELETE_WINDOW", _close_popup)
-        self._code_popup = popup
 
     def _create_device_row(self, device: MockDevice, index: int):
         """Render a single row with a chat action button."""
@@ -480,4 +378,4 @@ class ChatroomPage(BasePage):
                 pass
             self._scan_timer_id = None
 
-PairPage = ChatroomPage
+PairPage = PeersPage

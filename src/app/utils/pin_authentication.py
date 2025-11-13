@@ -352,6 +352,12 @@ def generate_pairing_pin(device_id: str, device_name: Optional[str] = None) -> s
     return auth.generate_pin(device_id, device_name)
 
 
+def generate_chatroom_code(length: int = 20) -> str:
+    """Generate a chatroom code of uppercase letters and digits."""
+    alphabet = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
 def verify_pairing_pin(pin: str, client_identifier: str = "unknown") -> tuple[Optional[Dict], str, float]:
     """Verify a pairing PIN and get device info with security measures."""
     auth = get_pin_auth()
