@@ -62,7 +62,7 @@ class HomePage(BasePage):
 
         DesignUtils.button(
             action_wrap,
-            text="Peers",
+            text="Chatroom",
             command=self._go_to_chatroom,
             variant="primary",
         ).pack()

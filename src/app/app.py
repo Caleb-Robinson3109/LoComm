@@ -146,7 +146,7 @@ class App(tk.Tk):
         self.app_controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
         self._close_chatroom_modal()
         modal = tk.Toplevel(self)
-        modal.title("Enter Chatroom")
+        modal.title("Chatroom")
         modal.configure(bg=Colors.SURFACE)
 
         # Calculate proper modal size (smaller than main window but larger than PIN modal)

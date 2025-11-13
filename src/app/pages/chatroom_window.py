@@ -29,11 +29,19 @@ class ChatroomWindow(tk.Frame):
 
         tk.Label(
             layout,
-            text="Enter Chatroom",
+            text="Chatroom",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
+        ).pack(anchor="center")
+
+        tk.Label(
+            layout,
+            text="Join Chatroom",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+        ).pack(anchor="e", fill=tk.X)
 
         tk.Label(
             layout,
@@ -43,17 +51,17 @@ class ChatroomWindow(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_12),
         ).pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
 
-        entry = DesignUtils.create_chat_entry(
+        self.entry_widget = DesignUtils.create_chat_entry(
             layout,
             textvariable=self._entry_var,
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
             width=20,
         )
-        entry.pack(fill=tk.X, pady=(0, Spacing.XS))
-        entry.bind("<KeyRelease>", self._on_code_key)
-        entry.bind("<Return>", self._on_submit_chatroom_code)
-        entry.focus_set()
+        self.entry_widget.pack(fill=tk.X, pady=(0, Spacing.XS))
+        self.entry_widget.bind("<KeyRelease>", self._on_code_key)
+        self.entry_widget.bind("<Return>", self._on_submit_chatroom_code)
+        self.entry_widget.focus_set()
 
         helper = tk.Label(
             layout,
@@ -77,12 +85,13 @@ class ChatroomWindow(tk.Frame):
         self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
         self.enter_btn = DesignUtils.button(
             actions,
-            text="Enter Chatroom",
+            text="Join",
             variant="primary",
             width=14,
             command=self._on_submit_chatroom_code,
         )
         self.enter_btn.pack(side=tk.RIGHT)
+        self.enter_btn.configure(state="disabled")
 
         self._error_label = tk.Label(
             layout,
@@ -105,7 +114,7 @@ class ChatroomWindow(tk.Frame):
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
+        ).pack(anchor="e", fill=tk.X)
 
         self._code_display = tk.Label(
             section,
@@ -118,12 +127,12 @@ class ChatroomWindow(tk.Frame):
 
         create_btn = DesignUtils.button(
             section,
-            text="Create Chatroom",
-            variant="ghost",
+            text="Create",
+            variant="primary",
             width=20,
             command=self._create_chatroom_code,
         )
-        create_btn.pack(anchor="w", pady=(Spacing.SM, 0))
+        create_btn.pack(anchor="e", pady=(Spacing.SM, 0))
 
     def _on_code_key(self, event):
         raw = ''.join(ch for ch in self._entry_var.get() if ch.isalnum())[:20]
@@ -154,6 +163,11 @@ class ChatroomWindow(tk.Frame):
     def _clear_entry(self):
         self._entry_var.set("")
         self.enter_btn.configure(state="disabled")
+
+    def focus_input(self):
+        self._entry_var.set("")
+        self.enter_btn.configure(state="disabled")
+        self.after(50, lambda: self.entry_widget.focus_set())
 
     def _create_chatroom_code(self):
         code = generate_chatroom_code()
