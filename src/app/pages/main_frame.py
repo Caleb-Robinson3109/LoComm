@@ -13,6 +13,8 @@ from .home_page import HomePage
 from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
+from .test_page import TestPage
+from .chatroom_window import ChatroomWindow
 from .sidebar_page import SidebarPage
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -72,8 +74,10 @@ class MainFrame(ttk.Frame):
         ctx = self._page_context
         routes = [
             RouteConfig("home", "Home", lambda parent, ctx=ctx: HomePage(parent, ctx)),
+            RouteConfig("chatroom", "Chatroom", lambda parent, ctx=ctx: ChatroomWindow(parent, self._handle_chatroom_success)),
             RouteConfig("pair", "Peers", lambda parent, ctx=ctx: PeersPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
+            RouteConfig("test", "Test", lambda parent, ctx=ctx: TestPage(parent, ctx)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
             RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
             RouteConfig("help", "Help", lambda parent, ctx=ctx: HelpPage(parent, ctx)),
@@ -180,7 +184,7 @@ class MainFrame(ttk.Frame):
             fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
         )
-        self.chatroom_label.grid(row=0, column=1, sticky="n", padx=Space.SM)
+        self.chatroom_label.grid(row=0, column=1, sticky="", padx=Space.SM)
 
         brand_label = tk.Label(
             bar,
@@ -204,6 +208,11 @@ class MainFrame(ttk.Frame):
             self.sidebar.current_view = view_name
 
     def navigate_to(self, route_id: str):
+        if route_id == "chatroom":
+            # Special handling: open chatroom modal like homepage button
+            if self.app and hasattr(self.app, 'show_chatroom_modal'):
+                self.app.show_chatroom_modal()
+            return
         if route_id not in self._view_factories:
             return
         self._show_view(route_id)
@@ -248,9 +257,14 @@ class MainFrame(ttk.Frame):
     def _update_chatroom_label(self, code: str | None):
         if not hasattr(self, "chatroom_label"):
             return
-        formatted = format_chatroom_code(code)
-        self.chatroom_label.configure(text=f"Current Chatroom: {formatted}" if code else formatted,
-                                      fg=Colors.TEXT_PRIMARY if code else Colors.TEXT_MUTED)
+        if code:
+            formatted = format_chatroom_code(code)
+            self.chatroom_label.configure(text=formatted,
+                                          fg=Colors.TEXT_PRIMARY)
+        else:
+            # Show dashes when no chatroom is connected
+            self.chatroom_label.configure(text="----- ----- ----- -----",
+                                          fg=Colors.TEXT_MUTED)
 
     # ------------------------------------------------------------------ #
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
@@ -304,6 +318,11 @@ class MainFrame(ttk.Frame):
     @property
     def about_page(self):
         return self._ensure_view("about")
+
+    def _handle_chatroom_success(self, code: str):
+        """Handle successful chatroom connection."""
+        # Navigate to home after successful chatroom connection
+        self.navigate_to("home")
 
     def _handle_device_pairing(self, device_id: str, device_name: str):
         """Handle device pairing notifications from PairPage."""

@@ -41,7 +41,7 @@ class ChatroomWindow(tk.Frame):
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="center")
+        ).pack(anchor="center", pady=(0, Spacing.LG))
 
 
         self._build_tab_strip(layout)
@@ -114,15 +114,28 @@ class ChatroomWindow(tk.Frame):
             command=self._clear_entry,
         )
         self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+        
         self.enter_btn = DesignUtils.button(
             actions,
             text="Enter",
             variant="primary",
-            width=14,
+            width=12,
             command=self._on_submit_chatroom_code,
         )
         self.enter_btn.pack(side=tk.RIGHT)
         self.enter_btn.configure(state="disabled")
+        
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        
+        self.disconnect_btn = DesignUtils.button(
+            disconnect_actions,
+            text="Disconnect",
+            variant="danger",
+            width=12,
+            command=self._disconnect_from_chatroom,
+        )
+        self.disconnect_btn.pack(side=tk.RIGHT)
 
     def _build_create_content(self):
         frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
@@ -146,14 +159,39 @@ class ChatroomWindow(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
         helper2.pack(anchor="w", pady=(0, Spacing.XXS))
-        create_btn = DesignUtils.button(
-            frame,
+        actions = tk.Frame(frame, bg=Colors.SURFACE)
+        actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
+
+        self.create_btn = DesignUtils.button(
+            actions,
             text="Create",
-            variant="primary",
-            width=20,
+            variant="secondary",
+            width=12,
             command=self._create_chatroom_code,
         )
-        create_btn.pack(anchor="w", pady=(Spacing.SM, 0))
+        self.create_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+        
+        self.enter_btn_create = DesignUtils.button(
+            actions,
+            text="Enter",
+            variant="primary",
+            width=12,
+            command=self._on_submit_create_chatroom_code,
+        )
+        self.enter_btn_create.pack(side=tk.RIGHT)
+        self.enter_btn_create.configure(state="disabled")
+        
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        
+        self.disconnect_btn_create = DesignUtils.button(
+            disconnect_actions,
+            text="Disconnect",
+            variant="danger",
+            width=12,
+            command=self._disconnect_from_chatroom,
+        )
+        self.disconnect_btn_create.pack(side=tk.RIGHT)
 
     def _switch_mode(self, mode: str):
         self._mode = mode
@@ -213,10 +251,43 @@ class ChatroomWindow(tk.Frame):
         code = generate_chatroom_code()
         formatted = self._format_code(code)
         self._current_chatroom_code = formatted
+        self._create_var.set(formatted)
         if self._code_display:
             self._code_display.configure(text=formatted)
-        set_active_chatroom(code, [])
-        get_status_manager().update_status(AppConfig.STATUS_READY)
+        # Enable the Enter button now that we have a chatroom code
+        if hasattr(self, 'enter_btn_create') and self.enter_btn_create:
+            self.enter_btn_create.configure(state="normal")
+        # Don't set as active chatroom or update status until Enter is pressed
+
+    def _disconnect_from_chatroom(self):
+        # Clear any current chatroom connection
+        from utils.chatroom_registry import set_active_chatroom, get_active_members
+        set_active_chatroom("", get_active_members())
+        get_status_manager().update_status("Disconnected")
+        # Reset UI state
+        self._current_chatroom_code = None
+        self._create_var.set("")
+        self._entry_var.set("")
+        self.enter_btn.configure(state="disabled")
+        if hasattr(self, 'enter_btn_create') and self.enter_btn_create:
+            self.enter_btn_create.configure(state="disabled")
+        if hasattr(self, 'entry_widget') and self.entry_widget:
+            self.entry_widget.focus_set()
+
+    def _on_submit_create_chatroom_code(self, event=None):
+        if self._mode != "create":
+            return
+        if not self._current_chatroom_code:
+            self._create_chatroom_code()
+        if self._waiting:
+            return
+        if not self._current_chatroom_code:
+            self._show_error("Failed to create chatroom code.")
+            return
+        self._set_waiting(True)
+        get_status_manager().update_status("Connecting…")
+        code = ''.join(ch for ch in self._current_chatroom_code if ch.isalnum())
+        self.after(300, lambda: self._complete_success(code))
 
     def _format_code(self, code: str) -> str:
         clean = ''.join(ch for ch in code if ch.isalnum()).upper()

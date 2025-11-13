@@ -1,4 +1,4 @@
-"""Peers page component matching chat-style design."""
+"""Test page component matching peers page design."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -11,8 +11,8 @@ from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
 
 
-class PeersPage(BasePage):
-    """Devices page with chat-style clean, simple design."""
+class TestPage(BasePage):
+    """Test page with chat-style clean, simple design."""
 
     def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
         super().__init__(master, context=context, bg=Colors.SURFACE)
@@ -34,8 +34,8 @@ class PeersPage(BasePage):
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
-            self, 
-            bg=Colors.SURFACE, 
+            self,
+            bg=Colors.SURFACE,
             padding=(0, Spacing.LG)
         )
         body = scroll.frame
@@ -63,7 +63,7 @@ class PeersPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Peers",
+            text="Test Page",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
@@ -71,7 +71,7 @@ class PeersPage(BasePage):
 
         tk.Label(
             text_wrap,
-            text="Manage your peers and device sessions",
+            text="Test your peers and device sessions",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
@@ -99,48 +99,35 @@ class PeersPage(BasePage):
             pady=Space.MD,
         )
         content.pack(fill=tk.BOTH, expand=True)
-        
+
         # Section title
         tk.Label(
             content,
-            text="Available Peers",
+            text="Test Items",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
+
         # Device list
         list_frame = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
-        
+
         self._build_device_list(list_frame)
-
-    def _go_to_chat(self):
-        """Open the peer chat window and set status to Connected."""
-        if self.controller:
-            self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
-        from .chat_window import ChatWindow
-        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
-        ChatWindow(self, peer_name=self._active_device_name, local_device_name=local_name)
-
-    def _handle_chat_action(self, device_id: str):
-        """Treat the inline action column as a shortcut to the chat flow."""
-        device = self.device_service.get_device(device_id)
-        if not device:
-            return
-        self._active_device_id = device.device_id
-        self._active_device_name = device.name
-        self._select_device_row(device.device_id)
-        self._set_stage(DeviceStage.CONNECTED, device.name)
-        self._go_to_chat()
-
+        # Chat button below the table
+        chat_btn = DesignUtils.button(
+            content,
+            text="Chat",
+            command=self._handle_global_chat,
+            variant="primary",
+        )
+        chat_btn.pack(anchor="w", pady=(Spacing.SM, 0))
     def _build_device_list(self, parent):
-        """Build simple device list with an action column button."""
+        """Build simple device list."""
         header = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         header.pack(fill=tk.X, pady=(0, Spacing.XXS))
         header.grid_columnconfigure(0, weight=3)
         header.grid_columnconfigure(1, weight=2)
-        header.grid_columnconfigure(2, weight=1)
 
         tk.Label(
             header,
@@ -158,14 +145,6 @@ class PeersPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
             anchor="center",
         ).grid(row=0, column=1, sticky="ew")
-        tk.Label(
-            header,
-            text="Action",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-            anchor="center",
-        ).grid(row=0, column=2, sticky="ew")
 
         scroll_wrapper = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         scroll_wrapper.pack(fill=tk.BOTH, expand=True)
@@ -215,12 +194,11 @@ class PeersPage(BasePage):
             self._clear_device_selection()
 
     def _create_device_row(self, device: MockDevice, index: int):
-        """Render a single row with a chat action button."""
+        """Render a single row."""
         row = tk.Frame(self.device_rows_container, bg=Colors.SURFACE_ALT, pady=Spacing.XS)
         row.pack(fill=tk.X, pady=(0, Spacing.XXS), padx=(Spacing.SM, Spacing.SM))
         row.grid_columnconfigure(0, weight=3)
         row.grid_columnconfigure(1, weight=2)
-        row.grid_columnconfigure(2, weight=1)
 
         name_label = tk.Label(
             row,
@@ -244,15 +222,6 @@ class PeersPage(BasePage):
         )
         device_label.grid(row=0, column=1, sticky="ew", padx=(Spacing.SM, 0))
 
-        chat_btn = DesignUtils.button(
-            row,
-            text="Chat",
-            command=lambda d=device: self._handle_chat_action(d.device_id),
-            variant="primary",
-            width=10,
-        )
-        chat_btn.grid(row=0, column=2, sticky="e", padx=(Spacing.SM, Spacing.SM))
-
         for widget in (row, name_label, device_label):
             widget.bind(
                 "<Button-1>",
@@ -260,6 +229,30 @@ class PeersPage(BasePage):
             )
 
         self._device_row_frames[device.device_id] = row
+
+    def _go_to_chat(self):
+        """Open the peer chat window and set status to Connected."""
+        if self.controller:
+            self.controller.status_manager.update_status(AppConfig.STATUS_CONNECTED)
+        from .chat_window import ChatWindow
+        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        ChatWindow(self, peer_name=self._active_device_name, local_device_name=local_name)
+
+    def _handle_chat_action(self, device_id: str):
+        """Treat the inline action column as a shortcut to the chat flow."""
+        device = self.device_service.get_device(device_id)
+        if not device:
+            return
+        self._active_device_id = device.device_id
+        self._active_device_name = device.name
+        self._select_device_row(device.device_id)
+        self._set_stage(DeviceStage.CONNECTED, device.name)
+        self._go_to_chat()
+
+    def _handle_global_chat(self):
+        """Chat with the currently selected device."""
+        if self._selected_device_id:
+            self._handle_chat_action(self._selected_device_id)
 
     def _select_device_row(self, device_id: Optional[str]):
         """Highlight the selected device row and keep it in sync with the action button."""
@@ -374,5 +367,3 @@ class PeersPage(BasePage):
             except Exception:
                 pass
             self._scan_timer_id = None
-
-PairPage = PeersPage
