@@ -5,7 +5,7 @@ import tkinter as tk
 from typing import Optional, Callable
 
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
-from utils.chatroom_registry import add_member, get_active_code, get_active_members
+from utils.chatroom_registry import add_member, get_active_members, format_chatroom_code, get_active_code
 from utils.state.connection_manager import get_connection_manager
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
@@ -253,12 +253,7 @@ class PeersPage(BasePage):
         if not self._chatroom_code_label:
             return
         code = get_active_code()
-        display = "No chatroom selected." if not code else self._format_code(code)
-        self._chatroom_code_label.configure(text=display)
-
-    def _format_code(self, code: str) -> str:
-        clean = ''.join(ch for ch in code if ch.isalnum()).upper()
-        return '-'.join(clean[i:i+5] for i in range(0, len(clean), 5))
+        self._chatroom_code_label.configure(text=format_chatroom_code(code))
 
     def _generate_mock_members(self):
         """Simulate a set of members for a newly created chatroom."""

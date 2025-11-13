@@ -5,6 +5,7 @@ from typing import Callable, List
 
 from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils, Palette
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
+from utils.chatroom_registry import format_chatroom_code, register_chatroom_listener, unregister_chatroom_listener
 
 
 from .settings_page import SettingsPage
@@ -142,7 +143,8 @@ class MainFrame(ttk.Frame):
         bar.pack(fill=tk.X, side=tk.TOP)
 
         bar.grid_columnconfigure(0, weight=1)
-        bar.grid_columnconfigure(1, weight=0)
+        bar.grid_columnconfigure(1, weight=1)
+        bar.grid_columnconfigure(2, weight=0)
 
         initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
         self._default_local_device_name = initial_name
@@ -159,6 +161,7 @@ class MainFrame(ttk.Frame):
         )
         self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
 
+        self._chatroom_listener = None
         self.status_badge = tk.Label(
             info_wrap,
             text="Disconnected",
@@ -170,6 +173,15 @@ class MainFrame(ttk.Frame):
         )
         self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
 
+        self.chatroom_label = tk.Label(
+            bar,
+            text="No Chatrooms Connected",
+            bg=Colors.BG_ELEVATED,
+            fg=Colors.TEXT_MUTED,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        )
+        self.chatroom_label.grid(row=0, column=1, sticky="n", padx=Space.SM)
+
         brand_label = tk.Label(
             bar,
             text="Locomm",
@@ -177,7 +189,9 @@ class MainFrame(ttk.Frame):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
         )
-        brand_label.grid(row=0, column=1, sticky="e", padx=(0, Space.BASE * 5))
+        brand_label.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
+        self._chatroom_listener = lambda code: self._update_chatroom_label(code)
+        register_chatroom_listener(self._chatroom_listener)
         return bar
 
     def _show_view(self, view_name: str):
@@ -223,11 +237,20 @@ class MainFrame(ttk.Frame):
         self.navigate_to("pair")
 
     def destroy(self):
+        if self._chatroom_listener:
+            unregister_chatroom_listener(self._chatroom_listener)
         try:
             self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
         except Exception:
             pass
         return super().destroy()
+
+    def _update_chatroom_label(self, code: str | None):
+        if not hasattr(self, "chatroom_label"):
+            return
+        formatted = format_chatroom_code(code)
+        self.chatroom_label.configure(text=f"Current Chatroom: {formatted}" if code else formatted,
+                                      fg=Colors.TEXT_PRIMARY if code else Colors.TEXT_MUTED)
 
     # ------------------------------------------------------------------ #
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):

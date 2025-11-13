@@ -1,4 +1,4 @@
-"""Slim chatroom pairing UI that accepts a single dashed 20-character code."""
+"""Tabbed chatroom pairing UI with join/create sections and chatroom summary."""
 from __future__ import annotations
 
 import tkinter as tk
@@ -6,12 +6,12 @@ from typing import Callable, Optional
 
 from utils.design_system import AppConfig, Colors, DesignUtils, Spacing, Typography, Space
 from utils.pin_authentication import generate_chatroom_code
-from utils.chatroom_registry import set_active_chatroom
+from utils.chatroom_registry import set_active_chatroom, add_member, get_active_members
 from utils.state.status_manager import get_status_manager
 
 
 class ChatroomWindow(tk.Frame):
-    """Single-entry chatroom pairing interface with a "My Chatroom" section."""
+    """Tabbed join/create chatroom view."""
 
     def __init__(self, master, on_chatroom_success: Callable[[str], None]):
         super().__init__(master, bg=Colors.SURFACE)
@@ -21,6 +21,13 @@ class ChatroomWindow(tk.Frame):
         self._waiting = False
         self._current_chatroom_code: Optional[str] = None
         self._code_display: Optional[tk.Label] = None
+        self._tab_buttons: dict[str, tk.Button] = {}
+        self._content_frame: Optional[tk.Frame] = None
+        self._join_frame: Optional[tk.Frame] = None
+        self._create_frame: Optional[tk.Frame] = None
+        self.entry_widget: Optional[tk.Entry] = None
+        self._create_var = tk.StringVar()
+        self._mode = "join"
 
         self._create_ui()
 
@@ -36,24 +43,47 @@ class ChatroomWindow(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="center")
 
-        tk.Label(
-            layout,
-            text="Join Chatroom",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
-        ).pack(anchor="e", fill=tk.X)
 
-        tk.Label(
+        self._build_tab_strip(layout)
+        self._content_frame = tk.Frame(layout, bg=Colors.SURFACE)
+        self._content_frame.pack(fill=tk.BOTH, expand=True)
+
+        self._build_join_content()
+        self._build_create_content()
+        self._switch_mode("join")
+
+        self._error_label = tk.Label(
             layout,
-            text="Paste or type the 20-character code below.",
+            text="",
             bg=Colors.SURFACE,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12),
-        ).pack(anchor="w", pady=(Spacing.XXS, Spacing.SM))
+            fg=Colors.STATE_ERROR,
+            font=(Typography.FONT_UI, Typography.SIZE_10),
+        )
+        self._error_label.pack(fill=tk.X, pady=(Spacing.XXS, 0))
+
+
+    def _build_tab_strip(self, parent: tk.Frame):
+        strip = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
+        strip.pack(fill=tk.X)
+
+        for key, label in (("join", "Join"), ("create", "Create Chatroom")):
+            btn = DesignUtils.button(
+                strip,
+                text=label,
+                variant="ghost",
+                command=lambda k=key: self._switch_mode(k),
+                width=16,
+            )
+            btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
+            self._tab_buttons[key] = btn
+
+    def _build_join_content(self):
+        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        frame.pack(fill=tk.BOTH, expand=True)
+        self._join_frame = frame
 
         self.entry_widget = DesignUtils.create_chat_entry(
-            layout,
+            frame,
             textvariable=self._entry_var,
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
@@ -65,7 +95,7 @@ class ChatroomWindow(tk.Frame):
         self.entry_widget.focus_set()
 
         helper = tk.Label(
-            layout,
+            frame,
             text="Format: ABCDE-FGHIJ-KLMNO-PQRST",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_MUTED,
@@ -73,7 +103,7 @@ class ChatroomWindow(tk.Frame):
         )
         helper.pack(anchor="w", pady=(0, Spacing.XXS))
 
-        actions = tk.Frame(layout, bg=Colors.SURFACE)
+        actions = tk.Frame(frame, bg=Colors.SURFACE)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
         self.clear_btn = DesignUtils.button(
@@ -86,7 +116,7 @@ class ChatroomWindow(tk.Frame):
         self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
         self.enter_btn = DesignUtils.button(
             actions,
-            text="Join",
+            text="Enter",
             variant="primary",
             width=14,
             command=self._on_submit_chatroom_code,
@@ -94,46 +124,50 @@ class ChatroomWindow(tk.Frame):
         self.enter_btn.pack(side=tk.RIGHT)
         self.enter_btn.configure(state="disabled")
 
-        self._error_label = tk.Label(
-            layout,
-            text="",
+    def _build_create_content(self):
+        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        frame.pack(fill=tk.BOTH, expand=True)
+        self._create_frame = frame
+
+        create_entry = DesignUtils.create_chat_entry(
+            frame,
+            textvariable=self._create_var,
+            font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+            justify="center",
+            width=20,
+            state="readonly",
+        )
+        create_entry.pack(fill=tk.X, pady=(0, Spacing.XS))
+        helper2 = tk.Label(
+            frame,
+            text="Format: ABCDE-FGHIJ-KLMNO-PQRST",
             bg=Colors.SURFACE,
-            fg=Colors.STATE_ERROR,
+            fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
-        self._error_label.pack(fill=tk.X, pady=(Spacing.XXS, 0))
-
-        self._build_my_chatroom_section(layout)
-
-    def _build_my_chatroom_section(self, parent: tk.Frame):
-        section = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
-        section.pack(fill=tk.X)
-
-        tk.Label(
-            section,
-            text="My Chatroom",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
-        ).pack(anchor="e", fill=tk.X)
-
-        self._code_display = tk.Label(
-            section,
-            text="No chatroom created yet.",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_ACCENT or Colors.STATE_INFO,
-            font=(Typography.FONT_MONO, Typography.SIZE_14),
-        )
-        self._code_display.pack(anchor="w", pady=(Spacing.XXS, 0))
-
+        helper2.pack(anchor="w", pady=(0, Spacing.XXS))
         create_btn = DesignUtils.button(
-            section,
+            frame,
             text="Create",
             variant="primary",
             width=20,
             command=self._create_chatroom_code,
         )
-        create_btn.pack(anchor="e", pady=(Spacing.SM, 0))
+        create_btn.pack(anchor="w", pady=(Spacing.SM, 0))
+
+    def _switch_mode(self, mode: str):
+        self._mode = mode
+        for key, button in self._tab_buttons.items():
+            button.configure(style="Locomm.Ghost.TButton")
+            if key == mode:
+                button.configure(style="Locomm.Primary.TButton")
+        if self._join_frame and self._create_frame:
+            self._join_frame.pack_forget()
+            self._create_frame.pack_forget()
+            if mode == "join":
+                self._join_frame.pack(fill=tk.BOTH, expand=True)
+            else:
+                self._create_frame.pack(fill=tk.BOTH, expand=True)
 
     def _on_code_key(self, event):
         raw = ''.join(ch for ch in self._entry_var.get() if ch.isalnum())[:20]
@@ -145,6 +179,8 @@ class ChatroomWindow(tk.Frame):
         self.enter_btn.configure(state="normal" if len(raw) == 20 else "disabled")
 
     def _on_submit_chatroom_code(self, event=None):
+        if self._mode != "join":
+            return
         code = ''.join(ch for ch in self._entry_var.get() if ch.isalnum()).upper()
         if len(code) != 20:
             self._show_error("Please enter all 20 alphanumeric characters.")
@@ -159,6 +195,7 @@ class ChatroomWindow(tk.Frame):
         self._set_waiting(False)
         if self.on_chatroom_success:
             get_status_manager().update_status(AppConfig.STATUS_READY)
+            set_active_chatroom(code, get_active_members())
             self.on_chatroom_success(code)
 
     def _clear_entry(self):
@@ -168,9 +205,11 @@ class ChatroomWindow(tk.Frame):
     def focus_input(self):
         self._entry_var.set("")
         self.enter_btn.configure(state="disabled")
-        self.after(50, lambda: self.entry_widget.focus_set())
+        self.after(50, lambda: self.entry_widget.focus_set() if self.entry_widget else None)
 
     def _create_chatroom_code(self):
+        if self._mode != "create":
+            self._switch_mode("create")
         code = generate_chatroom_code()
         formatted = self._format_code(code)
         self._current_chatroom_code = formatted
@@ -191,4 +230,5 @@ class ChatroomWindow(tk.Frame):
     def _set_waiting(self, waiting: bool):
         self._waiting = waiting
         state = "disabled" if waiting else "normal"
-        self.enter_btn.configure(state=state, text="Entering…" if waiting else "Enter Chatroom")
+        if self.enter_btn:
+            self.enter_btn.configure(state=state, text="Entering…" if waiting else "Enter Chatroom")
