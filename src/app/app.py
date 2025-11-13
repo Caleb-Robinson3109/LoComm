@@ -143,6 +143,7 @@ class App(tk.Tk):
 
     def _open_chatroom_modal(self):
         """Open the chatroom modal using the same pattern as PIN pairing."""
+        self.app_controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
         self._close_chatroom_modal()
         modal = tk.Toplevel(self)
         modal.title("Enter Chatroom")

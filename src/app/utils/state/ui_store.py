@@ -79,6 +79,10 @@ class UIStore:
             self.set_pairing_stage(DeviceStage.DISCONNECTED, device_name)
         elif "connected" in text:
             self.set_pairing_stage(DeviceStage.CONNECTED, device_name)
+        elif "ready" in text:
+            self.set_pairing_stage(DeviceStage.READY, device_name)
+        elif any(keyword in text for keyword in ("error", "failed", "invalid")):
+            self.set_pairing_stage(DeviceStage.DISCONNECTED, device_name)
 
     def _handle_device_change(self, device_info):
         if not device_info.is_connected and device_info.device_name:

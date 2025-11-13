@@ -8,7 +8,8 @@ from tkinter import ttk, messagebox
 import time
 
 from mock.peer_bridge import get_peer_bridge
-from utils.design_system import Colors, ensure_styles_initialized, DesignUtils, Typography, Spacing
+from utils.design_system import AppConfig, Colors, ensure_styles_initialized, DesignUtils, Typography, Spacing
+from utils.state.status_manager import get_status_manager
 
 
 class ChatWindow(tk.Toplevel):
@@ -270,6 +271,7 @@ class ChatWindow(tk.Toplevel):
             if not result:
                 return
 
+        get_status_manager().update_status(AppConfig.STATUS_DISCONNECTED)
         self._bridge.unregister_peer_callback(self._handle_incoming)
         if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
             del self._open_windows[self.peer_name]

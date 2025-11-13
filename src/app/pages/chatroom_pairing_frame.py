@@ -6,7 +6,8 @@ import tkinter as tk
 from typing import Callable, Optional
 from tkinter import messagebox
 
-from utils.design_system import Colors, Typography, Spacing, DesignUtils, Space
+from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
+from utils.state.status_manager import get_status_manager
 
 
 class ChatroomPairingFrame(tk.Frame):
@@ -222,6 +223,7 @@ class ChatroomPairingFrame(tk.Frame):
     def _on_submit_chatroom_code(self, event=None):
         """Handle chatroom code submission."""
         chatroom_code = self._collect_chatroom_code().strip()
+        get_status_manager().update_status(AppConfig.STATUS_AWAITING_PEER)
         
         if len(chatroom_code) != 20:
             self._show_error("Please enter all 20 digits")
@@ -240,6 +242,7 @@ class ChatroomPairingFrame(tk.Frame):
         
         if self.on_chatroom_success:
             self.on_chatroom_success(chatroom_code)
+            get_status_manager().update_status(AppConfig.STATUS_READY)
 
     
 
@@ -254,6 +257,7 @@ class ChatroomPairingFrame(tk.Frame):
 
     def _show_error(self, message):
         """Show error message."""
+        get_status_manager().update_status(AppConfig.STATUS_CONNECTION_FAILED)
         messagebox.showerror("Chatroom Entry Failed", message)
 
     def _set_waiting(self, waiting):

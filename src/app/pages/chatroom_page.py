@@ -229,9 +229,10 @@ class ChatroomPage(BasePage):
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-            anchor="w",
+            anchor="center",
+            justify="center",
         )
-        name_label.grid(row=0, column=0, sticky="w", padx=(Spacing.SM, 0))
+        name_label.grid(row=0, column=0, sticky="ew", padx=(Spacing.SM, 0))
 
         device_label = tk.Label(
             row,
@@ -239,9 +240,10 @@ class ChatroomPage(BasePage):
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            anchor="w",
+            anchor="center",
+            justify="center",
         )
-        device_label.grid(row=0, column=1, sticky="w", padx=(Spacing.SM, 0))
+        device_label.grid(row=0, column=1, sticky="ew", padx=(Spacing.SM, 0))
 
         chat_btn = DesignUtils.button(
             row,
@@ -290,6 +292,8 @@ class ChatroomPage(BasePage):
         self.is_scanning = True
         if hasattr(self, "refresh_btn"):
             self.refresh_btn.configure(state="disabled", text="Refreshing…")
+        if self.controller:
+            self.controller.status_manager.update_status("Scanning…")
         self._set_stage(DeviceStage.SCANNING)
         self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
 
@@ -302,6 +306,8 @@ class ChatroomPage(BasePage):
         self.is_scanning = False
         if hasattr(self, "refresh_btn"):
             self.refresh_btn.configure(state="normal", text="Refresh")
+        if self.controller:
+            self.controller.status_manager.update_status(AppConfig.STATUS_READY)
 
     
 
