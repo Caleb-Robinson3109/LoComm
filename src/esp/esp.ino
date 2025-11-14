@@ -6,13 +6,25 @@
 //api functions
 #include "apiCode.h"
 
-uint8_t deviceID = 0; //NOTE This should eventually be stored on the EEPROM
+uint8_t deviceID = 0; //TODO This should eventually be stored on the EEPROM
+uint8_t deviceIDList[256]; //TODO this should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
 //uint32_t epochAtBoot = 0; //TODO this should be set and required to be set at boot
+
+//Variables for Device ID resolution and maintenance
+bool sendDeviceIDResponse = false;
+uint32_t lastDeviceIDResponseTime = 0;
+bool sendDeviceIDTableResponse = false;
+uint32_t lastDeviceIDTableResponseTime = 0;
+bool sendDeviceIDRequest = false;
+uint32_t lastDeviceIDRequest = 0;
+bool sendDeviceIDTableRequest = false;
+uint32_t lastDeviceIDTableRequestTime = 0;
+
 
 //State tracking variables
 bool receiveReady = false;
@@ -252,9 +264,9 @@ void loop() {
               continue;
             } 
 
-            //check if its a data packet or ack packet
+            //check if that packet type is invalid
             const uint8_t packetType = rxBuffer[startByteLocation+1];
-            if (packetType != 0 && packetType != 1) {
+            if (packetType > 5) {
               LDebug("Received RX message does not have proper type byte, skipping");
               continue;
             }
@@ -281,31 +293,66 @@ void loop() {
             rxBufferLastSize = 0;
             shouldScanRxBuffer = true; //there could be another message to find, go look again
 
-            const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3];
-
-            bool broadcast = false;
-            //check if the receiver is correct
-            if (tempBuf[1] == 255) {
-              //This is a broadcast, so accept and dont ack
-              broadcast = true; 
-            } else
-            if (tempBuf[1] != deviceID) {
-              LDebug("Received RX message is not intended for sender, skipping");
-              //if the message is a data message, then we will log the message ID
-              if (packetType == 0) {
-                previouslySeenIds.pushBack(&messageNumber, 1);
-                if (previouslySeenIds.size() >= 128) {
-                  previouslySeenIds.dropFront(1);
+            //Check if we should filter out the message based on message type and potential receiver field
+            bool broadcast = false; //used to indicate if a data message is intended for broadcast, so no ack should be sent out
+            bool breakout = false;
+            switch (packetType) {
+              case 0:
+                if (tempBuf[1] == 255) {
+                  broadcast = true;
+                } else if (tempBuf[1] != deviceID) {
+                  LDebug("Received RX Data message is not intended for sender, skipping");
+                  //log the message ID
+                  previouslySeenIds.pushBack(&messageNumber, 1);
+                  if (previouslySeenIds.size() >= 128) {
+                    previouslySeenIds.dropFront(1);
+                  }
+                  breakout = true; //the message was intended for this device, so indicate we should break out
                 }
-              }
-              break; //the message was valid, so lets break out
+                break;
+              case 1:
+                if (tempBuf[1] != deviceID) {
+                  LDebug("Received RX Ack message is not intended for sender, skipping");
+                  breakout = true;
+                }
+                break;
+              case 2: //device ID scan is a broadcast message, so no receiver field is present
+                break;
+              case 3: //device ID scan response is also a broadcast message, so no receiver field is present
+                break;
+              case 4: //device ID full table request DOES have a receiver field, so filter on it
+                if (tempBuf[0] != deviceID) {
+                  LDebug("Received Device ID Table request is not intended for sender, skipping");
+                  breakout = true;
+                }
+              case 5: //device ID full table response is also a broadcast message, so no receiver field is present
+                break;
             }
+            if (breakout) break;
 
             //check if the message was intended to be sent in the last 20 seconds based on the timestamp
-            //Dirty hack since the timestamp is at different placements in each buffer
-            const uint32_t timestamp = (tempBuf[5 + (1 - packetType)] << 24) + (tempBuf[6 + (1 - packetType)] << 16) + (tempBuf[7 + (1 - packetType)] << 8) + tempBuf[8 + (1 - packetType)];
+            //Since timestamp is dependant on message type, use a switch statement to acquire it
+            uint32_t timestamp;
+            switch (packetType) {
+              case 0:
+                //data packet
+                timestamp = (tempBuf[6] << 24) + (tempBuf[7] << 16) + (tempBuf[8] << 8) + tempBuf[9];
+              break;
+              case 1:
+                //ack packet
+                timestamp = (tempBuf[5] << 24) + (tempBuf[6] << 16) + (tempBuf[7] << 8) + tempBuf[8];
+              break;
+              case 2:
+              case 3:
+              case 4:
+                timestamp = (tempBuf[1] << 24) + (tempBuf[2] << 16) + (tempBuf[3] << 8) + tempBuf[4];
+              break;
+              case 5:
+                timestamp = (tempBuf[0] << 24) + (tempBuf[1] << 16) + (tempBuf[2] << 8) + tempBuf[3];
+              break;
+            }
             const uint32_t currentTime = (millis() / 1000) + epochAtBoot;
-            if (currentTime + 1 < timestamp) { //one is added for a bit of leeway
+            if (currentTime + 5 < timestamp) { //5 is added for a bit of leeway
               LWarn("Received RX Message is from the future! someone likely has invalid time configuration");
               break;
             }
@@ -317,11 +364,7 @@ void loop() {
             }
             
             //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
-            const uint8_t sequenceNumber = tempBuf[4];
-            if (sequenceNumber > 7) {
-              LError("Invalid sequence number! dropping");
-              break;
-            }
+
 
             if (packetType == 0) {
               ScopeLock(loraRxSpinLock, loraRxLock);
@@ -329,6 +372,16 @@ void loop() {
               //Normal message
               const uint8_t sequenceCount = tempBuf[5];
               const uint8_t sequenceSize = plaintextLen - 10; //subtracting header size
+              const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3]; //TODO move this to within each loop
+              const uint8_t sequenceNumber = tempBuf[4]; //TODO move this check to within each message type if statement
+              if (sequenceNumber > 7) {
+                LError("Invalid sequence number! dropping");
+                break;
+              }
+
+              //Add the sender ID to our list of known device IDs
+              deviceIDList[tempBuf[1]] = 1;
+              
 
               //check if the message number is already being tracked in rxMessageArray
               uint16_t loc = rxMessageArray.find(messageNumber >> 8, messageNumber & 0xFF);
@@ -435,10 +488,21 @@ void loop() {
 
               if (!broadcast) sendAck(tempBuf[0], messageNumber, sequenceNumber);
               
-            } else {
+            } else if (packetType == 1) {
               ScopeLock(loraTxSpinLock, loraTxLock);
               LDebug("Beginning ACK Message Processing");
               //Ack Message - we need to process the ack
+              
+
+              const uint16_t messageNumber = (tempBuf[2] << 8) + tempBuf[3]; //TODO move this to within each loop
+              const uint8_t sequenceNumber = tempBuf[4]; //TODO move this check to within each message type if statement
+              if (sequenceNumber > 7) {
+                LError("Invalid sequence number! dropping");
+                break;
+              }
+
+              //Add the sender ID to our list of known device IDs
+              deviceIDList[tempBuf[1]] = 1;
 
               //First, search for the relevant message in the txMessageArray by its message number and sequence number
               //TODO this might have to be a critical section
@@ -449,8 +513,60 @@ void loop() {
                   txMessageArray.get(i)[8] |= 0b10000000;
                 }
               }
+            } else if (packetType == 2) {
+              if (plaintextLen != 5) {
+                LWarn("Received Device ID Scan message with incorrect size!");
+                break;
+              }
+              //we received a valid device ID request, so indicate to the send functionality that we should dispatch the device ID only if we havent received one in 10 seconds
+              if ((millis() / 1000) > lastDeviceIDResponseTime + 10) {
+                //TODO fill the appropriate buffer with the message 
+                sendDeviceIDResponse = true;
+                lastDeviceIDResponseTime = millis() / 1000;
+                LDebug("Setting sendDeviceIDResponse to true");
+                
+                
+              } else {
+                LDebug("Not setting sendDeviceIDResponse since one has been dispatched in the past 10 seconds")
+              }
+            } else if (packetType == 3) {
+              if (plainTextLen != 5) {
+                LWarn("Received Device ID Scan Response message with incorrect size!");
+                break;
+              }
+              //we received a valid device ID response, so log the ID has being taken in our device ID list
+              const uint8_t receivedDeviceID = tempBuf[0];
+              deviceIDList[receivedDeviceID] = 1;
+              if (receivedDeviceID == 255) {
+                LWarn("Received a device ID response from the broadcast ID, which was unexpected! ignoring");
+                break;
+              }
+            } else if (packetType == 4) {
+              if (plainTextLen != 5) {
+                LWarn("Received Device ID Table request message with incorrect size!");
+                break;
+              }
+              //we received a device Table request, so indicate to the send functionality that we should dispatch the full device Table only if we havent received one in 10 seconds
+              if ((millis() / 1000) > lastDeviceIDTableResponseTime + 10) {
+                //TODO fill the appropriate buffer with the message 
+                sendDeviceIDTableResponse = true;
+                lastDeviceIDTableResponseTime = millis();
+                LDebug("Setting sendDeviceIDTableResponse to true");
+              } else {
+                LDebug("Not setting sendDeviceIDTableResponse since one has been dispatched in the past 10 seconds");
+              }
+              
+            } else if (packetType == 5) {
+              if (plainTextLen != 36) {
+                LWarn("Received Device ID Table response message with incorrect size!");
+              }
+              //we received a full device table, so update our device table 
+              for (int byteNum = 0; byteNum < 32; byteNum++) {
+                for (int bitNum = 0; bitNum < 8; bitNum++) {
+                  deviceIDList[byteNum * 8 + bitNum] |= (tempBuf[4+byteNum] >> (7 - bitNum));
+                }
+              }
             }
-            
             //If we've gotten this far, then a message was successfully processed, so break out of the loop checking this specific start byte
             break;
           }
@@ -528,7 +644,10 @@ void loop() {
     LDebug("CAD Finished, beginning to send message");
     //since all this function does is perform reads from the txMessageBuffer, it doesn't need a lock since the function that handles removing data from txMessageBuffer is located in this thread
     //We just finished CAD, so send a message
-    if (readyToSendBuffer.size() > 0) { //if there is a normal message to send...
+    //the dispatch order is this (from highest to lowest precedence): 
+    //            data packet  -  ack packet  -  device ID request  -  device ID response  -  device Table request  -  device Table response
+
+    if (readyToSendBuffer.size() > 0) { //if there is a data packet to send...
       LoRa.beginPacket();
       messageDispatched = true;
       //get information about message to send from readyToSendBuffer
@@ -544,7 +663,7 @@ void loop() {
       LoRa.endPacket(true);
       LDebug("Finishing writing Normal message to LoRa, dumping message");
       Debug(dumpArrayToSerial(&(txMessageBuffer[src]), size));
-    } else if (ackToSendBuffer.size() > 0) { //if there is a ACK message to send...
+    } else if (ackToSendBuffer.size() > 0) { //if there is a ACK packet to send...
       LoRa.beginPacket();
       ackDispatched = true;
       uint8_t array[14 + AES_GCM_OVERHEAD];
@@ -556,9 +675,26 @@ void loop() {
       lastDeviceMode = TX_MODE;
       LoRa.endPacket(true);
       LDebug("Finished writing Ack message to LoRa");
-    } else {
-      LError("Cad Finished with no data in either buffer!");
+    } else if (sendDeviceIDRequest) { //if we should dispatch a device ID request... TODO impl
+      sendDeviceIDRequest = false;
+      //just send data over to the buffer
+
+    } else if (sendDeviceIDResponse) { //if we should dispatch a device ID response... TODO impl
+      sendDeviceIDResponse = false;
+      //just send data over to the buffer
+
+    } else if (sendDeviceIDTableRequest) { //if we should dispatch a device id table request... TODO impl
+      sendDeviceIDTableRequest = false;
+      //just send data over to the buffer
+
+    } else if (sendDeviceIDTableResponse) { //if we should dispatch a device id table response... TODO impl
+      sendDeviceIDTableResponse = false;
+      //just send data over to the buffer
+      
     }
+
+
+    //LError("Cad Finished with no data in either buffer!");
     
   }
 
@@ -643,7 +779,7 @@ void loop() {
   }
   
 
-  if (readyToSendBuffer.size() > 0 || ackToSendBuffer.size() > 0) {
+  if (readyToSendBuffer.size() > 0 || ackToSendBuffer.size() > 0 || sendDeviceIDTableResponse || sendDeviceIDResponse || sendDeviceIDRequest || sendDeviceIDTableRequest) {
     //LDebug("One of the TX buffers has data, attempting to enter CAD Mode");
     enterChannelActivityDetectionMode();
   }
