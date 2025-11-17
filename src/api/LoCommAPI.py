@@ -112,7 +112,7 @@ def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
     if deviceless_mode:
         return  True
 
-    return locomm_api_send_message(sender_name, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
+    return locomm_api_send_message(sender_name, reciver_id, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message -> sender_name, message.
 def receive_message() -> tuple[str, str] | tuple[None, None]:
