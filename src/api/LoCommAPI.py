@@ -26,6 +26,10 @@ def run_deviceless_mode():
     deviceless_mode = True
 
 
+def exit_deviceless_mode():
+    global deviceless_mode
+    deviceless_mode = False
+
 #this function allows you to connect to a device.Returns true if connection is successful, false otherwise.
 def connect_to_device() -> bool:
     global deviceless_mode
