@@ -68,6 +68,11 @@ def disconnect_from_device() -> bool:
 #this function inputs the password. If the password matches the password stored on the ESP, then the function returns true, false otherwise.
 def enter_password(password: str) -> bool:
     global deviceless_mode, dm_password
+
+    if(len(password) > 32):
+        print("password must be less then or equal to  32 char")
+        return False
+
     if deviceless_mode:
         return (True if password == dm_password else False) 
 
@@ -76,6 +81,11 @@ def enter_password(password: str) -> bool:
 #this function sets a new password. Returns true if successful, false otherwise.
 def set_password(old: str, new: str) -> bool:
     global deviceless_mode, dm_password
+
+    if(len(old) > 32 or len(new) > 32):
+        print("password must be less then or equal to  32 char")
+        return False
+
     if deviceless_mode:
         if old != dm_password:
             return False
@@ -87,6 +97,9 @@ def set_password(old: str, new: str) -> bool:
 #this function resets the password, this results in all your device-to-device communication keys on the ESP to be deleted. Only use it if you cannot remember the password. Returns true if successful, false otherwise
 def reset_passoword(password: str) -> bool:
     global deviceless_mode, dm_password
+    if(len(password) > 32):
+        print("password must be less then or equal to  32 char")
+        return False
     if deviceless_mode:
         dm_password = password
         return True
@@ -133,12 +146,14 @@ def delete_keys() -> bool:
 #this function stores the name of the device on the device. returns true if successful, false if not
 def store_name_on_device(name: str) -> bool:
     global deviceless_mode
-    if deviceless_mode:
-        return True
-
+    
     if len(name) > 32:
         print("name must be 32 chars or less")
         return False
+    
+    if deviceless_mode:
+        return True
+
     return locomm_store_name_on_devide(name)
 
 
