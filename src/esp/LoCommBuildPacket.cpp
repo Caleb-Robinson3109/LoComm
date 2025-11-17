@@ -182,8 +182,8 @@ void build_SACK_packet(){
     computer_out_packet[11]  = computer_in_packet[11];
 
     //message - the chuck #
-    computer_out_packet[12] = computer_in_packet[14];
-    computer_out_packet[13] = computer_in_packet[15];
+    computer_out_packet[12] = computer_in_packet[15];
+    computer_out_packet[13] = computer_in_packet[16];
 
     //compute CRC of Message packet size + Type + Tag (10 bytes total)
     //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte

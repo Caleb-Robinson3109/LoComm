@@ -309,7 +309,7 @@ void handle_message_to_device(){
     //lcd.print("handle message to device");
     //delay(1000);
     //while(message_to_device_flag){
-    if (addMessageToTxArray(&(device_out_packet[0]), device_out_size, 1 - deviceID)) {
+    if (addMessageToTxArray(&(device_out_packet[0]), device_out_size, device_out_packet[12])) {
       build_SACK_packet();
       message_to_device_flag = false; // Completed transfer to Ethans code
       device_out_size = 0;
