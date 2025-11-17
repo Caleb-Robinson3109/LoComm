@@ -1,16 +1,20 @@
+Pages & functionality:
+  -add a bunch of settings for the settings page
+  -add back button functionality on the top of all the pages.
+  -remove test mode pages & fucntions
+  -add deviceless mode instead(caleb)
 
-For kush
-stadnardize main frame, pages, boxes, buttons templates, colors themes and stuff with the desing
-make the design consistenet and working
-  for example naming, some are named pages, others are modal and frame.
-    Identify which naming convesion is for each and so on
+Integration:
+  -integrate all the code with Caleb
 
-
-
-
-when enlarging and resizing windows the ui shouldnt look bad
+UI/UX:
+-make the design consistenet
+-when enlarging and resizing windows the ui shouldnt look bad
   set a standarsdixzed configurationpalace where we can edit the minimum and miximum windows size if that is not possible
+-stadnardize main frame, pages, boxes, buttons templates, colors themes and stuff with the design
+  for example naming, some are named pages, others are modal and frame.
+-map the close (x) button appropriately with the warning message
 
-the close (x) button
-back button functionality on the top of all the pages.
-
+Code Cleanup
+  -after integration cleanup all the mock stuff and add comments and
+  -documentation
