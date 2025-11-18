@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from ui.components import DesignUtils
 from ui.theme_tokens import AppConfig, Colors, Spacing, Typography, Space
+from ui.theme_manager import ThemeManager
 from services.auth_service import get_auth_service, generate_chatroom_code
 from utils.chatroom_registry import set_active_chatroom, add_member, get_active_members
 from utils.state.status_manager import get_status_manager
@@ -29,24 +30,35 @@ class ChatroomPage(tk.Frame):
         self.entry_widget: Optional[tk.Entry] = None
         self._create_var = tk.StringVar()
         self._mode = "join"
+        self._surface_widgets: list[tk.Widget] = []
+        self._label_targets: list[tuple[tk.Label, str]] = []
+        self._theme_listener = None
+        self._track_surface(self)
 
         self._create_ui()
+        self._theme_listener = self._apply_theme
+        ThemeManager.register_theme_listener(self._theme_listener)
+        self._apply_theme()
 
     def _create_ui(self):
         layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.SM)
+        self._track_surface(layout)
         layout.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(
+        title_label = tk.Label(
             layout,
             text="Chatroom",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="center", pady=(0, Spacing.LG))
+        )
+        title_label.pack(anchor="center", pady=(0, Spacing.LG))
+        self._track_label(title_label, "TEXT_PRIMARY")
 
 
         self._build_tab_strip(layout)
         self._content_frame = tk.Frame(layout, bg=Colors.SURFACE)
+        self._track_surface(self._content_frame)
         self._content_frame.pack(fill=tk.BOTH, expand=True)
 
         self._build_join_content()
@@ -61,10 +73,12 @@ class ChatroomPage(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
         self._error_label.pack(fill=tk.X, pady=(Spacing.XXS, 0))
+        self._track_label(self._error_label, "STATE_ERROR")
 
 
     def _build_tab_strip(self, parent: tk.Frame):
         strip = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
+        self._track_surface(strip)
         strip.pack(fill=tk.X)
 
         for key, label in (("join", "Join"), ("create", "Create Chatroom")):
@@ -80,6 +94,7 @@ class ChatroomPage(tk.Frame):
 
     def _build_join_content(self):
         frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        self._track_surface(frame)
         frame.pack(fill=tk.BOTH, expand=True)
         self._join_frame = frame
 
@@ -103,8 +118,10 @@ class ChatroomPage(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
         helper.pack(anchor="w", pady=(0, Spacing.XXS))
+        self._track_label(helper, "TEXT_MUTED")
 
         actions = tk.Frame(frame, bg=Colors.SURFACE)
+        self._track_surface(actions)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
         self.clear_btn = DesignUtils.button(
@@ -127,6 +144,7 @@ class ChatroomPage(tk.Frame):
         self.enter_btn.configure(state="disabled")
         
         disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        self._track_surface(disconnect_actions)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
         
         self.disconnect_btn = DesignUtils.button(
@@ -140,6 +158,7 @@ class ChatroomPage(tk.Frame):
 
     def _build_create_content(self):
         frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        self._track_surface(frame)
         frame.pack(fill=tk.BOTH, expand=True)
         self._create_frame = frame
 
@@ -160,7 +179,9 @@ class ChatroomPage(tk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
         helper2.pack(anchor="w", pady=(0, Spacing.XXS))
+        self._track_label(helper2, "TEXT_MUTED")
         actions = tk.Frame(frame, bg=Colors.SURFACE)
+        self._track_surface(actions)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
         self.create_btn = DesignUtils.button(
@@ -183,6 +204,7 @@ class ChatroomPage(tk.Frame):
         self.enter_btn_create.configure(state="disabled")
         
         disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        self._track_surface(disconnect_actions)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
         
         self.disconnect_btn_create = DesignUtils.button(
@@ -193,6 +215,26 @@ class ChatroomPage(tk.Frame):
             command=self._disconnect_from_chatroom,
         )
         self.disconnect_btn_create.pack(side=tk.RIGHT)
+
+    def _track_surface(self, widget: tk.Misc | None):
+        if widget and widget not in self._surface_widgets:
+            self._surface_widgets.append(widget)
+
+    def _track_label(self, widget: tk.Label | None, fg_attr: str):
+        if widget:
+            self._label_targets.append((widget, fg_attr))
+
+    def _apply_theme(self):
+        surface = Colors.SURFACE
+        for widget in list(self._surface_widgets):
+            if widget and widget.winfo_exists():
+                widget.configure(bg=surface)
+        for label, attr in list(self._label_targets):
+            if label and label.winfo_exists():
+                kwargs = {"bg": surface}
+                if attr and hasattr(Colors, attr):
+                    kwargs["fg"] = getattr(Colors, attr)
+                label.configure(**kwargs)
 
     def _switch_mode(self, mode: str):
         self._mode = mode
@@ -305,3 +347,9 @@ class ChatroomPage(tk.Frame):
         state = "disabled" if waiting else "normal"
         if self.enter_btn:
             self.enter_btn.configure(state=state, text="Entering…" if waiting else "Enter Chatroom")
+
+    def destroy(self):
+        if self._theme_listener:
+            ThemeManager.unregister_theme_listener(self._theme_listener)
+            self._theme_listener = None
+        return super().destroy()

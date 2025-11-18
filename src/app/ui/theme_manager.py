@@ -1,7 +1,7 @@
 """Theme registration and helper utilities for Locomm UI."""
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Callable
 
 import tkinter as tk
 from tkinter import ttk
@@ -18,6 +18,7 @@ class ThemeManager:
     _current_accent_color = "blue"
     _available_accent_colors = ['blue', 'purple', 'green', 'orange', 'pink', 'red']
     _available_modes = ["dark", "light", "high_contrast_dark", "colorblind_friendly"]
+    _theme_listeners: list[Callable[[], None]] = []
     BUTTON_STYLES = {
         "primary": "Locomm.Primary.TButton",
         "secondary": "Locomm.Secondary.TButton",
@@ -302,10 +303,31 @@ class ThemeManager:
             raise ValueError(f"Unknown accent color: {accent_name}")
 
     @classmethod
+    def register_theme_listener(cls, callback: Callable[[], None]):
+        """Register a callable that will be invoked when the theme changes."""
+        if not callable(callback):
+            return
+        if callback not in cls._theme_listeners:
+            cls._theme_listeners.append(callback)
+
+    @classmethod
+    def unregister_theme_listener(cls, callback: Callable[[], None]):
+        """Remove a previously registered theme change listener."""
+        try:
+            cls._theme_listeners.remove(callback)
+        except ValueError:
+            pass
+
+    @classmethod
     def _notify_theme_change(cls):
         """Notify components of theme change for smooth updates."""
-        # This would be used to trigger theme change events in a more sophisticated system
-        pass
+        listeners = list(cls._theme_listeners)
+        for callback in listeners:
+            try:
+                callback()
+            except Exception:
+                # Drop callbacks that raise to keep notification robust
+                cls.unregister_theme_listener(callback)
 
     @classmethod
     def get_available_modes(cls):
@@ -535,12 +557,6 @@ def _update_status_colors():
     Colors.STATUS_PAIRING = Colors.STATE_INFO
     Colors.STATUS_READY = Colors.STATE_READY
     Colors.STATUS_TRANSPORT_ERROR = Colors.STATE_TRANSPORT_ERROR
-
-
-def _notify_theme_change():
-    """Notify components of theme change for smooth updates."""
-    # This would be used to trigger theme change events in a more sophisticated system
-    pass
 
 
 def _is_dark_color(hex_color: str) -> bool:

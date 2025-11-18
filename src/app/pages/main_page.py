@@ -218,8 +218,7 @@ class MainPage(ttk.Frame):
         # Show/Hide back button in sidebar based on view
         # The back button is only visible on non-home pages to provide
         # a consistent way to return to the main dashboard.
-        show_back = (view_name != "home")
-        self.sidebar.toggle_back_button(show_back, self._go_back)
+        self.sidebar.toggle_back_button(True, self._go_back)
         
         # Ensure device name is always visible for consistent layout
         if not self.local_device_label.winfo_ismapped():
