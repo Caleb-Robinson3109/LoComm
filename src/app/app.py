@@ -32,10 +32,11 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         try:
-            preferred_theme = get_user_settings().theme_mode or "light"
-            ThemeManager.set_mode(preferred_theme)
+            settings = get_user_settings()
+            settings.theme_mode = "light"
         except Exception:
-            ThemeManager.set_mode("light")
+            settings = None
+        ThemeManager.set_mode("light")
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)
@@ -167,7 +168,7 @@ class App(tk.Tk):
         default_height = max(int(base_height * 1.06), 420)
         width = max(int(default_width * 1.1 * 0.93), 360)  # 7% smaller than original
         height = max(int(default_height * 1.2 * 0.93), 380)  # 7% smaller than original
-        width = int(width * 1.05)
+        width = int(width * 1.07)
         height = int(height * 1.05)
         modal.minsize(width, height)
         modal.resizable(True, True)

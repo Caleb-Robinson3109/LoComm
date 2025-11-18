@@ -62,7 +62,7 @@ def create_scroll_container(parent: tk.Misc, *, bg: str | None = None, padding: 
     canvas.pack(side="left", fill="both", expand=True)
 
     def _resize_inner(event):
-        canvas.itemconfig(window_id, width=event.width, height=event.height)
+        canvas.itemconfig(window_id, width=event.width)
 
     canvas.bind("<Configure>", _resize_inner)
     scrollbar.pack(side="right", fill="y")

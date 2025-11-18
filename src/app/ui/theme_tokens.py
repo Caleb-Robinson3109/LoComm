@@ -160,21 +160,28 @@ class Colors:
     STATUS_TRANSPORT_ERROR = ""
 
 
+_FONT_SCALE = 0.85
+
+
+def _scaled_font(size: int) -> int:
+    return max(8, int(round(size * _FONT_SCALE)))
+
+
 class Typography:
     """Typography scale (8pt grid)."""
 
     FONT_UI = ".AppleSystemUIFont"  # macOS system font
     FONT_MONO = "Menlo"             # macOS mono font
 
-    SIZE_10 = 10
-    SIZE_12 = 12
-    SIZE_13 = 13
-    SIZE_14 = 14
-    SIZE_16 = 16
-    SIZE_18 = 18
-    SIZE_20 = 20
-    SIZE_24 = 24
-    SIZE_32 = 32
+    SIZE_10 = _scaled_font(10)
+    SIZE_12 = _scaled_font(12)
+    SIZE_13 = _scaled_font(13)
+    SIZE_14 = _scaled_font(14)
+    SIZE_16 = _scaled_font(16)
+    SIZE_18 = _scaled_font(18)
+    SIZE_20 = _scaled_font(20)
+    SIZE_24 = _scaled_font(24)
+    SIZE_32 = _scaled_font(32)
 
     WEIGHT_REGULAR = "normal"
     WEIGHT_MEDIUM = "normal"

@@ -5,7 +5,7 @@ import tkinter as tk
 from typing import Optional, Callable
 
 from ui.components import DesignUtils
-from ui.theme_tokens import Colors, Spacing, Typography, Space
+from ui.theme_tokens import Colors, Spacing, Typography, Space, AppConfig
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
 from .base_page import BasePage, PageContext
