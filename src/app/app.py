@@ -14,7 +14,8 @@ from pages.login_modal import LoginModal
 from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
-from utils.window_sizing import calculate_initial_window_size, scale_dimensions
+from utils.window_sizing import calculate_initial_window_size
+from ui.helpers import create_centered_modal, ModalScaffold
 
 MAX_UI_PENDING_MESSAGES = 500
 
@@ -46,7 +47,7 @@ class App(tk.Tk):
         self._ui_connected = False
         self._ui_pending_messages = deque(maxlen=MAX_UI_PENDING_MESSAGES)
         self.login_modal = None
-        self.chatroom_modal: Optional[tk.Toplevel] = None
+        self.chatroom_modal: Optional[ModalScaffold] = None
         self.chatroom_modal_frame: Optional[ChatroomWindow] = None
 
         # Wire up business logic callbacks to UI handlers
@@ -165,34 +166,23 @@ class App(tk.Tk):
         """Open the chatroom modal."""
         self.app_controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
         self._close_chatroom_modal()
-        modal = tk.Toplevel(self)
-        modal.title("Chatroom")
-        modal.configure(bg=Colors.SURFACE)
 
-        # Calculate proper modal size
-        base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
-        default_width = max(int(base_width * 1.08), 420)
-        default_height = max(int(base_height * 1.06), 420)
-        width = max(int(default_width * 1.1 * 0.93), 360)
-        height = max(int(default_height * 1.2 * 0.93), 380)
-        modal.minsize(width, height)
-        modal.resizable(True, True)
-        modal.transient(self.winfo_toplevel())
-        modal.protocol("WM_DELETE_WINDOW", self._close_chatroom_modal)
+        scaffold = create_centered_modal(
+            self,
+            title="Chatroom",
+            width_ratio=0.0,
+            height_ratio=0.0,
+            min_width=560,
+            min_height=500,
+            bg=Colors.SURFACE,
+            use_scroll=False,
+        )
 
-        # Center the modal window on screen
-        modal.update_idletasks()
-        screen_w = self.winfo_screenwidth()
-        screen_h = self.winfo_screenheight()
-        pos_x = (screen_w - width) // 2
-        pos_y = (screen_h - height) // 2
-        modal.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
+        self.chatroom_modal = scaffold
 
-        self.chatroom_modal = modal
-
-        # Create chatroom frame inside the modal
+        # Create chatroom frame inside the modal body
         chatroom_frame = ChatroomWindow(
-            modal,
+            scaffold.body,
             lambda chatroom_code: self._handle_chatroom_success(chatroom_code),
         )
         chatroom_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
@@ -200,12 +190,14 @@ class App(tk.Tk):
             chatroom_frame.focus_input()
         self.chatroom_modal_frame = chatroom_frame
 
+        scaffold.toplevel.protocol("WM_DELETE_WINDOW", self._close_chatroom_modal)
+
     def _close_chatroom_modal(self):
         """Close the chatroom modal."""
         self.chatroom_modal_frame = None
-        if self.chatroom_modal and self.chatroom_modal.winfo_exists():
+        if self.chatroom_modal and self.chatroom_modal.toplevel.winfo_exists():
             try:
-                self.chatroom_modal.destroy()
+                self.chatroom_modal.toplevel.destroy()
             except Exception:
                 pass
         self.chatroom_modal = None
