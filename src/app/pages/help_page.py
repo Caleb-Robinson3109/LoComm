@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import Colors, Typography, Spacing, Space
+from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography, Space
 from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 

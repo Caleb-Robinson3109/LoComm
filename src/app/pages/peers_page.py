@@ -4,10 +4,10 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Optional, Callable
 
-from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
+from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography, Space
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
-from mock.device_service import get_mock_device_service, MockDevice
 from .base_page import BasePage, PageContext
 
 
@@ -23,7 +23,7 @@ class PeersPage(BasePage):
         self.on_device_paired = on_device_paired
 
         self.ui_store = get_ui_store()
-        self.device_service = get_mock_device_service()
+        # Mock service removed
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self._active_device_name: Optional[str] = None
@@ -125,14 +125,16 @@ class PeersPage(BasePage):
 
     def _handle_chat_action(self, device_id: str):
         """Treat the inline action column as a shortcut to the chat flow."""
-        device = self.device_service.get_device(device_id)
-        if not device:
-            return
-        self._active_device_id = device.device_id
-        self._active_device_name = device.name
-        self._select_device_row(device.device_id)
-        self._set_stage(DeviceStage.CONNECTED, device.name)
-        self._go_to_chat()
+        # Mock device lookup removed
+        # device = self.device_service.get_device(device_id)
+        # if not device:
+        #     return
+        # self._active_device_id = device.device_id
+        # self._active_device_name = device.name
+        # self._select_device_row(device.device_id)
+        # self._set_stage(DeviceStage.CONNECTED, device.name)
+        # self._go_to_chat()
+        pass
 
     def _build_device_list(self, parent):
         """Build simple device list with an action column button."""
@@ -199,7 +201,8 @@ class PeersPage(BasePage):
             child.destroy()
         self._device_row_frames.clear()
 
-        devices = self.device_service.list_devices()
+        # Mock devices removed
+        devices = []
         prev_selected = self._selected_device_id
         device_ids = []
         for idx, device in enumerate(devices):
@@ -214,7 +217,7 @@ class PeersPage(BasePage):
         else:
             self._clear_device_selection()
 
-    def _create_device_row(self, device: MockDevice, index: int):
+    def _create_device_row(self, device, index: int):
         """Render a single row with a chat action button."""
         row = tk.Frame(self.device_rows_container, bg=Colors.SURFACE_ALT, pady=Spacing.XS)
         row.pack(fill=tk.X, pady=(0, Spacing.XXS), padx=(Spacing.SM, Spacing.SM))
@@ -272,10 +275,11 @@ class PeersPage(BasePage):
         if row:
             row.configure(bg=Colors.SURFACE_SELECTED)
         self._selected_device_id = device_id
-        device = self.device_service.get_device(device_id)
-        if device:
-            self._active_device_id = device.device_id
-            self._active_device_name = device.name
+        # Mock device lookup removed
+        # device = self.device_service.get_device(device_id)
+        # if device:
+        #     self._active_device_id = device.device_id
+        #     self._active_device_name = device.name
 
     def _clear_device_selection(self):
         """Clear the visual selection state from the list."""
@@ -299,9 +303,10 @@ class PeersPage(BasePage):
         self._scan_timer_id = self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
 
     def _finish_scan(self):
-        newly_found = self.device_service.simulate_scan()
-        if not newly_found:
-            self.device_service.refresh()
+        # Mock scan removed
+        # newly_found = self.device_service.simulate_scan()
+        # if not newly_found:
+        #     self.device_service.refresh()
         self._refresh_device_table()
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
@@ -324,9 +329,11 @@ class PeersPage(BasePage):
             self._active_device_id = None
             self._clear_device_selection()
         if self._active_device_id:
-            device = self.device_service.get_device(self._active_device_id)
-            if device:
-                self._select_device_row(device.device_id)
+            # Mock device lookup removed
+            # device = self.device_service.get_device(self._active_device_id)
+            # if device:
+            #     self._select_device_row(device.device_id)
+            pass
 
     # ------------------------------------------------------------------ #
     def on_show(self):

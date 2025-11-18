@@ -18,6 +18,7 @@ class DesignUtils:
 
     @staticmethod
     def button(parent, text: str, command=None, variant: str = "primary", width: int | None = None):
+        """Create a styled button."""
         ThemeManager.ensure()
         style_name = ThemeManager.BUTTON_STYLES.get(variant, "Locomm.Primary.TButton")
         kwargs = {"text": text, "style": style_name}
@@ -29,6 +30,7 @@ class DesignUtils:
 
     @staticmethod
     def pill(parent, text: str, variant: str = "info"):
+        """Create a styled pill/badge label."""
         ThemeManager.ensure()
         variant_map = {
             "info": (Colors.BUTTON_SECONDARY_BG, Colors.TEXT_PRIMARY),
@@ -51,6 +53,7 @@ class DesignUtils:
 
     @staticmethod
     def hero_header(parent, title: str, subtitle: str, actions: List[dict[str, Any]] | None = None):
+        """Create a hero header with title, subtitle, and optional actions."""
         ThemeManager.ensure()
         container = tk.Frame(parent, bg=Colors.HERO_PANEL_BG, padx=Spacing.SM, pady=Spacing.XXS)
         container.pack(fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS))
@@ -80,6 +83,7 @@ class DesignUtils:
 
     @staticmethod
     def create_nav_button(parent, text: str, command: Callable | None = None):
+        """Create a navigation button."""
         ThemeManager.ensure()
         kwargs = {"text": text, "style": "Locomm.Nav.TButton"}
         if command is not None:
@@ -88,6 +92,7 @@ class DesignUtils:
 
     @staticmethod
     def create_chat_entry(parent, **kwargs):
+        """Create a styled entry for chat input."""
         ThemeManager.ensure()
         style = ttk.Style()
         entry_style = "Locomm.Input.TEntry"
@@ -116,6 +121,7 @@ class DesignUtils:
 
     @staticmethod
     def create_pin_entry(parent, **kwargs):
+        """Create a styled entry for PIN input."""
         ThemeManager.ensure()
         style = ttk.Style()
         entry_style = "Locomm.PinEntry.TEntry"
@@ -123,6 +129,7 @@ class DesignUtils:
 
     @staticmethod
     def create_message_row(parent, title: str, value: str):
+        """Create a read-only row displaying a label and value."""
         row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         row.pack(fill=tk.X, pady=(0, Spacing.SM))
         tk.Label(
@@ -143,6 +150,7 @@ class DesignUtils:
 
     @staticmethod
     def create_message_bubble(parent: tk.Frame, *, sender: str, message: str, timestamp: float, is_self: bool, wraplength: int):
+        """Create a chat message bubble."""
         container = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         container.pack(fill=tk.X, expand=True, pady=0, padx=(Spacing.MD, Spacing.MD))
 
@@ -191,15 +199,8 @@ class DesignUtils:
         timestamp_label.pack(anchor=anchor, padx=bubble_padx, pady=(2, 0))
 
     @staticmethod
-    def create_nav_button(parent, text: str, command: Callable | None = None):
-        ThemeManager.ensure()
-        kwargs = {"text": text, "style": "Locomm.Nav.TButton"}
-        if command is not None:
-            kwargs["command"] = command
-        return ttk.Button(parent, **kwargs)
-
-    @staticmethod
     def card(parent, title: str, subtitle: str = "", actions: List[dict[str, Any]] | None = None):
+        """Create a card container with header and body."""
         ThemeManager.ensure()
         frame = tk.Frame(parent, bg=Colors.CARD_PANEL_BG, highlightbackground=Colors.CARD_PANEL_BORDER, highlightthickness=1, bd=0)
         frame.pack_propagate(False)
@@ -232,6 +233,7 @@ class DesignUtils:
 
     @staticmethod
     def section(parent, title: str, description: str = "", icon: str | None = None):
+        """Create a section with title and optional description."""
         ThemeManager.ensure()
         container = tk.Frame(parent, bg=Colors.SURFACE_ALT, highlightbackground=Colors.DIVIDER, highlightthickness=1, bd=0)
         container.pack(fill=tk.X, pady=(0, Spacing.MD))

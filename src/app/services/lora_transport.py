@@ -1,16 +1,16 @@
 """
 LoRa transport adapter for GUI communication.
-Provides unified interface for real and mock implementations.
+Provides unified interface for real implementations.
 """
 from __future__ import annotations
 
 import threading
 import time
 import tkinter as tk
-from typing import Callable, Optional
+from typing import Callable
 
 from services.transport_contract import PairingContext, TransportMessage
-from services.transport_registry import BackendBundle, resolve_backend
+from services.transport_registry import BackendBundle, get_backend
 from utils.app_logger import get_logger
 
 logger = get_logger("lora_transport")
@@ -20,21 +20,23 @@ DEBUG = False
 
 
 class LoCommTransport:
-    """Transport adapter for LoRa communication with unified interface."""
+    """
+    High-level transport service that wraps a specific backend implementation.
+    """
 
-    def __init__(self, ui_root: tk.Misc, profile: str | None = None):
+    def __init__(self, ui_root: tk.Misc, profile: str = "auto"):
         self.root = ui_root
-        self.on_receive: Optional[Callable[[str, str, float], None]] = None
-        self.on_status: Optional[Callable[[str], None]] = None
+        self.on_receive: Callable[[str, str, float], None] | None = None
+        self.on_status: Callable[[str], None] | None = None
         self.running = False
-        self._rx_thread: Optional[threading.Thread] = None
+        self._rx_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
-        backend_bundle = resolve_backend(profile)
+        # Initialize backend
+        backend_bundle = get_backend()
         self._backend = backend_bundle.backend
         self._backend_label = backend_bundle.label
         self._profile_key = backend_bundle.profile
-        self._is_mock = backend_bundle.is_mock
         self._backend_error = backend_bundle.error
 
     @property
@@ -45,15 +47,13 @@ class LoCommTransport:
     def profile_label(self) -> str:
         return self._backend_label
 
-    @property
-    def is_mock(self) -> bool:
-        return self._is_mock
+
 
     @property
-    def backend_error(self) -> Optional[str]:
+    def backend_error(self) -> str | None:
         return self._backend_error
 
-    def start(self, pairing_context: Optional[PairingContext | dict] = None) -> bool:
+    def start(self, pairing_context: PairingContext | dict | None = None) -> bool:
         """Connect to a device using the supplied pairing context."""
         current_thread_id = threading.get_ident()
         main_thread_id = threading.main_thread().ident
@@ -75,7 +75,7 @@ class LoCommTransport:
             success = self._backend.connect(normalized_context)
             if not success:
                 if self.on_status:
-                    # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                    # Queue status callbacks on main thread to prevent Tk violations
                     status_msg = "Connection failed"
                     self.root.after(0, lambda: self._safe_status_callback(status_msg))
                 return False
@@ -88,14 +88,14 @@ class LoCommTransport:
                 status_text = "Connected (demo mode)"
 
             if self.on_status:
-                # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                # Queue status callbacks on main thread to prevent Tk violations
                 self.root.after(0, lambda: self._safe_status_callback(status_text))
             return True
 
         except Exception as exc:  # noqa: BLE001
             logger.exception("[LoRaTransport] Connection error during start", exc_info=exc)
             if self.on_status:
-                # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+                # Queue status callbacks on main thread to prevent Tk violations
                 message = f"Connection error: {exc}"
                 self.root.after(0, lambda text=message: self._safe_status_callback(text))
             return False
@@ -129,10 +129,10 @@ class LoCommTransport:
             logger.exception("[LoRaTransport] Disconnect error", exc_info=exc)
 
         if self.on_status:
-            # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
+            # Queue status callbacks on main thread to prevent Tk violations
             self.root.after(0, lambda: self._safe_status_callback("Disconnected"))
 
-    def send(self, name: str, text: str, metadata: Optional[dict] = None) -> None:
+    def send(self, name: str, text: str, metadata: dict | None = None) -> None:
         """Send message to connected device."""
         if not self.running:
             if self.on_status:
@@ -198,7 +198,7 @@ class LoCommTransport:
         if DEBUG:
             logger.debug("[LoRaTransport] _rx_loop ending on thread %s", rx_thread_id)
 
-    def _normalize_pairing_context(self, context: Optional[PairingContext | dict]) -> Optional[PairingContext]:
+    def _normalize_pairing_context(self, context: PairingContext | dict | None) -> PairingContext | None:
         if context is None:
             return None
         if isinstance(context, PairingContext):

@@ -2,11 +2,11 @@
 Centralized connection management system for the LoRa Chat application.
 Provides consistent connection state management across all UI components.
 """
-from typing import Optional, Callable, Dict, Any
+from typing import Callable, Any
 import threading
 from utils.state.status_manager import get_status_manager
 from utils.app_logger import get_logger
-from utils.design_system import AppConfig
+from ui.theme_tokens import AppConfig
 
 
 class ConnectionManager:
@@ -19,8 +19,8 @@ class ConnectionManager:
     def __init__(self):
         # Delegate to StatusManager for unified device state
         self._status_manager = get_status_manager()
-        self._connection_callbacks: list[Callable[[bool, Optional[str], Optional[str]], None]] = []
-        self._device_info_callbacks: list[Callable[[Optional[Dict[str, Any]]], None]] = []
+        self._connection_callbacks: list[Callable[[bool, str | None, str | None], None]] = []
+        self._device_info_callbacks: list[Callable[[dict[str, Any] | None], None]] = []
         self._lock = threading.Lock()  # Thread safety
         self._logger = get_logger("connection_manager")
 
@@ -29,7 +29,7 @@ class ConnectionManager:
     def connect_device(self, device_id: str, device_name: str) -> bool:
         """
         Connect to a device and update all registered components.
-        CRITICAL FIX: Now properly calls StatusManager to populate DeviceInfo.
+        Calls StatusManager to populate DeviceInfo.
 
         Args:
             device_id: Device identifier
@@ -39,7 +39,7 @@ class ConnectionManager:
             True if connection was successful
         """
         with self._lock:
-            # CRITICAL FIX: Use unified status manager to populate DeviceInfo
+            # Use unified status manager to populate DeviceInfo
             success = self._status_manager.connect_device(device_id, device_name)
 
             if success:
@@ -52,13 +52,13 @@ class ConnectionManager:
     def disconnect_device(self) -> bool:
         """
         Disconnect from current device and update all registered components.
-        CRITICAL FIX: Now properly calls StatusManager to clear DeviceInfo.
+        Calls StatusManager to clear DeviceInfo.
 
         Returns:
             True if disconnection was successful
         """
         with self._lock:
-            # CRITICAL FIX: Use unified status manager to clear DeviceInfo
+            # Use unified status manager to clear DeviceInfo
             success = self._status_manager.disconnect_device()
 
             if success:
@@ -73,11 +73,11 @@ class ConnectionManager:
         with self._lock:
             return self._status_manager.is_connected()
 
-    def get_connected_device(self) -> Optional[Dict[str, Any]]:
+    def get_connected_device(self) -> dict[str, Any] | None:
         """Get information about currently connected device (alias for get_connected_device_info)."""
         return self.get_connected_device_info()
 
-    def get_connected_device_info(self) -> Optional[Dict[str, Any]]:
+    def get_connected_device_info(self) -> dict[str, Any] | None:
         """Get information about currently connected device."""
         with self._lock:
             device_info = self._status_manager.get_current_device()
@@ -96,7 +96,7 @@ class ConnectionManager:
 
     # ========== CALLBACK REGISTRATION ==========
 
-    def register_connection_callback(self, callback: Callable[[bool, Optional[str], Optional[str]], None]):
+    def register_connection_callback(self, callback: Callable[[bool, str | None, str | None], None]):
         """
         Register callback for connection state changes.
 
@@ -107,13 +107,13 @@ class ConnectionManager:
             if callback not in self._connection_callbacks:
                 self._connection_callbacks.append(callback)
 
-    def unregister_connection_callback(self, callback: Callable[[bool, Optional[str], Optional[str]], None]):
+    def unregister_connection_callback(self, callback: Callable[[bool, str | None, str | None], None]):
         """Remove a previously registered connection callback."""
         with self._lock:
             if callback in self._connection_callbacks:
                 self._connection_callbacks.remove(callback)
 
-    def register_device_info_callback(self, callback: Callable[[Optional[Dict[str, Any]]], None]):
+    def register_device_info_callback(self, callback: Callable[[dict[str, Any] | None], None]):
         """
         Register callback for device info changes.
 
@@ -124,7 +124,7 @@ class ConnectionManager:
             if callback not in self._device_info_callbacks:
                 self._device_info_callbacks.append(callback)
 
-    def unregister_device_info_callback(self, callback: Callable[[Optional[Dict[str, Any]]], None]):
+    def unregister_device_info_callback(self, callback: Callable[[dict[str, Any] | None], None]):
         """Remove a previously registered device info callback."""
         with self._lock:
             if callback in self._device_info_callbacks:
@@ -175,7 +175,7 @@ class ConnectionManager:
             connect_btn.configure(state="normal", text="Connect to Device")
             disconnect_btn.configure(state="disabled", text="Disconnect Device")
 
-    def should_disable_connect_button(self, selected_device_id: Optional[str] = None) -> bool:
+    def should_disable_connect_button(self, selected_device_id: str | None = None) -> bool:
         """
         Determine if connect button should be disabled.
 
@@ -207,7 +207,7 @@ class ConnectionManager:
             True if disconnection was successful
         """
         with self._lock:
-            # CRITICAL FIX: Use unified status manager for proper cleanup
+            # Use unified status manager for proper cleanup
             success = self._status_manager.disconnect_device()
 
             if success:
@@ -219,13 +219,13 @@ class ConnectionManager:
 
 
 # Global connection manager instance
-_connection_manager: Optional[ConnectionManager] = None
+_connection_manager: ConnectionManager | None = None
 
 
 class ConnectionManagerFactory:
     """Factory class for creating and managing ConnectionManager instances."""
 
-    _instance: Optional[ConnectionManager] = None
+    _instance: ConnectionManager | None = None
 
     @classmethod
     def create(cls) -> ConnectionManager:
@@ -266,6 +266,6 @@ def is_connected() -> bool:
     return get_connection_manager().is_connected()
 
 
-def get_connected_device_info() -> Optional[Dict[str, Any]]:
+def get_connected_device_info() -> dict[str, Any] | None:
     """Get connected device info using global connection manager."""
     return get_connection_manager().get_connected_device_info()

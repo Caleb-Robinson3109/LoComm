@@ -11,19 +11,15 @@ from .transport_contract import (
     TransportStatusLevel,
 )
 from .transport_registry import (
-    list_profiles as list_transport_profiles,
-    get_default_profile as get_default_transport_profile,
-    resolve_backend as resolve_transport_backend,
+    get_backend,
+    BackendBundle,
 )
 
 __all__ = [
     "AppController",
+    "SessionService",
+    "TransportManager",
     "LoCommTransport",
-    "PairingContext",
-    "TransportMessage",
-    "TransportStatus",
-    "TransportStatusLevel",
-    "list_transport_profiles",
-    "get_default_transport_profile",
-    "resolve_transport_backend",
+    "get_backend",
+    "BackendBundle",
 ]

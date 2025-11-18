@@ -4,13 +4,14 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Callable, Optional
 
-from utils.design_system import AppConfig, Colors, DesignUtils, Spacing, Typography, Space
-from utils.pin_authentication import generate_chatroom_code
+from ui.components import DesignUtils
+from ui.theme_tokens import AppConfig, Colors, Spacing, Typography, Space
+from services.auth_service import get_auth_service, generate_chatroom_code
 from utils.chatroom_registry import set_active_chatroom, add_member, get_active_members
 from utils.state.status_manager import get_status_manager
 
 
-class ChatroomWindow(tk.Frame):
+class ChatroomPage(tk.Frame):
     """Tabbed join/create chatroom view."""
 
     def __init__(self, master, on_chatroom_success: Callable[[str], None]):
@@ -232,6 +233,7 @@ class ChatroomWindow(tk.Frame):
     def _complete_success(self, code: str):
         self._set_waiting(False)
         if self.on_chatroom_success:
+            auth = get_auth_service()
             get_status_manager().update_status(AppConfig.STATUS_READY)
             set_active_chatroom(code, get_active_members())
             self.on_chatroom_success(code)

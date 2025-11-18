@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from ui.theme_manager import _THEME_DEFINITIONS
+from ui.themes.definitions import THEME_DEFINITIONS as _THEME_DEFINITIONS
 # ThemeManager is imported lazily inside functions to avoid circular imports
 from ui.theme_tokens import Colors, Palette
 from utils.app_logger import get_logger

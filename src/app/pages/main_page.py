@@ -3,22 +3,26 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils, Palette
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot
 from utils.chatroom_registry import format_chatroom_code, register_chatroom_listener, unregister_chatroom_listener
 
 
-from .settings_page import SettingsPage
-from .home_page import HomePage
-from .peers_page import PeersPage
-from .about_page import AboutPage
-from .help_page import HelpPage
-from .test_page import TestPage
-from .chatroom_window import ChatroomWindow
-from .sidebar_page import SidebarPage
+from pages.about_page import AboutPage
+from pages.chat_window import ChatWindow
+from pages.chatroom_page import ChatroomPage
+from pages.help_page import HelpPage
+from pages.home_page import HomePage
+from pages.peers_page import PeersPage
+from pages.settings_page import SettingsPage
+from pages.sidebar_page import SidebarPage
+from services.app_controller import AppController
+from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Space, Typography, Palette, AppConfig
+from utils.app_logger import get_logger
+from utils.state.ui_store import get_ui_store
+
 from .view_manager import ViewManager
 from .base_page import PageContext
-from utils.state.ui_store import get_ui_store
 
 
 @dataclass
@@ -29,10 +33,13 @@ class RouteConfig:
     show_in_sidebar: bool = True
 
 
-class MainFrame(ttk.Frame):
+class MainPage(ttk.Frame):
     """
     Main application frame with reduced coupling.
     Uses composition pattern instead of deep inheritance.
+    
+    Manages the top-level navigation, sidebar, and content area.
+    Handles the global "Back" button logic in the top bar.
     """
     def __init__(self, master, app, session, controller, on_logout, on_theme_toggle):
         super().__init__(master)
@@ -74,10 +81,9 @@ class MainFrame(ttk.Frame):
         ctx = self._page_context
         routes = [
             RouteConfig("home", "Home", lambda parent, ctx=ctx: HomePage(parent, ctx)),
-            RouteConfig("chatroom", "Chatroom", lambda parent, ctx=ctx: ChatroomWindow(parent, self._handle_chatroom_success)),
+            RouteConfig("chatroom", "Chatroom", lambda parent, ctx=ctx: ChatroomPage(parent, self._handle_chatroom_success)),
             RouteConfig("pair", "Peers", lambda parent, ctx=ctx: PeersPage(parent, ctx,
                                                                               on_device_paired=self._handle_device_pairing)),
-            RouteConfig("test", "Test", lambda parent, ctx=ctx: TestPage(parent, ctx)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
             RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
             RouteConfig("help", "Help", lambda parent, ctx=ctx: HelpPage(parent, ctx)),
@@ -164,7 +170,9 @@ class MainFrame(ttk.Frame):
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         )
         self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
+        
 
+        
         self._chatroom_listener = None
         self.status_badge = tk.Label(
             info_wrap,
@@ -206,6 +214,21 @@ class MainFrame(ttk.Frame):
             self.sidebar.set_active_view(view_name)
         else:
             self.sidebar.current_view = view_name
+            
+        # Show/Hide back button in sidebar based on view
+        # The back button is only visible on non-home pages to provide
+        # a consistent way to return to the main dashboard.
+        show_back = (view_name != "home")
+        self.sidebar.toggle_back_button(show_back, self._go_back)
+        
+        if view_name == "home":
+            self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
+        else:
+            self.local_device_label.pack_forget()
+
+    def _go_back(self):
+        """Navigate back to home."""
+        self.navigate_to("home")
 
     def navigate_to(self, route_id: str):
         if route_id == "chatroom":

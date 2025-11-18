@@ -5,8 +5,10 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
 
-from utils.design_system import Colors, ThemeManager, Typography, Spacing
 from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography, Spacing
+from ui.components import DesignUtils
+from ui.theme_manager import ThemeManager
 from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 
 
@@ -26,11 +28,27 @@ class SidebarPage(tk.Frame):
         self._buttons: dict[str, ttk.Button] = {}
 
         self.container = sidebar_container(self)
+        # Status/Header spacer
         tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
+
+        # Back Button (Hidden by default, controlled by MainPage)
+        self.back_btn = DesignUtils.create_nav_button(self.container, "← Back", command=None)
+        # Pack it but hide it initially
+        self.back_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
+        self.back_btn.pack_forget()
 
         self._build_nav_sections()
         self._build_footer()
         self._update_active_button(self.current_view)
+
+    def toggle_back_button(self, show: bool, command: Callable[[], None] | None = None):
+        """Show or hide the back button."""
+        if show:
+            self.back_btn.pack(fill=tk.X, pady=(0, Spacing.SM), before=self.nav_frame)
+            if command:
+                self.back_btn.configure(command=command)
+        else:
+            self.back_btn.pack_forget()
 
     def _build_nav_sections(self):
         top_items = []

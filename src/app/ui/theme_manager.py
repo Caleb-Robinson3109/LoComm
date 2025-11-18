@@ -7,171 +7,11 @@ import tkinter as tk
 from tkinter import ttk
 
 from ui.theme_tokens import Colors, Palette, Spacing, Typography
+from ui.themes.definitions import THEME_DEFINITIONS
+from ui.accessibility import AccessibilityUtils
 # Custom themes imported lazily inside functions to avoid circular imports
 
 
-_THEME_DEFINITIONS = {
-    "dark": {
-        "BG_MAIN": "#1E1E1E",
-        "BG_ELEVATED": "#252526",
-        "BG_ELEVATED_2": "#2D2D2D",
-        "BG_STRIP": "#323233",
-        "BG_SOFT": "#2D2D2D",
-        "SURFACE": "#1E1E1E",
-        "SURFACE_ALT": "#252526",
-        "SURFACE_RAISED": "#252526",
-        "SURFACE_HEADER": "#252526",
-        "SURFACE_SIDEBAR": "#252526",
-        "SURFACE_SELECTED": "#2D2D2D",
-        "BORDER": "#3C3C3C",
-        "DIVIDER": "#2D2D2D",
-        "HERO_PANEL_BG": "#252526",
-        "HERO_PANEL_TEXT": "#F3F4F6",
-        "CARD_PANEL_BG": "#252526",
-        "CARD_PANEL_BORDER": "#3C3C3C",
-        "PANEL_BG": "#252526",
-        "PANEL_BORDER": "#3C3C3C",
-        "MAIN_FRAME_BG": "#1E1E1E",
-        "BACKDROP_BG": "#252526",
-        "TEXT_PRIMARY": "#F3F4F6",
-        "TEXT_SECONDARY": "#F3F4F6",
-        "TEXT_MUTED": "#9CA3AF",
-        "TEXT_ACCENT": Palette.PRIMARY,
-        "STATE_SUCCESS": Palette.SIGNAL_TEAL,
-        "STATE_WARNING": "#F2A93B",
-        "STATE_ERROR": "#C63C3C",
-        "STATE_INFO": "#2389FF",
-        "STATE_READY": "#2389FF",
-        "STATE_TRANSPORT_ERROR": "#6E3FEF",
-        "BUTTON_PRIMARY_BG": Palette.PRIMARY,
-        "BUTTON_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "BUTTON_SECONDARY_BG": "#2D2D2D",
-        "BUTTON_GHOST_BG": "#1E1E1E",
-        "BUTTON_DANGER_HOVER": "#B23535",
-        "BUTTON_DANGER_ACTIVE": "#B23535",
-        "BUTTON_SUCCESS_HOVER": "#3FD6C0",
-        "BUTTON_SUCCESS_ACTIVE": "#2EC2AD",
-        "BUTTON_WARNING_HOVER": "#FFA724",
-        "BUTTON_WARNING_ACTIVE": "#F28D1A",
-        "ACCENT_PRIMARY": Palette.PRIMARY,
-        "ACCENT_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "ACCENT_SECONDARY": "#B19CD9",
-        "BG_CHAT_AREA": "#1E1E1E",
-        "BG_MESSAGE_OWN": Palette.PRIMARY,
-        "BG_MESSAGE_OTHER": "#252526",
-        "BG_MESSAGE_SYSTEM": "#252526",
-        "BG_INPUT_AREA": "#252526",
-        "TEXT_PLACEHOLDER": "#9CA3AF",
-        "TEXT_TIMESTAMP": "#9CA3AF",
-        "MESSAGE_SYSTEM_TEXT": "#9CA3AF",
-        "MESSAGE_BUBBLE_OWN_BG": Palette.PRIMARY,
-        "MESSAGE_BUBBLE_OTHER_BG": "#252526",
-        "MESSAGE_BUBBLE_SYSTEM_BG": "#252526",
-        "CHAT_SHELL_BG": "#1E1E1E",
-        "CHAT_HISTORY_BG": "#1E1E1E",
-        "CHAT_COMPOSER_BG": "#252526",
-        "CHAT_HEADER_BG": "#252526",
-        "CHAT_HEADER_TEXT": "#F3F4F6",
-        "CHAT_BADGE_BG": "#3C3C3C",
-        "CHAT_TEXTURE": "#252526",
-        "CHAT_BUBBLE_SELF_BG": Palette.PRIMARY,
-        "CHAT_BUBBLE_OTHER_BG": "#252526",
-        "CHAT_BUBBLE_SYSTEM_BG": "#252526",
-        "CHAT_BUBBLE_SELF_TEXT": "#FFFFFF",
-        "CHAT_BUBBLE_OTHER_TEXT": "#F3F4F6",
-        "CHAT_BUBBLE_SYSTEM_TEXT": "#9CA3AF",
-        "NAV_BUTTON_BG": "#252526",
-        "NAV_BUTTON_HOVER": "#2D2D2D",
-        "NAV_BUTTON_ACTIVE_BG": "#0B7CFF",
-        "NAV_BUTTON_ACTIVE_FG": "#FFFFFF",
-        "NAV_BUTTON_BORDER": "#2F2F2F",
-        "SCROLLBAR_TRACK": "#1E1E1E",
-        "SCROLLBAR_THUMB": "#3C3C3C",
-        "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
-        "LINK_PRIMARY": Palette.PRIMARY,
-        "LINK_HOVER": Palette.PRIMARY_HOVER,
-    },
-    "light": {
-        "BG_MAIN": Palette.WHITE,
-        "BG_ELEVATED": Palette.CLOUD_050,
-        "BG_ELEVATED_2": Palette.CLOUD_100,
-        "BG_STRIP": Palette.CLOUD_200,
-        "BG_SOFT": Palette.CLOUD_100,
-        "SURFACE": Palette.WHITE,
-        "SURFACE_ALT": Palette.CLOUD_050,
-        "SURFACE_RAISED": Palette.CLOUD_100,
-        "SURFACE_HEADER": Palette.CLOUD_050,
-        "SURFACE_SIDEBAR": Palette.CLOUD_050,
-        "SURFACE_SELECTED": Palette.CLOUD_100,
-        "BORDER": Palette.CLOUD_200,
-        "DIVIDER": Palette.CLOUD_200,
-        "HERO_PANEL_BG": Palette.CLOUD_050,
-        "HERO_PANEL_TEXT": Palette.SLATE_900,
-        "CARD_PANEL_BG": Palette.CLOUD_050,
-        "CARD_PANEL_BORDER": Palette.CLOUD_100,
-        "PANEL_BG": Palette.CLOUD_100,
-        "PANEL_BORDER": Palette.CLOUD_100,
-        "MAIN_FRAME_BG": Palette.WHITE,
-        "BACKDROP_BG": Palette.CLOUD_050,
-        "TEXT_PRIMARY": Palette.SLATE_900,
-        "TEXT_SECONDARY": Palette.SLATE_900,
-        "TEXT_MUTED": "#6B7280",
-        "TEXT_ACCENT": Palette.PRIMARY,
-        "STATE_SUCCESS": Palette.SIGNAL_TEAL,
-        "STATE_WARNING": "#F2A93B",
-        "STATE_ERROR": "#C63C3C",
-        "STATE_INFO": "#2389FF",
-        "STATE_READY": "#2389FF",
-        "STATE_TRANSPORT_ERROR": "#6E3FEF",
-        "BUTTON_PRIMARY_BG": Palette.PRIMARY,
-        "BUTTON_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "BUTTON_SECONDARY_BG": "#F3F4F6",
-        "BUTTON_GHOST_BG": Palette.WHITE,
-        "BUTTON_DANGER_HOVER": "#B23535",
-        "BUTTON_DANGER_ACTIVE": "#B23535",
-        "BUTTON_SUCCESS_HOVER": "#3FD6C0",
-        "BUTTON_SUCCESS_ACTIVE": "#2EC2AD",
-        "BUTTON_WARNING_HOVER": "#FFA724",
-        "BUTTON_WARNING_ACTIVE": "#F28D1A",
-        "ACCENT_PRIMARY": Palette.PRIMARY,
-        "ACCENT_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "ACCENT_SECONDARY": "#B19CD9",
-        "BG_CHAT_AREA": Palette.CLOUD_050,
-        "BG_MESSAGE_OWN": Palette.PRIMARY,
-        "BG_MESSAGE_OTHER": Palette.CLOUD_100,
-        "BG_MESSAGE_SYSTEM": Palette.CLOUD_050,
-        "BG_INPUT_AREA": Palette.CLOUD_100,
-        "TEXT_PLACEHOLDER": "#9CA3AF",
-        "TEXT_TIMESTAMP": "#9CA3AF",
-        "MESSAGE_SYSTEM_TEXT": "#9CA3AF",
-        "MESSAGE_BUBBLE_OWN_BG": Palette.PRIMARY,
-        "MESSAGE_BUBBLE_OTHER_BG": Palette.CLOUD_100,
-        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_050,
-        "CHAT_SHELL_BG": Palette.CLOUD_050,
-        "CHAT_HISTORY_BG": Palette.CLOUD_050,
-        "CHAT_COMPOSER_BG": Palette.CLOUD_100,
-        "CHAT_HEADER_BG": Palette.CLOUD_100,
-        "CHAT_HEADER_TEXT": Palette.SLATE_900,
-        "CHAT_BADGE_BG": Palette.CLOUD_200,
-        "CHAT_TEXTURE": Palette.CLOUD_100,
-        "CHAT_BUBBLE_SELF_BG": Palette.PRIMARY,
-        "CHAT_BUBBLE_OTHER_BG": Palette.CLOUD_100,
-        "CHAT_BUBBLE_SYSTEM_BG": Palette.CLOUD_050,
-        "CHAT_BUBBLE_SELF_TEXT": Palette.WHITE,
-        "CHAT_BUBBLE_OTHER_TEXT": Palette.SLATE_900,
-        "CHAT_BUBBLE_SYSTEM_TEXT": Palette.SLATE_700,
-        "NAV_BUTTON_BG": "#F3F4F6",
-        "NAV_BUTTON_HOVER": "#E5E7EB",
-        "NAV_BUTTON_ACTIVE_BG": Palette.PRIMARY,
-        "NAV_BUTTON_ACTIVE_FG": "#FFFFFF",
-        "NAV_BUTTON_BORDER": "#D1D5DB",
-        "SCROLLBAR_TRACK": Palette.WHITE,
-        "SCROLLBAR_THUMB": "#D1D5DB",
-        "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
-        "LINK_PRIMARY": Palette.PRIMARY,
-        "LINK_HOVER": Palette.PRIMARY_HOVER,
-    },
-}
 class ThemeManager:
     _initialized = False
     _current_mode = "dark"
@@ -189,9 +29,10 @@ class ThemeManager:
 
     @classmethod
     def ensure(cls):
+        """Ensure theme is initialized and styles are registered."""
         if cls._initialized:
             return
-        theme = _THEME_DEFINITIONS[cls._current_mode]
+        theme = THEME_DEFINITIONS[cls._current_mode]
         _apply_theme_definition(theme)
         cls._register_button_styles()
         cls._initialized = True
@@ -430,17 +271,19 @@ class ThemeManager:
 
     @classmethod
     def toggle_mode(cls, dark: bool):
+        """Toggle between light and dark mode."""
         mode = "dark" if dark else "light"
         if mode == cls._current_mode:
             return
         cls._current_mode = mode
         # Efficient theme switching - only update colors without reinitializing styles
-        _update_theme_colors(_THEME_DEFINITIONS[mode])
+        _update_theme_colors(THEME_DEFINITIONS[mode])
         cls.refresh_styles()
         cls._notify_theme_change()
 
     @classmethod
     def current_mode(cls):
+        """Get the current theme mode name."""
         return cls._current_mode
 
     @classmethod
@@ -479,7 +322,7 @@ class ThemeManager:
             return
 
         cls._current_mode = mode_name
-        _update_theme_colors(_THEME_DEFINITIONS[mode_name])
+        _update_theme_colors(THEME_DEFINITIONS[mode_name])
         cls.refresh_styles()
         cls._notify_theme_change()
 
@@ -515,115 +358,21 @@ class ThemeManager:
         }
         return features.get(mode_name, [])
 
+    # Delegate accessibility methods to AccessibilityUtils
     @classmethod
     def validate_contrast_ratio(cls, foreground: str, background: str) -> float:
-        """Calculate WCAG contrast ratio between two colors."""
-        def get_luminance(color: str) -> float:
-            # Handle empty or invalid colors
-            if not color or not isinstance(color, str):
-                return 0.5  # Return mid-gray luminance for invalid colors
-
-            # Remove # if present
-            color = color.lstrip('#')
-
-            # Ensure we have exactly 6 characters
-            if len(color) != 6:
-                return 0.5  # Return mid-gray for invalid format
-
-            try:
-                # Convert to RGB
-                r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-            except ValueError:
-                return 0.5  # Return mid-gray for invalid hex values
-
-            # Calculate relative luminance
-            def linearize(c):
-                c = c / 255.0
-                return c / 12.92 if c <= 0.03928 else pow((c + 0.055) / 1.055, 2.4)
-
-            r_lin = linearize(r)
-            g_lin = linearize(g)
-            b_lin = linearize(b)
-
-            return 0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
-
-        l1 = get_luminance(foreground)
-        l2 = get_luminance(background)
-
-        # Ensure l1 is the lighter color
-        if l1 < l2:
-            l1, l2 = l2, l1
-
-        # Calculate contrast ratio
-        return (l1 + 0.05) / (l2 + 0.05)
+        """Calculate contrast ratio between two colors."""
+        return AccessibilityUtils.validate_contrast_ratio(foreground, background)
 
     @classmethod
     def check_wcag_compliance(cls, foreground: str, background: str, level: str = "AA") -> dict:
-        """Check WCAG compliance for color contrast."""
-        ratio = cls.validate_contrast_ratio(foreground, background)
-
-        # WCAG thresholds
-        thresholds = {
-            "AA": {"normal": 4.5, "large": 3.0},
-            "AAA": {"normal": 7.0, "large": 4.5}
-        }
-
-        if level not in thresholds:
-            level = "AA"
-
-        thresholds = thresholds[level]
-
-        return {
-            "ratio": round(ratio, 2),
-            "aa_normal": ratio >= thresholds["normal"],
-            "aa_large": ratio >= thresholds["large"],
-            "aaa_normal": ratio >= thresholds.get("normal", 4.5) * 7.0/4.5,
-            "aaa_large": ratio >= thresholds.get("large", 3.0) * 4.5/3.0,
-            "compliant": ratio >= thresholds["normal"]
-        }
+        """Check if contrast ratio meets WCAG standards."""
+        return AccessibilityUtils.check_wcag_compliance(foreground, background, level)
 
     @classmethod
     def simulate_colorblindness(cls, color: str, type_: str = "deuteranopia") -> str:
-        """Simulate how a color appears to people with different types of colorblindness."""
-        # Remove # if present
-        color = color.lstrip('#')
-        r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-
-        # Color blindness simulation matrices (simplified)
-        matrices = {
-            "protanopia": [
-                [0.567, 0.433, 0.000],
-                [0.558, 0.442, 0.000],
-                [0.000, 0.242, 0.758]
-            ],
-            "deuteranopia": [
-                [0.625, 0.375, 0.000],
-                [0.700, 0.300, 0.000],
-                [0.000, 0.300, 0.700]
-            ],
-            "tritanopia": [
-                [0.950, 0.050, 0.000],
-                [0.000, 0.433, 0.567],
-                [0.000, 0.475, 0.525]
-            ]
-        }
-
-        if type_ not in matrices:
-            type_ = "deuteranopia"
-
-        matrix = matrices[type_]
-
-        # Apply transformation
-        new_r = int(r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2])
-        new_g = int(r * matrix[1][0] + g * matrix[1][1] + b * matrix[1][2])
-        new_b = int(r * matrix[2][0] + g * matrix[2][1] + b * matrix[2][2])
-
-        # Ensure values are in range
-        new_r = max(0, min(255, new_r))
-        new_g = max(0, min(255, new_g))
-        new_b = max(0, min(255, new_b))
-
-        return f"#{new_r:02x}{new_g:02x}{new_b:02x}"
+        """Simulate how a color appears to colorblind users."""
+        return AccessibilityUtils.simulate_colorblindness(color, type_)
 
     @classmethod
     def validate_theme_accessibility(cls) -> dict:
@@ -806,4 +555,5 @@ def _is_dark_color(hex_color: str) -> bool:
 
 
 def ensure_styles_initialized():
+    """Ensure theme styles are initialized (convenience wrapper)."""
     ThemeManager.ensure()

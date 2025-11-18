@@ -6,17 +6,28 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
-from typing import Dict, Any, Optional, Callable, Set
+from typing import Any, Callable
 from dataclasses import dataclass
 from utils.app_logger import get_logger
-from utils.design_system import AppConfig, Colors
-from utils.design_system import (
-    STATUS_DISCONNECTED_KEYWORDS,
-    STATUS_CONNECTED_KEYWORDS,
-    STATUS_ERROR_KEYWORDS,
-    STATUS_READY_KEYWORDS,
-    STATUS_TRANSPORT_ERROR_KEYWORDS,
-)
+from ui.theme_tokens import AppConfig, Colors
+from state.store import get_app_state, DeviceStage
+
+# Status constants are now accessed via AppConfig
+STATUS_DISCONNECTED_KEYWORDS = AppConfig.STATUS_DISCONNECTED_KEYWORDS
+STATUS_CONNECTED_KEYWORDS = AppConfig.STATUS_CONNECTED_KEYWORDS
+STATUS_ERROR_KEYWORDS = AppConfig.STATUS_ERROR_KEYWORDS
+STATUS_READY_KEYWORDS = AppConfig.STATUS_READY_KEYWORDS
+STATUS_TRANSPORT_ERROR_KEYWORDS = AppConfig.STATUS_TRANSPORT_ERROR_KEYWORDS
+
+STATUS_DISCONNECTED = AppConfig.STATUS_DISCONNECTED
+STATUS_CONNECTED = AppConfig.STATUS_CONNECTED
+STATUS_CONNECTION_FAILED = AppConfig.STATUS_CONNECTION_FAILED
+STATUS_INVALID_PIN = AppConfig.STATUS_INVALID_PIN
+STATUS_CONNECTION_DEVICE_FAILED = AppConfig.STATUS_CONNECTION_DEVICE_FAILED
+STATUS_AWAITING_PEER = AppConfig.STATUS_AWAITING_PEER
+STATUS_NOT_CONNECTED = AppConfig.STATUS_NOT_CONNECTED
+STATUS_READY = AppConfig.STATUS_READY
+STATUS_TRANSPORT_ERROR = AppConfig.STATUS_TRANSPORT_ERROR
 
 
 @dataclass
@@ -128,7 +139,7 @@ class StatusManager:
 
         return color_map.get(category, "#FF5A5F")
 
-    def update_status(self, status_text: str, peer_name: Optional[str] = None) -> tuple[str, str]:
+    def update_status(self, status_text: str, peer_name: str | None = None) -> tuple[str, str]:
         """
         Update status with consistent handling and return status information.
 
@@ -152,7 +163,18 @@ class StatusManager:
         elif category in ["disconnected", "error"]:
             self.current_device.is_connected = False
 
-        # CRITICAL FIX: Thread-safe callback execution with proper synchronization
+        # Update AppState
+        app_state = get_app_state()
+        new_stage = self._determine_stage(status_text, category)
+        
+        # Update AppState with new stage and device name if available
+        updates = {"device_stage": new_stage}
+        if peer_name:
+            updates["device_name"] = peer_name
+        
+        app_state.update(**updates)
+
+        # Thread-safe callback execution with proper synchronization
         callbacks_to_execute = []
 
         with self._callback_lock:
@@ -166,7 +188,7 @@ class StatusManager:
             except Exception as e:
                 self.logger.warning(f"Status callback failed: {e}")
 
-        # CRITICAL FIX: Thread-safe device callback execution
+        # Thread-safe device callback execution
         device_callbacks_to_execute = []
 
         with self._callback_lock:
@@ -184,7 +206,7 @@ class StatusManager:
         elif category == "disconnected":
             display_status = AppConfig.STATUS_DISCONNECTED
         elif category == "error":
-            if "invalid pairing code" in lowered:
+            if "invalid pairing code" in status_text.lower():
                 display_status = AppConfig.STATUS_INVALID_PIN
             else:
                 display_status = AppConfig.STATUS_CONNECTION_FAILED
@@ -196,6 +218,23 @@ class StatusManager:
             display_status = status_text
 
         return display_status, color
+
+    def _determine_stage(self, status_text: str, category: str) -> DeviceStage:
+        """Determine DeviceStage from status text."""
+        text = status_text.lower()
+        if "scan" in text:
+            return DeviceStage.SCANNING
+        elif "awaiting" in text:
+            return DeviceStage.AWAITING_PIN
+        elif "connecting" in text:
+            return DeviceStage.CONNECTING
+        elif category == "connected":
+            return DeviceStage.CONNECTED
+        elif category == "ready":
+            return DeviceStage.READY
+        elif category in ["disconnected", "error", "transport_error"]:
+            return DeviceStage.DISCONNECTED
+        return DeviceStage.DISCONNECTED
 
     def register_status_callback(self, callback: Callable[[str, str], None]):
         """
@@ -404,7 +443,7 @@ class StatusManager:
 
 
 # Global status manager instance
-_status_manager: Optional[StatusManager] = None
+_status_manager: StatusManager | None = None
 
 
 def get_status_manager() -> StatusManager:
@@ -422,7 +461,7 @@ def reset_status_manager():
 
 
 # Legacy convenience functions for backward compatibility
-def update_global_status(status_text: str, peer_name: Optional[str] = None) -> tuple[str, str]:
+def update_global_status(status_text: str, peer_name: str | None = None) -> tuple[str, str]:
     """
     Convenience function to update global status.
 

@@ -5,10 +5,11 @@ Designed to cover 25% of screen dimensions with centered positioning.
 import tkinter as tk
 from tkinter import ttk
 from typing import Callable, Optional
-from utils.design_system import Colors, Typography, Spacing, DesignUtils
+from ui.components import DesignUtils
+from ui.theme_tokens import AppConfig, Colors, Spacing, Typography, Space
 
 
-class LoginModal:
+class LoginPage:
     """Modal popup login interface that covers 25% of screen dimensions."""
 
     def __init__(self, parent: tk.Tk, on_login: Callable[[str, str], None],
@@ -187,6 +188,20 @@ class LoginModal:
         forgot_label.bind("<Button-1>", lambda e: self._on_forgot_password_click())
         forgot_label.bind("<Enter>", lambda e: forgot_label.configure(fg=Colors.LINK_HOVER))
         forgot_label.bind("<Leave>", lambda e: forgot_label.configure(fg=Colors.LINK_PRIMARY))
+        
+        # Deviceless Mode Link
+        deviceless_label = tk.Label(
+            links_frame,
+            text="Continue without Device",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
+            cursor="hand2"
+        )
+        deviceless_label.pack(side=tk.RIGHT)
+        deviceless_label.bind("<Button-1>", lambda e: self._on_deviceless_click())
+        deviceless_label.bind("<Enter>", lambda e: deviceless_label.configure(fg=Colors.TEXT_PRIMARY))
+        deviceless_label.bind("<Leave>", lambda e: deviceless_label.configure(fg=Colors.TEXT_SECONDARY))
 
         # Set focus to password input after UI is fully built
         self.modal_window.after(100, lambda: self._set_initial_focus())
@@ -286,6 +301,12 @@ class LoginModal:
         """Handle forgot password link click."""
         if self.on_forgot_password:
             self.on_forgot_password()
+
+    def _on_deviceless_click(self):
+        """Handle continue without device click."""
+        if self.on_login:
+            # Use a special indicator for deviceless mode
+            self.on_login("Guest", "deviceless_mode")
 
     def _show_validation_error(self, message: str):
         """Show validation error message."""

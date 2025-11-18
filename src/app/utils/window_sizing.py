@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import tkinter as tk
 
-from utils.design_system import AppConfig
+from ui.theme_tokens import AppConfig
 
 
 def calculate_initial_window_size(root: tk.Misc) -> tuple[int, int]:

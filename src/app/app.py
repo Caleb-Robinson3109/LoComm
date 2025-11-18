@@ -1,5 +1,7 @@
 """
 LoRa Chat Desktop Application - orchestrates UI frames and controller.
+Manages the main application window, including resizing logic and
+transitioning between the login modal and the main content area.
 """
 import tkinter as tk
 from tkinter import messagebox
@@ -10,10 +12,14 @@ from typing import Optional
 from services import AppController
 from utils.state.status_manager import get_status_manager
 
-from pages.login_modal import LoginModal
-from pages.chatroom_window import ChatroomWindow
-from pages.main_frame import MainFrame
-from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
+from pages.login_page import LoginPage
+from pages.chatroom_page import ChatroomPage
+from pages.login_page import LoginPage
+from pages.main_page import MainPage
+from services.app_controller import AppController
+from ui.theme_manager import ThemeManager, ensure_styles_initialized
+from ui.theme_tokens import AppConfig, Colors, Spacing
+from utils.app_logger import get_logger
 from utils.window_sizing import calculate_initial_window_size, scale_dimensions
 
 MAX_UI_PENDING_MESSAGES = 500
@@ -40,7 +46,7 @@ class App(tk.Tk):
         self._ui_pending_messages = deque(maxlen=MAX_UI_PENDING_MESSAGES)
         self.login_modal = None
         self.chatroom_modal: Optional[tk.Toplevel] = None
-        self.chatroom_modal_frame: Optional[ChatroomWindow] = None
+        self.chatroom_modal_frame: Optional[ChatroomPage] = None
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
@@ -62,7 +68,7 @@ class App(tk.Tk):
 
         # Update session data if we just paired
         if device_id and device_name:
-            # CRITICAL FIX: Preserve local device name while updating peer info
+            # Preserve local device name while updating peer info
             if not hasattr(session, 'local_device_name') or not session.local_device_name:
                 session.local_device_name = "Orion"
             session.device_name = device_name
@@ -70,7 +76,7 @@ class App(tk.Tk):
             session.paired_at = time.time()
 
         # Create main frame - pass controller reference for backward compatibility
-        self.current_frame = MainFrame(self, self, session, self.app_controller, self._handle_logout, self.toggle_theme)
+        self.current_frame = MainPage(self, self, session, self.app_controller, self._handle_logout, self.toggle_theme)
         self.current_frame.pack(fill=tk.BOTH, expand=True)
         if route_id:
             try:
@@ -101,7 +107,7 @@ class App(tk.Tk):
 
         # Create login modal if not exists
         if not self.login_modal:
-            self.login_modal = LoginModal(
+            self.login_modal = LoginPage(
                 self,
                 on_login=self._handle_login_success,
                 on_register=self._handle_register_click,
@@ -171,7 +177,7 @@ class App(tk.Tk):
         self.chatroom_modal = modal
 
         # Create chatroom pairing frame inside the modal
-        chatroom_frame = ChatroomWindow(
+        chatroom_frame = ChatroomPage(
             modal,
             lambda chatroom_code: self._handle_chatroom_success(chatroom_code)
         )
@@ -245,7 +251,7 @@ class App(tk.Tk):
         if normalized_sender and normalized_sender.lower() == "system" and "firmware" in (msg or "").lower():
             return
         is_system = bool(sender and sender.lower() == "system")
-        if isinstance(self.current_frame, MainFrame):
+        if isinstance(self.current_frame, MainPage):
             # Chat page removed, messages not displayed in main interface
             pass
         else:
@@ -265,11 +271,12 @@ class App(tk.Tk):
 
     def _handle_app_close(self):
         """Ensure transport cleans up before the window closes."""
-        try:
-            if self.app_controller:
-                self.app_controller.stop_session()
-        finally:
-            self.destroy()
+        if messagebox.askyesno("Quit", "Are you sure you want to quit?"):
+            try:
+                if self.app_controller:
+                    self.app_controller.stop_session()
+            finally:
+                self.destroy()
 
     def clear_chat_history(self, *, confirm: bool = True):
         """Clear chat history - disabled since chat page removed."""
@@ -279,7 +286,7 @@ class App(tk.Tk):
     def toggle_theme(self, use_dark: bool):
         """Toggle between light and dark themes."""
         prev_route = None
-        if isinstance(self.current_frame, MainFrame):
+        if isinstance(self.current_frame, MainPage):
             prev_route = getattr(self.current_frame.sidebar, "current_view", None)
         ThemeManager.toggle_mode(use_dark)
         # Get current session info from business logic layer
@@ -305,7 +312,7 @@ class App(tk.Tk):
         offset_x = (screen_w - target_w) // 2
         offset_y = (screen_h - target_h) // 2
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(target_w, target_h)
+        self.minsize(400, 300)  # Enforce minimum size
         self.resizable(True, True)
 
     def _init_fullscreen_window(self):
@@ -318,7 +325,7 @@ class App(tk.Tk):
         offset_x = max((screen_w - target_w) // 2, 0)
         offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(target_w, target_h)
+        self.minsize(800, 600)  # Enforce reasonable minimum size for main app
         self.resizable(True, True)
 
 

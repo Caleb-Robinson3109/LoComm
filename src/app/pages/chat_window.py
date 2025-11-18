@@ -7,8 +7,10 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import time
 
-from mock.peer_bridge import get_peer_bridge
-from utils.design_system import AppConfig, Colors, ensure_styles_initialized, DesignUtils, Typography, Spacing
+# Mock bridge removed
+from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography
+from ui.theme_manager import ensure_styles_initialized
 from utils.state.status_manager import get_status_manager
 
 
@@ -38,10 +40,12 @@ class ChatWindow(tk.Toplevel):
         self.minsize(387, 465)
         self.resizable(True, True)
         self.configure(bg=Colors.SURFACE)
-        self._bridge = get_peer_bridge()
+        self.configure(bg=Colors.SURFACE)
+        # Mock bridge removed
+        # self._bridge = get_peer_bridge()
 
         self._build_ui()
-        self._bridge.register_peer_callback(self._handle_incoming)
+        # self._bridge.register_peer_callback(self._handle_incoming)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.entry.focus_set()
 
@@ -137,6 +141,8 @@ class ChatWindow(tk.Toplevel):
                 self._history_window, width=e.width
             ),
         )
+        from ui.helpers import enable_global_mousewheel
+        enable_global_mousewheel(self.history_canvas)
 
         # Message composer with modern design
         composer_frame = tk.Frame(
@@ -255,7 +261,8 @@ class ChatWindow(tk.Toplevel):
         text = self.msg_var.get().strip()
         if not text:
             return
-        self._bridge.send_from_peer(text)
+        # Mock send removed
+        # self._bridge.send_from_peer(text)
         self._has_history = True
         self._add_message(text, sender=self.local_device_name, is_self=True)
         self.msg_var.set("")
@@ -272,7 +279,7 @@ class ChatWindow(tk.Toplevel):
                 return
 
         get_status_manager().update_status(AppConfig.STATUS_DISCONNECTED)
-        self._bridge.unregister_peer_callback(self._handle_incoming)
+        # self._bridge.unregister_peer_callback(self._handle_incoming)
         if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
             del self._open_windows[self.peer_name]
         self.destroy()

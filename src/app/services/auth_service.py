@@ -1,23 +1,26 @@
 """
-PIN-based authentication system for the LoRa Chat application.
-Replaces legacy credential flows with secure authentication.
+Authentication service for LoRa Chat application.
+Handles PIN generation, verification, and security rate limiting.
 """
-import random
-import string
-import secrets
+from __future__ import annotations
+
 import hashlib
+import random
+import secrets
+import string
 import time
-from typing import Optional, Dict, Set, List
 from datetime import datetime, timedelta
-from utils.design_system import Colors
+from typing import Any
+
+from ui.theme_tokens import Colors
 
 
 class SecurityTracker:
-    """CRITICAL FIX: Track failed attempts and implement rate limiting/lockout."""
+    """Track failed attempts and implement rate limiting/lockout."""
 
     def __init__(self):
-        self.failed_attempts: Dict[str, List[datetime]] = {}  # IP/host -> list of attempt times
-        self.locked_accounts: Dict[str, datetime] = {}  # IP/host -> lockout expiry
+        self.failed_attempts: dict[str, list[datetime]] = {}  # IP/host -> list of attempt times
+        self.locked_accounts: dict[str, datetime] = {}  # IP/host -> lockout expiry
         self.max_attempts = 5  # Max attempts before lockout
         self.lockout_duration_minutes = 15  # 15-minute lockout
         self.attempt_window_minutes = 10  # Track attempts over 10 minutes
@@ -27,11 +30,6 @@ class SecurityTracker:
     def record_attempt(self, identifier: str) -> tuple[bool, str, float]:
         """
         Record an authentication attempt and return (is_blocked, reason, wait_time).
-
-        Returns:
-            is_blocked: True if attempt should be blocked
-            reason: Reason for blocking (if any)
-            wait_time: Seconds to wait before retrying
         """
         now = datetime.now()
 
@@ -84,44 +82,33 @@ class SecurityTracker:
             del self.locked_accounts[identifier]
 
 
-class PINAuthentication:
+class AuthService:
     """
-    CRITICAL FIX: Secure PIN-based device authentication and pairing.
-    Implements proper security measures to prevent brute force attacks.
+    Secure PIN-based device authentication and pairing service.
     """
 
     def __init__(self):
-        self._active_pins: Dict[str, Dict] = {}  # pin_hash -> {'device_info': dict, 'expires': datetime, 'created': datetime}
-        self._device_pins: Dict[str, str] = {}  # device_id -> pin_hash
-        self._connected_devices: Dict[str, Dict] = {}  # device_id -> device_info
+        self._active_pins: dict[str, dict] = {}  # pin_hash -> {'device_info': dict, 'expires': datetime, 'created': datetime}
+        self._device_pins: dict[str, str] = {}  # device_id -> pin_hash
+        self._connected_devices: dict[str, dict] = {}  # device_id -> device_info
         self._pin_timeout_minutes = 10  # PIN expires after 10 minutes
         self._security_tracker = SecurityTracker()
 
-        # CRITICAL FIX: Use longer, more secure PINs
         self._pin_length = 8  # Increased from 5 to 8 digits
         self._pin_charset = string.ascii_uppercase + string.digits  # Allow alphanumeric codes
 
     def _hash_pin(self, pin: str) -> str:
-        """CRITICAL FIX: Hash PINs to prevent storage in plaintext."""
+        """Hash PINs to prevent storage in plaintext."""
         return hashlib.sha256(pin.encode('utf-8')).hexdigest()[:16]  # Use first 16 chars for storage
 
     def _generate_secure_pin(self) -> str:
-        """CRITICAL FIX: Generate cryptographically secure PIN."""
-        # Use secrets module for cryptographic randomness
+        """Generate cryptographically secure PIN."""
         return ''.join(secrets.choice(self._pin_charset) for _ in range(self._pin_length))
 
     def generate_pin(self, device_id: str, device_name: str) -> str:
         """
-        CRITICAL FIX: Generate a new secure PIN for device pairing.
-
-        Args:
-            device_id: Device identifier
-            device_name: Device display name
-
-        Returns:
-            Secure PIN string (8 digits)
+        Generate a new secure PIN for device pairing.
         """
-        # Generate unique secure PIN
         attempts = 0
         while attempts < 1000:  # Prevent infinite loop
             pin = self._generate_secure_pin()
@@ -141,19 +128,11 @@ class PINAuthentication:
 
             attempts += 1
 
-        # If we somehow can't generate a unique PIN, raise an error
         raise RuntimeError("Unable to generate unique PIN after 1000 attempts")
 
-    def verify_pin(self, pin: str, client_identifier: str = "unknown") -> tuple[Optional[Dict], str, float]:
+    def verify_pin(self, pin: str, client_identifier: str = "unknown") -> tuple[dict | None, str, float]:
         """
-        CRITICAL FIX: Verify a PIN with security measures and rate limiting.
-
-        Args:
-            pin: PIN to verify
-            client_identifier: Identifier for rate limiting (IP, user agent, etc.)
-
-        Returns:
-            Tuple of (device_info dict if valid, error_message, wait_time_seconds)
+        Verify a PIN with security measures and rate limiting.
         """
         # Check security first
         is_blocked, reason, wait_time = self._security_tracker.record_attempt(client_identifier)
@@ -196,15 +175,7 @@ class PINAuthentication:
         return datetime.now() > self._active_pins[pin_hash]['expires']
 
     def get_remaining_pin_time(self, pin: str) -> int:
-        """
-        Get remaining time for PIN in minutes.
-
-        Args:
-            pin: PIN to check
-
-        Returns:
-            Minutes remaining before expiry (0 if expired/not found)
-        """
+        """Get remaining time for PIN in minutes."""
         pin_hash = self._hash_pin(pin)
         if pin_hash not in self._active_pins:
             return 0
@@ -226,7 +197,6 @@ class PINAuthentication:
             self._cleanup_expired_pin(pin_hash)
 
     def _cleanup_expired_pin(self, pin_hash: str):
-        """Clean up expired PIN."""
         if pin_hash in self._active_pins:
             device_id = self._active_pins[pin_hash]['device_id']
             del self._active_pins[pin_hash]
@@ -234,20 +204,18 @@ class PINAuthentication:
                 del self._device_pins[device_id]
 
     def _cleanup_used_pin(self, pin_hash: str):
-        """Clean up used PIN."""
         if pin_hash in self._active_pins:
             device_id = self._active_pins[pin_hash]['device_id']
             del self._active_pins[pin_hash]
             if device_id in self._device_pins:
                 del self._device_pins[device_id]
 
-    def get_active_pins(self) -> Dict[str, Dict]:
+    def get_active_pins(self) -> dict[str, dict]:
         """Get all currently active (non-expired) PINs."""
         self.cleanup_expired_pins()
         return self._active_pins.copy()
 
     def get_pin_length(self) -> int:
-        """Return configured PIN length."""
         return self._pin_length
 
     def revoke_pin(self, device_id: str):
@@ -257,54 +225,32 @@ class PINAuthentication:
             self._cleanup_used_pin(pin_hash)
 
     def is_device_paired(self, device_id: str) -> bool:
-        """Check if a device is currently paired/connected."""
         return device_id in self._connected_devices
 
-    def pair_device(self, device_id: str, device_info: Dict):
-        """Mark a device as paired/connected."""
+    def pair_device(self, device_id: str, device_info: dict):
         self._connected_devices[device_id] = device_info
 
     def unpair_device(self, device_id: str):
-        """Remove a device from paired/connected status."""
         if device_id in self._connected_devices:
             del self._connected_devices[device_id]
         self.revoke_pin(device_id)
 
-    def get_paired_devices(self) -> Dict[str, Dict]:
-        """Get all currently paired devices."""
+    def get_paired_devices(self) -> dict[str, dict]:
         return self._connected_devices.copy()
 
     def validate_pin_format(self, pin: str) -> bool:
-        """
-        CRITICAL FIX: Validate secure PIN format (8 digits only).
-
-        Args:
-            pin: PIN to validate
-
-        Returns:
-            True if PIN is valid format
-        """
         return len(pin) == self._pin_length and pin.isalnum()
 
     def generate_device_name(self) -> str:
-        """
-        Generate a friendly device name for display.
-
-        Returns:
-            Device name string
-        """
-        # Generate a unique device name using timestamp and secure random suffix
         timestamp = datetime.now().strftime("%m%d%H%M")
         suffix = ''.join(secrets.choice(string.ascii_uppercase) for _ in range(2))
         return f"Device-{timestamp}-{suffix}"
 
-    def get_security_status(self, client_identifier: str) -> Dict:
-        """Get security status for a client identifier."""
+    def get_security_status(self, client_identifier: str) -> dict:
         now = datetime.now()
-
-        # Check if locked
         is_locked = False
         lockout_remaining = 0
+        
         if client_identifier in self._security_tracker.locked_accounts:
             lockout_end = self._security_tracker.locked_accounts[client_identifier]
             if now < lockout_end:
@@ -313,7 +259,6 @@ class PINAuthentication:
             else:
                 del self._security_tracker.locked_accounts[client_identifier]
 
-        # Get recent attempts
         recent_attempts = 0
         if client_identifier in self._security_tracker.failed_attempts:
             cutoff_time = now - timedelta(minutes=self._security_tracker.attempt_window_minutes)
@@ -331,22 +276,21 @@ class PINAuthentication:
         }
 
 
-# Global PIN authentication instance
-_pin_auth: Optional[PINAuthentication] = None
+# Singleton instance
+_auth_service: AuthService | None = None
 
 
-def get_pin_auth() -> PINAuthentication:
-    """Get the global PIN authentication instance."""
-    global _pin_auth
-    if _pin_auth is None:
-        _pin_auth = PINAuthentication()
-    return _pin_auth
+def get_auth_service() -> AuthService:
+    """Get the global AuthService instance."""
+    global _auth_service
+    if _auth_service is None:
+        _auth_service = AuthService()
+    return _auth_service
 
 
-# Convenience functions
-def generate_pairing_pin(device_id: str, device_name: Optional[str] = None) -> str:
+def generate_pairing_pin(device_id: str, device_name: str | None = None) -> str:
     """Generate a new secure pairing PIN."""
-    auth = get_pin_auth()
+    auth = get_auth_service()
     if device_name is None:
         device_name = auth.generate_device_name()
     return auth.generate_pin(device_id, device_name)
@@ -358,42 +302,42 @@ def generate_chatroom_code(length: int = 20) -> str:
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
-def verify_pairing_pin(pin: str, client_identifier: str = "unknown") -> tuple[Optional[Dict], str, float]:
+def verify_pairing_pin(pin: str, client_identifier: str = "unknown") -> tuple[dict | None, str, float]:
     """Verify a pairing PIN and get device info with security measures."""
-    auth = get_pin_auth()
-    return auth.verify_pin(pin, client_identifier)
+    return get_auth_service().verify_pin(pin, client_identifier)
 
 
-def get_active_pairing_pins() -> Dict[str, Dict]:
+def get_active_pairing_pins() -> dict[str, dict]:
     """Get all active pairing PINs."""
-    return get_pin_auth().get_active_pins()
+    return get_auth_service().get_active_pins()
 
 
-def pair_device_with_pin(device_id: str, device_info: Dict):
+def pair_device_with_pin(device_id: str, device_info: dict):
     """Pair a device using verified PIN."""
-    get_pin_auth().pair_device(device_id, device_info)
+    get_auth_service().pair_device(device_id, device_info)
 
 
 def unpair_device(device_id: str):
     """Unpair a device."""
-    get_pin_auth().unpair_device(device_id)
+    get_auth_service().unpair_device(device_id)
 
 
-def get_paired_devices() -> Dict[str, Dict]:
+def get_paired_devices() -> dict[str, dict]:
     """Get all currently paired devices."""
-    return get_pin_auth().get_paired_devices()
+    return get_auth_service().get_paired_devices()
 
 
 def is_device_paired(device_id: str) -> bool:
     """Check if device is currently paired."""
-    return get_pin_auth().is_device_paired(device_id)
+    return get_auth_service().is_device_paired(device_id)
 
 
 def validate_pin_format(pin: str) -> bool:
     """Validate PIN format."""
-    return get_pin_auth().validate_pin_format(pin)
+    return get_auth_service().validate_pin_format(pin)
 
 
-def get_security_status(client_identifier: str = "unknown") -> Dict:
+def get_security_status(client_identifier: str = "unknown") -> dict:
     """Get security status for a client."""
-    return get_pin_auth().get_security_status(client_identifier)
+    return get_auth_service().get_security_status(client_identifier)
+

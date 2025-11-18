@@ -4,7 +4,8 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 
-from utils.design_system import Colors, DesignUtils, Typography, Spacing, Space
+from ui.components import DesignUtils
+from ui.theme_tokens import Colors, Spacing, Typography, Space
 from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
@@ -145,7 +146,7 @@ class AboutPage(BasePage):
         content.pack(fill=tk.X)
         
         specs = [
-            "Transport: LoCommTransport abstraction + mock backend",
+            "Transport: LoCommTransport abstraction",
             "UI: Tkinter + Locomm Design System v3",
             "Authentication: 8-digit PIN pairing",
             "Session storage: Local session.json cache",

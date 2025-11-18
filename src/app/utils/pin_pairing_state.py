@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
-from utils.pin_authentication import get_pin_auth, get_security_status
+from services.auth_service import get_auth_service, get_security_status
 
 
 class PinPairingState:
@@ -16,7 +16,7 @@ class PinPairingState:
 
     def __init__(self, client_identifier: Optional[str] = None):
         self.client_identifier = client_identifier or self.DEFAULT_CLIENT_IDENTIFIER
-        self.auth = get_pin_auth()
+        self.auth_service = get_auth_service()
 
     def get_pin_length(self) -> int:
         """Get the configured PIN length."""
