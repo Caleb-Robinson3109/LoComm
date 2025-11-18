@@ -4,7 +4,7 @@ Manages the main application window, including resizing logic and
 transitioning between the login modal and the main content area.
 """
 import tkinter as tk
-from tkinter import messagebox
+# from tkinter import messagebox  # Replaced by custom dialogs
 import time
 from collections import deque
 from typing import Optional
@@ -18,6 +18,7 @@ from pages.login_page import LoginPage
 from pages.main_page import MainPage
 from services.app_controller import AppController
 from ui.theme_manager import ThemeManager, ensure_styles_initialized
+from ui.dialogs import Dialogs
 from ui.theme_tokens import AppConfig, Colors, Spacing
 from utils.app_logger import get_logger
 from utils.window_sizing import calculate_initial_window_size, scale_dimensions
@@ -132,7 +133,7 @@ class App(tk.Tk):
                 # Jump straight into chat once transport succeeds.
                 self.show_main(device_id, device_name, route_id="home")
             else:
-                messagebox.showerror(failure_title, error_msg or failure_message)
+                Dialogs.show_error(self, failure_title, error_msg or failure_message)
                 self._clear_session()
 
         self.app_controller.start_session(device_id, device_name, mode=mode, callback=on_complete)
@@ -222,11 +223,11 @@ class App(tk.Tk):
 
     def _handle_register_click(self):
         """Handle register link click."""
-        messagebox.showinfo("Register", "Registration feature will be implemented in the future.")
+        Dialogs.show_info(self, "Register", "Registration feature will be implemented in the future.")
 
     def _handle_forgot_password_click(self):
         """Handle forgot password link click."""
-        messagebox.showinfo("Forgot Password", "Password recovery feature will be implemented in the future.")
+        Dialogs.show_info(self, "Forgot Password", "Password recovery feature will be implemented in the future.")
 
 
 
@@ -280,7 +281,7 @@ class App(tk.Tk):
 
     def _handle_app_close(self):
         """Ensure transport cleans up before the window closes."""
-        if messagebox.askyesno("Quit", "Are you sure you want to quit?"):
+        if Dialogs.ask_yes_no(self, "Quit", "Are you sure you want to quit?"):
             try:
                 if self.app_controller:
                     self.app_controller.stop_session()

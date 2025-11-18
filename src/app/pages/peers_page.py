@@ -8,6 +8,7 @@ from ui.components import DesignUtils
 from ui.theme_tokens import Colors, Spacing, Typography, Space, AppConfig
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import create_scroll_container, enable_global_mousewheel
+from ui.theme_manager import ThemeManager
 from .base_page import BasePage, PageContext
 
 
@@ -31,59 +32,66 @@ class PeersPage(BasePage):
         self._selected_device_id: Optional[str] = None
         self._device_row_frames: dict[str, tk.Frame] = {}
         self._scan_timer_id: Optional[str] = None
+        self._theme_listener = None
 
         # Simple scroll container like chat page
-        scroll = create_scroll_container(
+        self._scroll_container = create_scroll_container(
             self, 
             bg=Colors.SURFACE, 
             padding=(0, Spacing.LG)
         )
-        body = scroll.frame
+        self._body = self._scroll_container.frame
 
-        self._build_title(body)
-        self._build_devices_section(body)
+        self._build_title(self._body)
+        self._build_devices_section(self._body)
 
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
+        
+        self._theme_listener = self._apply_theme
+        ThemeManager.register_theme_listener(self._theme_listener)
+        self._apply_theme()
 
     def _build_title(self, parent):
         """Build simple title section like chat page."""
-        title_wrap = tk.Frame(
+        self._title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
             padx=Spacing.SM,
         )
-        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
+        self._title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
 
-        text_wrap = tk.Frame(title_wrap, bg=Colors.SURFACE)
-        text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._text_wrap = tk.Frame(self._title_wrap, bg=Colors.SURFACE)
+        self._text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        action_wrap = tk.Frame(title_wrap, bg=Colors.SURFACE)
-        action_wrap.pack(side=tk.RIGHT)
+        self._action_wrap = tk.Frame(self._title_wrap, bg=Colors.SURFACE)
+        self._action_wrap.pack(side=tk.RIGHT)
 
-        tk.Label(
-            text_wrap,
+        self._title_label = tk.Label(
+            self._text_wrap,
             text="Peers",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
+        )
+        self._title_label.pack(anchor="w")
 
-        tk.Label(
-            text_wrap,
+        self._subtitle_label = tk.Label(
+            self._text_wrap,
             text="Manage your peers and device sessions",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
             wraplength=640,
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        self._subtitle_label.pack(anchor="w", pady=(Space.XXS, 0))
 
-        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
-        separator.pack(fill=tk.X, pady=(0, Space.SM))
+        self._separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        self._separator.pack(fill=tk.X, pady=(0, Space.SM))
 
         self.refresh_btn = DesignUtils.button(
-            action_wrap,
+            self._action_wrap,
             text="Refresh",
             variant="secondary",
             command=self._scan_for_devices,
@@ -92,28 +100,29 @@ class PeersPage(BasePage):
 
     def _build_devices_section(self, parent):
         """Build clean devices section."""
-        content = tk.Frame(
+        self._devices_content = tk.Frame(
             parent,
             bg=Colors.SURFACE,
             padx=Space.LG,
             pady=Space.MD,
         )
-        content.pack(fill=tk.BOTH, expand=True)
+        self._devices_content.pack(fill=tk.BOTH, expand=True)
         
         # Section title
-        tk.Label(
-            content,
+        self._section_title = tk.Label(
+            self._devices_content,
             text="Available Peers",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w", pady=(0, Spacing.SM))
+        )
+        self._section_title.pack(anchor="w", pady=(0, Spacing.SM))
         
         # Device list
-        list_frame = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
-        list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
+        self._list_frame = tk.Frame(self._devices_content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
+        self._list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
         
-        self._build_device_list(list_frame)
+        self._build_device_list(self._list_frame)
 
     def _go_to_chat(self):
         """Open the peer chat window and set status to Connected."""
@@ -370,9 +379,49 @@ class PeersPage(BasePage):
             self._active_device_name = snapshot.device_name
 
     def destroy(self):
+        if self._theme_listener:
+            ThemeManager.unregister_theme_listener(self._theme_listener)
+            self._theme_listener = None
         self._cancel_scan_timer()
         self._unsubscribe_from_store()
         return super().destroy()
+
+    def _apply_theme(self):
+        surface = Colors.SURFACE
+        self.configure(bg=surface)
+        
+        # Update Scroll Container
+        if self._scroll_container:
+            if self._scroll_container.wrapper.winfo_exists():
+                self._scroll_container.wrapper.configure(bg=surface)
+            if self._scroll_container.canvas.winfo_exists():
+                self._scroll_container.canvas.configure(bg=surface)
+            if self._scroll_container.frame.winfo_exists():
+                self._scroll_container.frame.configure(bg=surface)
+            if self._scroll_container.scrollbar.winfo_exists():
+                self._scroll_container.scrollbar.configure(bg=surface, troughcolor=surface, activebackground=surface)
+        
+        # Update Title Section
+        frames = [self._title_wrap, self._text_wrap, self._action_wrap, self._devices_content]
+        for frame in frames:
+            if frame and frame.winfo_exists():
+                frame.configure(bg=surface)
+                
+        if self._title_label and self._title_label.winfo_exists():
+            self._title_label.configure(bg=surface, fg=Colors.TEXT_PRIMARY)
+        if self._subtitle_label and self._subtitle_label.winfo_exists():
+            self._subtitle_label.configure(bg=surface, fg=Colors.TEXT_SECONDARY)
+        if self._separator and self._separator.winfo_exists():
+            self._separator.configure(bg=Colors.DIVIDER)
+            
+        # Update Devices Section
+        if self._section_title and self._section_title.winfo_exists():
+            self._section_title.configure(bg=surface, fg=Colors.TEXT_PRIMARY)
+        if self._list_frame and self._list_frame.winfo_exists():
+            self._list_frame.configure(bg=Colors.SURFACE_ALT)
+            
+        # Refresh table content to apply theme to rows
+        self._refresh_device_table()
 
     def _cancel_scan_timer(self):
         """Cancel any pending scan timer to avoid callbacks after destruction."""
