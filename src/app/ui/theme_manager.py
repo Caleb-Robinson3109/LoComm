@@ -14,7 +14,7 @@ from ui.accessibility import AccessibilityUtils
 
 class ThemeManager:
     _initialized = False
-    _current_mode = "dark"
+    _current_mode = "light"
     _current_accent_color = "blue"
     _available_accent_colors = ['blue', 'purple', 'green', 'orange', 'pink', 'red']
     _available_modes = ["dark", "light", "high_contrast_dark", "colorblind_friendly"]
@@ -45,45 +45,7 @@ class ThemeManager:
             style.theme_use("clam")
         except tk.TclError:
             pass
-        button_configs = {
-            "Locomm.Primary.TButton": dict(
-                bg=Colors.BUTTON_PRIMARY_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
-                active_bg=Colors.BUTTON_PRIMARY_HOVER,
-                fg=Colors.SURFACE,
-            ),
-            "Locomm.Secondary.TButton": dict(
-                bg=Colors.BUTTON_SECONDARY_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_BG,
-                active_bg=Colors.BUTTON_PRIMARY_BG,
-                fg=Colors.SURFACE,
-            ),
-            "Locomm.Ghost.TButton": dict(
-                bg=Colors.BUTTON_GHOST_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
-                active_bg=Colors.BUTTON_PRIMARY_HOVER,
-                fg=Colors.TEXT_PRIMARY,
-            ),
-            "Locomm.Danger.TButton": dict(
-                bg=Colors.STATE_ERROR,
-                hover_bg=Colors.BUTTON_DANGER_HOVER,
-                active_bg=Colors.BUTTON_DANGER_ACTIVE,
-                fg=Colors.SURFACE,
-            ),
-            "Locomm.Success.TButton": dict(
-                bg=Colors.STATE_SUCCESS,
-                hover_bg=Colors.BUTTON_SUCCESS_HOVER,
-                active_bg=Colors.BUTTON_SUCCESS_ACTIVE,
-                fg=Colors.SURFACE,
-            ),
-            "Locomm.Warning.TButton": dict(
-                bg=Colors.STATE_WARNING,
-                hover_bg=Colors.BUTTON_WARNING_HOVER,
-                active_bg=Colors.BUTTON_WARNING_ACTIVE,
-                fg=Colors.SURFACE,
-            ),
-        }
-        for style_name, cfg in button_configs.items():
+        for style_name, cfg in ThemeManager._button_style_definitions().items():
             ThemeManager._register_button(style, style_name, **cfg)
         ThemeManager._configure_nav_buttons(style)
         ThemeManager._configure_entry_styles(style)
@@ -117,6 +79,10 @@ class ThemeManager:
     @staticmethod
     def _register_button(style, style_name, *, bg, hover_bg, active_bg, fg):
         ThemeManager._apply_button_layout(style, style_name)
+        ThemeManager._apply_button_style(style, style_name, bg=bg, hover_bg=hover_bg, active_bg=active_bg, fg=fg)
+
+    @staticmethod
+    def _apply_button_style(style, style_name, *, bg, hover_bg, active_bg, fg):
         style.configure(
             style_name,
             background=bg,
@@ -138,6 +104,47 @@ class ThemeManager:
             foreground=[("disabled", Colors.TEXT_MUTED)],
             relief=[("pressed", "flat"), ("!pressed", "flat")],
         )
+
+    @staticmethod
+    def _button_style_definitions() -> dict[str, dict[str, str]]:
+        return {
+            "Locomm.Primary.TButton": dict(
+                bg=Colors.BUTTON_PRIMARY_BG,
+                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
+                active_bg=Colors.BUTTON_PRIMARY_HOVER,
+                fg=Colors.SURFACE,
+            ),
+            "Locomm.Secondary.TButton": dict(
+                bg=Colors.BUTTON_SECONDARY_BG,
+                hover_bg=Colors.BUTTON_PRIMARY_BG,
+                active_bg=Colors.BUTTON_PRIMARY_BG,
+                fg=Colors.TEXT_PRIMARY,
+            ),
+            "Locomm.Ghost.TButton": dict(
+                bg=Colors.BUTTON_GHOST_BG,
+                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
+                active_bg=Colors.BUTTON_PRIMARY_HOVER,
+                fg=Colors.TEXT_PRIMARY,
+            ),
+            "Locomm.Danger.TButton": dict(
+                bg=Colors.STATE_ERROR,
+                hover_bg=Colors.BUTTON_DANGER_HOVER,
+                active_bg=Colors.BUTTON_DANGER_ACTIVE,
+                fg=Colors.SURFACE,
+            ),
+            "Locomm.Success.TButton": dict(
+                bg=Colors.STATE_SUCCESS,
+                hover_bg=Colors.BUTTON_SUCCESS_HOVER,
+                active_bg=Colors.BUTTON_SUCCESS_ACTIVE,
+                fg=Colors.SURFACE,
+            ),
+            "Locomm.Warning.TButton": dict(
+                bg=Colors.STATE_WARNING,
+                hover_bg=Colors.BUTTON_WARNING_HOVER,
+                active_bg=Colors.BUTTON_WARNING_ACTIVE,
+                fg=Colors.SURFACE,
+            ),
+        }
 
     @staticmethod
     def _apply_button_layout(style, style_name):
@@ -492,11 +499,9 @@ class ThemeManager:
         if cls._initialized:
             style = ttk.Style()
             # Update button styles
-            for style_name in ["Locomm.Primary.TButton", "Locomm.Secondary.TButton", "Locomm.Ghost.TButton", "Locomm.Danger.TButton", "Locomm.Success.TButton"]:
+            for style_name, cfg in ThemeManager._button_style_definitions().items():
                 try:
-                    style.configure(style_name,
-                                  background=getattr(Colors, "BUTTON_PRIMARY_BG", Palette.VSCODE_BLUE),
-                                  foreground=Colors.SURFACE)
+                    ThemeManager._apply_button_style(style, style_name, **cfg)
                 except tk.TclError:
                     pass  # Style may not exist yet
 

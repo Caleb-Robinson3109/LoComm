@@ -21,6 +21,7 @@ from ui.theme_manager import ThemeManager, ensure_styles_initialized
 from ui.theme_tokens import AppConfig, Colors, Spacing
 from utils.app_logger import get_logger
 from utils.window_sizing import calculate_initial_window_size, scale_dimensions
+from utils.user_settings import get_user_settings
 
 MAX_UI_PENDING_MESSAGES = 500
 
@@ -30,6 +31,11 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        try:
+            preferred_theme = get_user_settings().theme_mode or "light"
+            ThemeManager.set_mode(preferred_theme)
+        except Exception:
+            ThemeManager.set_mode("light")
         ensure_styles_initialized()
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)
