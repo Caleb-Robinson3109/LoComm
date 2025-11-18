@@ -25,6 +25,8 @@ class HomePage(BasePage):
         )
         body = scroll.frame
 
+        self._subtitle_label: tk.Label | None = None
+
         self._build_title(body)
 
     def _handle_back(self):
@@ -84,15 +86,28 @@ class HomePage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
-        tk.Label(
+        # Subtitle label with dynamic wraplength
+        subtitle = tk.Label(
             text_wrap,
             text="Secure LoRa messaging for desktop",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
+            wraplength=640,  # initial value; will be updated on resize
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        subtitle.pack(anchor="w", pady=(Space.XXS, 0))
+        self._subtitle_label = subtitle
+
+        # Adjust wraplength when the available width changes
+        def _on_resize(event):
+            if not self._subtitle_label:
+                return
+            # Leave a bit of horizontal padding so text does not hug the edge
+            new_wrap = max(300, event.width - 2 * Spacing.SM)
+            self._subtitle_label.configure(wraplength=new_wrap)
+
+        text_wrap.bind("<Configure>", _on_resize)
 
         DesignUtils.button(
             action_wrap,

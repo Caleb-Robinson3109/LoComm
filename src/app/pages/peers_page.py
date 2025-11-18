@@ -12,7 +12,7 @@ from .base_page import BasePage, PageContext
 
 
 class PeersPage(BasePage):
-    """Devices page with chat-style clean, simple design."""
+    """Devices page with chat style clean, simple design."""
 
     def __init__(self, master, context: PageContext, on_device_paired: Optional[Callable] = None):
         super().__init__(master, context=context, bg=Colors.SURFACE)
@@ -32,6 +32,9 @@ class PeersPage(BasePage):
         self._selected_device_id: Optional[str] = None
         self._device_row_frames: dict[str, tk.Frame] = {}
         self._scan_timer_id: Optional[str] = None
+
+        # header subtitle label for dynamic wrap
+        self._subtitle_label: tk.Label | None = None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -104,15 +107,27 @@ class PeersPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
-        tk.Label(
+        # Responsive subtitle
+        subtitle = tk.Label(
             text_wrap,
             text="Manage your peers and device sessions",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
+            wraplength=640,  # initial value, updated on resize
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        subtitle.pack(anchor="w", pady=(Space.XXS, 0))
+        self._subtitle_label = subtitle
+
+        # Update wraplength when available width changes
+        def _on_resize(event):
+            if not self._subtitle_label:
+                return
+            new_wrap = max(320, event.width - 2 * Spacing.SM)
+            self._subtitle_label.configure(wraplength=new_wrap)
+
+        text_wrap.bind("<Configure>", _on_resize)
 
         self.refresh_btn = DesignUtils.button(
             action_wrap,

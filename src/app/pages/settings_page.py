@@ -10,7 +10,7 @@ from .base_page import BasePage, PageContext
 
 
 class SettingsPage(BasePage):
-    """Settings page with chat-style clean, simple design."""
+    """Settings page with chat style clean, simple design."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
@@ -21,6 +21,7 @@ class SettingsPage(BasePage):
         self._toggle_vars: dict[str, tk.BooleanVar] = {}
         self._toggle_buttons: dict[str, tk.Widget] = {}
         self._theme_button: tk.Widget | None = None
+        self._subtitle_label: tk.Label | None = None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -70,7 +71,7 @@ class SettingsPage(BasePage):
         )
         back_button.pack(anchor="w")
 
-        # Existing title block
+        # Title block
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -86,15 +87,26 @@ class SettingsPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
-        tk.Label(
+        subtitle = tk.Label(
             title_wrap,
             text="Configure your Locomm experience",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
+            wraplength=640,  # initial, updated on resize
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        subtitle.pack(anchor="w", pady=(Space.XXS, 0))
+        self._subtitle_label = subtitle
+
+        # Make subtitle wraplength responsive to available width
+        def _on_resize(event):
+            if not self._subtitle_label:
+                return
+            new_wrap = max(320, event.width - 2 * Spacing.SM)
+            self._subtitle_label.configure(wraplength=new_wrap)
+
+        title_wrap.bind("<Configure>", _on_resize)
 
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))

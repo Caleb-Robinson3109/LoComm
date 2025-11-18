@@ -37,7 +37,7 @@ class TestPage(BasePage):
         scroll = create_scroll_container(
             self,
             bg=Colors.SURFACE,
-            padding=(0, Spacing.LG)
+            padding=(0, Spacing.LG),
         )
         body = scroll.frame
 
@@ -105,15 +105,24 @@ class TestPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
-        tk.Label(
+        # Responsive subtitle
+        subtitle_label = tk.Label(
             text_wrap,
             text="Test your peers and device sessions",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
+            wraplength=1,
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        subtitle_label.pack(anchor="w", pady=(Space.XXS, 0))
+
+        # Keep wraplength synced with available width
+        def _update_wraplength(event, label=subtitle_label, pad=Spacing.SM * 2):
+            width = max(260, event.width - pad)
+            label.configure(wraplength=width)
+
+        parent.bind("<Configure>", _update_wraplength, add="+")
 
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
@@ -327,7 +336,7 @@ class TestPage(BasePage):
             self.controller.status_manager.update_status("Scanning…")
         self._set_stage(DeviceStage.SCANNING)
         self._cancel_scan_timer()
-        self._scan_timer_id = self.after(2000, self._finish_scan)  # TODO: Make scan duration configurable
+        self._scan_timer_id = self.after(2000, self._finish_scan)
 
     def _finish_scan(self):
         newly_found = self.device_service.simulate_scan()

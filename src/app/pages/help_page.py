@@ -13,10 +13,7 @@ class HelpPage(BasePage):
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
-
-        self.app = context.app if context else None
-        self.controller = context.controller if context else None
-        self.session = context.session if context else None
+        self.context = context
         self.navigator = context.navigator if context else None
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
@@ -36,7 +33,7 @@ class HelpPage(BasePage):
             nav.navigate_to("home")
 
     def _build_title(self, parent):
-        # Top back button row
+        # Top back button row (same style as other pages)
         back_row = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -60,7 +57,7 @@ class HelpPage(BasePage):
         )
         back_button.pack(anchor="w")
 
-        # Existing title block under the back button
+        # Title and subtitle
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -76,15 +73,23 @@ class HelpPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
 
-        tk.Label(
+        subtitle_label = tk.Label(
             title_wrap,
             text="Everything you need to know about Locomm Desktop in one place.",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
+            wraplength=1,
             justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
+        )
+        subtitle_label.pack(anchor="w", pady=(Space.XXS, 0))
+
+        # Make subtitle responsive to width
+        def _update_wraplength(event, label=subtitle_label, pad=Spacing.SM * 2):
+            width = max(260, event.width - pad)
+            label.configure(wraplength=width)
+
+        parent.bind("<Configure>", _update_wraplength, add="+")
 
         separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
         separator.pack(fill=tk.X, pady=(0, Space.SM))
