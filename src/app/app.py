@@ -167,6 +167,8 @@ class App(tk.Tk):
         default_height = max(int(base_height * 1.06), 420)
         width = max(int(default_width * 1.1 * 0.93), 360)  # 7% smaller than original
         height = max(int(default_height * 1.2 * 0.93), 380)  # 7% smaller than original
+        width = int(width * 1.05)
+        height = int(height * 1.05)
         modal.minsize(width, height)
         modal.resizable(True, True)
         modal.transient(self.winfo_toplevel())
@@ -309,8 +311,10 @@ class App(tk.Tk):
         screen_h = self.winfo_screenheight()
 
         # Calculate compact dimensions for login page (50% width and height)
-        compact_w = max(target_w // 2, 400)  # 50% of original width, minimum 400px
-        compact_h = max(target_h // 2, 300)  # 50% of original height, minimum 300px
+        min_login_w = int(400 * 1.05)
+        min_login_h = int(300 * 1.05)
+        compact_w = max(target_w // 2, min_login_w)  # Slightly larger minimum for readability
+        compact_h = max(target_h // 2, min_login_h)
         target_w = compact_w  # Use compact width for login
         target_h = compact_h  # Use compact height for login
 
@@ -318,7 +322,7 @@ class App(tk.Tk):
         offset_x = (screen_w - target_w) // 2
         offset_y = (screen_h - target_h) // 2
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(400, 300)  # Enforce minimum size
+        self.minsize(min_login_w, min_login_h)  # Enforce minimum size
         self.resizable(True, True)
 
     def _init_fullscreen_window(self):
@@ -331,7 +335,9 @@ class App(tk.Tk):
         offset_x = max((screen_w - target_w) // 2, 0)
         offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(800, 600)  # Enforce reasonable minimum size for main app
+        min_main_w = int(800 * 1.05)
+        min_main_h = int(600 * 1.05)
+        self.minsize(min_main_w, min_main_h)  # Enforce reasonable minimum size for main app
         self.resizable(True, True)
 
 

@@ -37,7 +37,9 @@ class ChatWindow(tk.Toplevel):
         self.local_device_name = local_device_name or "Orion"
         self.title("Chat")
         self.geometry("387x465")
-        self.minsize(387, 465)
+        min_width = int(387 * 1.05)
+        min_height = int(465 * 1.05)
+        self.minsize(min_width, min_height)
         self.resizable(True, True)
         self.configure(bg=Colors.SURFACE)
         self.configure(bg=Colors.SURFACE)

@@ -249,10 +249,10 @@ class AppConfig:
     STATUS_READY = "Ready"
     STATUS_TRANSPORT_ERROR = "Transport error"
 
-    WINDOW_WIDTH = 1200
-    WINDOW_HEIGHT = 820
-    MIN_WINDOW_WIDTH = 848
-    MIN_WINDOW_HEIGHT = 583
+    WINDOW_WIDTH = int(1200 * 1.05)
+    WINDOW_HEIGHT = int(820 * 1.05)
+    MIN_WINDOW_WIDTH = int(848 * 1.05)
+    MIN_WINDOW_HEIGHT = int(583 * 1.05)
     APP_TITLE = "Locomm"
 
     STATUS_UPDATE_DELAY = 2000
