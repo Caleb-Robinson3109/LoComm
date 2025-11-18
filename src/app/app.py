@@ -24,7 +24,14 @@ class App(tk.Tk):
 
     def __init__(self):
         super().__init__()
+
+        # Set up styles and force light mode on startup
         ensure_styles_initialized()
+        # Canonical theme flag for the whole app
+        self.is_dark_mode: bool = False
+        # Force ThemeManager into light mode regardless of saved settings
+        ThemeManager.toggle_mode(False)
+
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)
         self._init_main_window()  # Initialize in proper position
@@ -48,9 +55,13 @@ class App(tk.Tk):
         self.show_login_modal()
 
     # ------------------------------------------------------------------ #
-    def show_main(self, device_id: str | None = None, device_name: str | None = None,
-                  route_id: str | None = None):
-        """Show the main chat interface."""
+    def show_main(
+        self,
+        device_id: str | None = None,
+        device_name: str | None = None,
+        route_id: str | None = None,
+    ):
+        """Show the main interface."""
         if self.current_frame:
             self.current_frame.destroy()
 
@@ -62,16 +73,24 @@ class App(tk.Tk):
 
         # Update session data if we just paired
         if device_id and device_name:
-            # CRITICAL FIX: Preserve local device name while updating peer info
-            if not hasattr(session, 'local_device_name') or not session.local_device_name:
+            # Preserve local device name while updating peer info
+            if not hasattr(session, "local_device_name") or not session.local_device_name:
                 session.local_device_name = "Orion"
             session.device_name = device_name
             session.device_id = device_id
             session.paired_at = time.time()
 
         # Create main frame - pass controller reference for backward compatibility
-        self.current_frame = MainFrame(self, self, session, self.app_controller, self._handle_logout, self.toggle_theme)
+        self.current_frame = MainFrame(
+            self,
+            self,
+            session,
+            self.app_controller,
+            self._handle_logout,
+            self.toggle_theme,
+        )
         self.current_frame.pack(fill=tk.BOTH, expand=True)
+
         if route_id:
             try:
                 self.current_frame.navigate_to(route_id)
@@ -80,16 +99,8 @@ class App(tk.Tk):
 
         # Chat page removed, no sync needed
 
-        # Process pending UI messages
+        # Process pending UI messages (no-op for now, chat removed)
         if self._ui_pending_messages:
-            for sender, msg, _ in self._ui_pending_messages:
-                display_name = sender or "Peer"
-                is_system = bool(sender and sender.lower() == "system")
-                self.current_frame.chat_page.append_line(
-                    display_name,
-                    msg,
-                    is_system=is_system,
-                )
             self._ui_pending_messages.clear()
 
     def show_login_modal(self):
@@ -105,26 +116,35 @@ class App(tk.Tk):
                 self,
                 on_login=self._handle_login_success,
                 on_register=self._handle_register_click,
-                on_forgot_password=self._handle_forgot_password_click
+                on_forgot_password=self._handle_forgot_password_click,
             )
 
     # ------------------------------------------------------------------ #
-    def start_transport_session(self, device_id: str, device_name: str, *, mode: str = "pin",
-                                failure_title: str = "Pairing Failed",
-                                failure_message: str = "Connection failed.") -> None:
+    def start_transport_session(
+        self,
+        device_id: str,
+        device_name: str,
+        *,
+        mode: str = "pin",
+        failure_title: str = "Pairing Failed",
+        failure_message: str = "Connection failed.",
+    ) -> None:
         """Kick off the controller workflow to connect to a device."""
 
         def on_complete(success: bool, error_msg: str | None):
             if success:
-                # Jump straight into chat once transport succeeds.
+                # Jump straight into main shell once transport succeeds.
                 self.show_main(device_id, device_name, route_id="home")
             else:
                 messagebox.showerror(failure_title, error_msg or failure_message)
                 self._clear_session()
 
-        self.app_controller.start_session(device_id, device_name, mode=mode, callback=on_complete)
-
-
+        self.app_controller.start_session(
+            device_id,
+            device_name,
+            mode=mode,
+            callback=on_complete,
+        )
 
     # Login modal callbacks
     def _handle_login_success(self, device_name: str, password: str):
@@ -142,19 +162,19 @@ class App(tk.Tk):
         self.show_main(route_id="home")
 
     def _open_chatroom_modal(self):
-        """Open the chatroom modal using the same pattern as PIN pairing."""
+        """Open the chatroom modal."""
         self.app_controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
         self._close_chatroom_modal()
         modal = tk.Toplevel(self)
         modal.title("Chatroom")
         modal.configure(bg=Colors.SURFACE)
 
-        # Calculate proper modal size (smaller than main window but larger than PIN modal)
+        # Calculate proper modal size
         base_width, base_height = scale_dimensions(432, 378, 0.93, 0.75)
         default_width = max(int(base_width * 1.08), 420)
         default_height = max(int(base_height * 1.06), 420)
-        width = max(int(default_width * 1.1 * 0.93), 360)  # 7% smaller than original
-        height = max(int(default_height * 1.2 * 0.93), 380)  # 7% smaller than original
+        width = max(int(default_width * 1.1 * 0.93), 360)
+        height = max(int(default_height * 1.2 * 0.93), 380)
         modal.minsize(width, height)
         modal.resizable(True, True)
         modal.transient(self.winfo_toplevel())
@@ -170,10 +190,10 @@ class App(tk.Tk):
 
         self.chatroom_modal = modal
 
-        # Create chatroom pairing frame inside the modal
+        # Create chatroom frame inside the modal
         chatroom_frame = ChatroomWindow(
             modal,
-            lambda chatroom_code: self._handle_chatroom_success(chatroom_code)
+            lambda chatroom_code: self._handle_chatroom_success(chatroom_code),
         )
         chatroom_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
         if hasattr(chatroom_frame, "focus_input"):
@@ -191,19 +211,13 @@ class App(tk.Tk):
         self.chatroom_modal = None
 
     def show_chatroom_modal(self):
-        """Show the chatroom modal for 20-digit code entry without destroying the main view."""
+        """Show the chatroom modal for 20 digit code entry without destroying the main view."""
         self._open_chatroom_modal()
 
     def _handle_chatroom_success(self, chatroom_code: str):
         """Handle successful chatroom code entry."""
-        # Close chatroom modal
         self._close_chatroom_modal()
-
-        # Show main interface and navigate to devices page
         self.show_main(route_id="pair")
-
-
-
 
     def _handle_register_click(self):
         """Handle register link click."""
@@ -213,14 +227,11 @@ class App(tk.Tk):
         """Handle forgot password link click."""
         messagebox.showinfo("Forgot Password", "Password recovery feature will be implemented in the future.")
 
-
-
     def _handle_logout(self):
         """Handle user logout with proper cleanup."""
         self.app_controller.stop_session()
         self._clear_session()
         self._ui_pending_messages.clear()
-        # Show login modal instead of main interface
         self.show_login_modal()
 
     def _clear_session(self):
@@ -239,17 +250,15 @@ class App(tk.Tk):
 
     # ------------------------------------------------------------------ #
     # Business logic callback methods
+
     def _handle_business_message(self, sender: str, msg: str, ts: float):
         """Handle incoming messages from business logic layer."""
         normalized_sender = (sender or "").strip()
         if normalized_sender and normalized_sender.lower() == "system" and "firmware" in (msg or "").lower():
             return
-        is_system = bool(sender and sender.lower() == "system")
-        if isinstance(self.current_frame, MainFrame):
-            # Chat page removed, messages not displayed in main interface
-            pass
-        else:
-            self._ui_pending_messages.append((sender, msg, ts))
+
+        # Chat page removed, keep messages in queue if needed later
+        self._ui_pending_messages.append((sender, msg, ts))
 
         # Notify user if message is from external peer
         session = self.app_controller.session
@@ -257,10 +266,8 @@ class App(tk.Tk):
         if sender and sender != local_device_name:
             self.notify_incoming_message(sender, msg)
 
-    # ------------------------------------------------------------------ #
     def notify_incoming_message(self, sender: str, msg: str):
-        """Notify user of incoming messages."""
-        # Audible chimes disabled per request
+        """Notify user of incoming messages (disabled)."""
         pass
 
     def _handle_app_close(self):
@@ -273,35 +280,39 @@ class App(tk.Tk):
 
     def clear_chat_history(self, *, confirm: bool = True):
         """Clear chat history - disabled since chat page removed."""
-        # Chat page removed, no history to clear
         pass
 
     def toggle_theme(self, use_dark: bool):
-        """Toggle between light and dark themes."""
+        """Toggle between light and dark themes for the whole app."""
+        # Store canonical state
+        self.is_dark_mode = bool(use_dark)
+
+        # Preserve current route (home, settings, about, etc)
         prev_route = None
         if isinstance(self.current_frame, MainFrame):
             prev_route = getattr(self.current_frame.sidebar, "current_view", None)
+
+        # Flip theme in design system
         ThemeManager.toggle_mode(use_dark)
-        # Get current session info from business logic layer
+
+        # Recreate main frame with same route
         session = self.app_controller.session
         self.configure(bg=Colors.SURFACE)
         self.show_main(session.device_id or None, session.device_name or None, route_id=prev_route)
 
     # ------------------------------------------------------------------ #
     def _init_main_window(self):
-        """Initialize the main application window in center position with compact login dimensions."""
+        """Initialize the main application window for login (compact)."""
         self.update_idletasks()
         target_w, target_h = calculate_initial_window_size(self)
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
 
-        # Calculate compact dimensions for login page (50% width and height)
-        compact_w = max(target_w // 2, 400)  # 50% of original width, minimum 400px
-        compact_h = max(target_h // 2, 300)  # 50% of original height, minimum 300px
-        target_w = compact_w  # Use compact width for login
-        target_h = compact_h  # Use compact height for login
+        compact_w = max(target_w // 2, 400)
+        compact_h = max(target_h // 2, 300)
+        target_w = compact_w
+        target_h = compact_h
 
-        # Position window in center of screen
         offset_x = (screen_w - target_w) // 2
         offset_y = (screen_h - target_h) // 2
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
@@ -314,7 +325,6 @@ class App(tk.Tk):
         target_w, target_h = calculate_initial_window_size(self)
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
-        # Center the window on screen instead of right-aligning
         offset_x = max((screen_w - target_w) // 2, 0)
         offset_y = max((screen_h - target_h) // 2, 0)
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")

@@ -12,7 +12,6 @@ from .home_page import HomePage
 from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
-from .test_page import TestPage
 from .chatroom_window import ChatroomWindow
 from .sidebar_page import SidebarPage
 from .view_manager import ViewManager
@@ -29,6 +28,7 @@ class RouteConfig:
 
 class MainFrame(ttk.Frame):
     """Main application frame with reduced coupling."""
+
     def __init__(self, master, app, session, controller, on_logout, on_theme_toggle):
         super().__init__(master)
 
@@ -94,7 +94,6 @@ class MainFrame(ttk.Frame):
                     on_device_paired=self._handle_device_pairing,
                 ),
             ),
-            RouteConfig("test", "Test", lambda parent, ctx=ctx: TestPage(parent, ctx)),
             RouteConfig("settings", "Settings", lambda parent, ctx=ctx: SettingsPage(parent, ctx)),
             RouteConfig("about", "About", lambda parent, ctx=ctx: AboutPage(parent, ctx)),
             RouteConfig("help", "Help", lambda parent, ctx=ctx: HelpPage(parent, ctx)),

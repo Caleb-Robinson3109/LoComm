@@ -1,25 +1,25 @@
-"""About page matching chat page's clean, simple design."""
+"""About page using standardized header and auto wrapping text."""
 from __future__ import annotations
 
-import sys
 import tkinter as tk
 
-from utils.design_system import Colors, Typography, Spacing, Space
-from ui.helpers import create_scroll_container
+from utils.design_system import Colors, Spacing, Typography
+from ui.helpers import (
+    create_scroll_container,
+    create_page_header,
+    create_standard_section,
+    AutoWrapLabel,
+)
 from .base_page import BasePage, PageContext
 
 
 class AboutPage(BasePage):
-    """About and support information with chat-style clean, simple design."""
+    """About page with standardized layout and responsive text."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
-        self.app = context.app if context else None
-        self.controller = context.controller if context else None
-        self.session = context.session if context else None
         self.navigator = context.navigator if context else None
 
-        # Simple scroll container like chat page
         scroll = create_scroll_container(
             self,
             bg=Colors.SURFACE,
@@ -27,9 +27,52 @@ class AboutPage(BasePage):
         )
         body = scroll.frame
 
-        self._build_title(body)
-        self._build_info_section(body)
-        self._build_specs_section(body)
+        # Header
+        create_page_header(
+            body,
+            title="About Locomm",
+            subtitle="Locomm is a desktop client for secure LoRa powered messaging.",
+            show_back=True,
+            on_back=self._handle_back,
+        )
+
+        # Main about section
+        _, content = create_standard_section(
+            body,
+            title="What is Locomm?",
+            bg=Colors.SURFACE,
+            inner_bg=Colors.SURFACE_ALT,
+            with_card=True,
+        )
+
+        AutoWrapLabel(
+            content,
+            text=(
+                "Locomm is designed for low bandwidth, long range communication using "
+                "LoRa radios. The desktop client focuses on a clean, modern interface "
+                "while keeping configuration and status easy to understand."
+            ),
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            justify="left",
+            padding_x=Spacing.SM * 2,
+            min_wrap=260,
+        ).pack(fill=tk.X, expand=True)
+
+        AutoWrapLabel(
+            content,
+            text=(
+                "This application is still evolving. Future releases will add richer "
+                "peer management, diagnostics, and multi device support."
+            ),
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            justify="left",
+            padding_x=Spacing.SM * 2,
+            min_wrap=260,
+        ).pack(fill=tk.X, expand=True, pady=(Spacing.SM, 0))
 
     def _handle_back(self):
         nav = getattr(self, "navigator", None)
@@ -39,156 +82,6 @@ class AboutPage(BasePage):
             nav.go_back()
         elif hasattr(nav, "navigate_to"):
             nav.navigate_to("home")
-
-    def _build_title(self, parent):
-        """Back button at very top, then title block below."""
-        # Top back button row
-        back_row = tk.Frame(
-            parent,
-            bg=Colors.SURFACE,
-            padx=Spacing.SM,
-            pady=Space.XXS,
-        )
-        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
-
-        back_button = tk.Button(
-            back_row,
-            text="← Back",
-            command=self._handle_back,
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            relief=tk.FLAT,
-            padx=Space.SM,
-            pady=int(Space.XS / 2),
-            activebackground=Colors.SURFACE,
-            activeforeground=Colors.TEXT_PRIMARY,
-            cursor="hand2",
-        )
-        back_button.pack(anchor="w")
-
-        # Title and subtitle block under the back button
-        title_wrap = tk.Frame(
-            parent,
-            bg=Colors.SURFACE,
-            padx=Spacing.SM,
-        )
-        title_wrap.pack(fill=tk.X, pady=(0, Space.XS))
-
-        tk.Label(
-            title_wrap,
-            text="About Locomm",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
-
-        tk.Label(
-            title_wrap,
-            text=f"Build 3.0 • Python {sys.version.split()[0]}",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            wraplength=640,
-            justify="left",
-        ).pack(anchor="w", pady=(Space.XXS, 0))
-
-        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
-        separator.pack(fill=tk.X, pady=(0, Space.SM))
-
-    def _build_info_section(self, parent):
-        """Build clean info section like chat content area."""
-        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
-        section.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(
-            section,
-            text="About Locomm Desktop",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-
-        content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
-        content.pack(fill=tk.X, pady=(0, Space.SM))
-
-        tk.Label(
-            content,
-            text="Desktop build",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-        tk.Label(
-            content,
-            text="v3.0 - Unified Design",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-
-        tk.Label(
-            content,
-            text="Transport backend",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-        tk.Label(
-            content,
-            text="LoComm Transport + Mock API",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-
-        tk.Label(
-            content,
-            text="UI Theme",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-        tk.Label(
-            content,
-            text="Locomm Design System v3",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-
-    def _build_specs_section(self, parent):
-        """Build clean technical specs section."""
-        section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
-        section.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(
-            section,
-            text="Technical Specifications",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w", pady=(0, Spacing.SM))
-
-        content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
-        content.pack(fill=tk.X)
-
-        specs = [
-            "Transport: LoCommTransport abstraction + mock backend",
-            "UI: Tkinter + Locomm Design System v3",
-            "Authentication: 8 digit PIN pairing",
-            "Session storage: Local session.json cache",
-        ]
-
-        for spec in specs:
-            tk.Label(
-                content,
-                text=f"• {spec}",
-                bg=Colors.SURFACE_ALT,
-                fg=Colors.TEXT_SECONDARY,
-                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-                wraplength=720,
-                justify="left",
-            ).pack(anchor="w", pady=(0, Space.XXS))
 
     def destroy(self):
         return super().destroy()
