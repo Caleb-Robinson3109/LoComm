@@ -28,53 +28,34 @@ class Palette:
     PIN_ENTRY_BG = "#228B22"
     PIN_ENTRY_BORDER = "#FFD700"
 
-    # VS Code Core Colors
+    # Legacy tokens removed for simplification
     WHITE = "#FFFFFF"
 
-    # VS Code Dark Theme Backgrounds
-    VSCODE_BG_PRIMARY = "#1e1e1e"      # Main background (editor area)
-    VSCODE_BG_SECONDARY = "#252526"    # Sidebar background
-    VSCODE_BG_TERTIARY = "#2d2d30"     # Panel background
-    VSCODE_BG_QUATERNARY = "#3c3c3c"   # Input background
-    VSCODE_BG_ACTIVE = "#094771"       # Active selection background
+    # Modern UI Colors
+    NEUTRAL_50 = "#F9FAFB"
+    NEUTRAL_100 = "#F3F4F6"
+    NEUTRAL_200 = "#E5E7EB"
+    NEUTRAL_300 = "#D1D5DB"
+    NEUTRAL_400 = "#9CA3AF"
+    NEUTRAL_500 = "#6B7280"
+    NEUTRAL_600 = "#4B5563"
+    NEUTRAL_700 = "#374151"
+    NEUTRAL_800 = "#1F2937"
+    NEUTRAL_900 = "#111827"
 
-    # VS Code Text Colors
-    VSCODE_TEXT_PRIMARY = "#ffffff"     # Primary text
-    VSCODE_TEXT_SECONDARY = "#cccccc"   # Secondary text
-    VSCODE_TEXT_MUTED = "#969696"       # Muted text
-    VSCODE_TEXT_DISABLED = "#6c6c6c"    # Disabled text
-
-    # VS Code Accent Colors
-    VSCODE_BLUE = "#0078d4"            # VS Code blue
-    VSCODE_BLUE_LIGHT = "#1ba1e2"      # Light blue
-    VSCODE_BLUE_DARK = "#005a9e"       # Dark blue
-    VSCODE_PURPLE = "#bf5af2"          # VS Code purple
-    VSCODE_PURPLE_LIGHT = "#c77dff"    # Light purple
-    VSCODE_PURPLE_DARK = "#7c3aed"     # Dark purple
-
-    # VS Code Status Colors
-    VSCODE_GREEN = "#4caf50"           # Success green
-    VSCODE_RED = "#f85149"             # Error red
-    VSCODE_ORANGE = "#ffa724"          # Warning orange
-    VSCODE_YELLOW = "#ffcc02"          # Info yellow
-
-    # VS Code Border Colors
-    VSCODE_BORDER = "#3c3c3c"          # Primary border
-    VSCODE_BORDER_LIGHT = "#484848"    # Light border
-    VSCODE_BORDER_ACTIVE = "#0078d4"   # Active border
-
-    # VS Code Interactive Colors
-    VSCODE_HOVER = "#2a2d2e"           # Hover background
-    VSCODE_SELECTED = "#37373d"        # Selected background
-    VSCODE_FOCUS = "#0078d4"           # Focus ring color
+    PRIMARY_50 = "#EFF6FF"
+    PRIMARY_100 = "#DBEAFE"
+    PRIMARY_500 = "#3B82F6"
+    PRIMARY_600 = "#2563EB"
+    PRIMARY_700 = "#1D4ED8"
 
     # Custom primary/danger variants
-    PRIMARY = "#0B7CFF"
-    PRIMARY_HOVER = "#0A6FE0"
-    PRIMARY_SOFT = "#1E293B"
-    DANGER = "#C63C3C"
-    DANGER_HOVER = "#B23535"
-    DANGER_SOFT = "#451A1A"
+    PRIMARY = "#2563EB"  # Modern Blue
+    PRIMARY_HOVER = "#1D4ED8"
+    PRIMARY_SOFT = "#EFF6FF"
+    DANGER = "#EF4444"
+    DANGER_HOVER = "#DC2626"
+    DANGER_SOFT = "#FEF2F2"
 
 
 class Colors:
@@ -182,8 +163,8 @@ class Colors:
 class Typography:
     """Typography scale (8pt grid)."""
 
-    FONT_UI = "Segoe UI"
-    FONT_MONO = "Consolas"
+    FONT_UI = ".AppleSystemUIFont"  # macOS system font
+    FONT_MONO = "Menlo"             # macOS mono font
 
     SIZE_10 = 10
     SIZE_12 = 12

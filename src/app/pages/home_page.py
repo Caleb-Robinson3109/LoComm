@@ -76,5 +76,13 @@ class HomePage(BasePage):
         if self.app and hasattr(self.app, 'show_chatroom_modal'):
             self.app.show_chatroom_modal()
 
+    def on_show(self):
+        """Refresh colors when showing the page."""
+        self.configure(bg=Colors.SURFACE)
+        # Re-build content to ensure fresh colors if needed, or just update bg
+        # For a deep fix, we should ideally use a reactive theme system, 
+        # but re-configuring the main frame is a good start.
+        pass
+
     def destroy(self):
         return super().destroy()

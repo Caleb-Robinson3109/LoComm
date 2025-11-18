@@ -337,6 +337,7 @@ class PeersPage(BasePage):
 
     # ------------------------------------------------------------------ #
     def on_show(self):
+        self.configure(bg=Colors.SURFACE)
         self._subscribe_to_store()
 
     def on_hide(self):

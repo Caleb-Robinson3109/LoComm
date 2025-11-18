@@ -33,22 +33,23 @@ class SidebarPage(tk.Frame):
 
         # Back Button (Hidden by default, controlled by MainPage)
         self.back_btn = DesignUtils.create_nav_button(self.container, "← Back", command=None)
-        # Pack it but hide it initially
+        # Pack it but hide it initially (using disabled state to reserve space)
         self.back_btn.pack(fill=tk.X, pady=(0, Spacing.SM))
-        self.back_btn.pack_forget()
+        self.toggle_back_button(False)
 
         self._build_nav_sections()
         self._build_footer()
         self._update_active_button(self.current_view)
 
     def toggle_back_button(self, show: bool, command: Callable[[], None] | None = None):
-        """Show or hide the back button."""
+        """Show or hide the back button, preserving layout space."""
         if show:
-            self.back_btn.pack(fill=tk.X, pady=(0, Spacing.SM), before=self.nav_frame)
+            self.back_btn.configure(state="normal", text="← Back")
             if command:
                 self.back_btn.configure(command=command)
         else:
-            self.back_btn.pack_forget()
+            # Keep the button but make it invisible/disabled to preserve layout
+            self.back_btn.configure(state="disabled", text="")
 
     def _build_nav_sections(self):
         top_items = []

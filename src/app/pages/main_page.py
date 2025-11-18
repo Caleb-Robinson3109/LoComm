@@ -221,10 +221,9 @@ class MainPage(ttk.Frame):
         show_back = (view_name != "home")
         self.sidebar.toggle_back_button(show_back, self._go_back)
         
-        if view_name == "home":
-            self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
-        else:
-            self.local_device_label.pack_forget()
+        # Ensure device name is always visible for consistent layout
+        if not self.local_device_label.winfo_ismapped():
+            self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS), before=self.status_badge)
 
     def _go_back(self):
         """Navigate back to home."""

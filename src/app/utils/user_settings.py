@@ -9,7 +9,7 @@ from typing import Dict, Any
 
 @dataclass
 class UserSettings:
-    theme_mode: str = "dark"
+    theme_mode: str = "light"
     notifications_enabled: bool = True
     sound_alerts_enabled: bool = False
 
@@ -43,7 +43,7 @@ def _save_to_disk(payload: Dict[str, Any]) -> None:
 
 def _populate(data: Dict[str, Any]) -> UserSettings:
     return UserSettings(
-        theme_mode=data.get("theme_mode", "dark"),
+        theme_mode=data.get("theme_mode", "light"),
         notifications_enabled=data.get("notifications_enabled", True),
         sound_alerts_enabled=data.get("sound_alerts_enabled", False),
     )

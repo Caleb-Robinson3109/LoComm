@@ -18,10 +18,14 @@ class DesignUtils:
 
     @staticmethod
     def button(parent, text: str, command=None, variant: str = "primary", width: int | None = None):
-        """Create a styled button."""
+        """Create a styled button with modern flat design."""
         ThemeManager.ensure()
         style_name = ThemeManager.BUTTON_STYLES.get(variant, "Locomm.Primary.TButton")
-        kwargs = {"text": text, "style": style_name}
+        
+        # Configure styles dynamically if needed (though usually done in ThemeManager)
+        # Here we rely on the theme manager having set up the styles correctly.
+        
+        kwargs = {"text": text, "style": style_name, "cursor": "pointinghand"}
         if command is not None:
             kwargs["command"] = command
         if width is not None:
@@ -30,7 +34,7 @@ class DesignUtils:
 
     @staticmethod
     def pill(parent, text: str, variant: str = "info"):
-        """Create a styled pill/badge label."""
+        """Create a styled pill/badge label with rounded look."""
         ThemeManager.ensure()
         variant_map = {
             "info": (Colors.BUTTON_SECONDARY_BG, Colors.TEXT_PRIMARY),
@@ -44,9 +48,9 @@ class DesignUtils:
             text=text,
             bg=bg,
             fg=fg,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
-            pady=int(Spacing.XS / 2),
+            pady=2,
         )
         label.configure(relief="flat")
         return label
@@ -55,26 +59,30 @@ class DesignUtils:
     def hero_header(parent, title: str, subtitle: str, actions: List[dict[str, Any]] | None = None):
         """Create a hero header with title, subtitle, and optional actions."""
         ThemeManager.ensure()
-        container = tk.Frame(parent, bg=Colors.HERO_PANEL_BG, padx=Spacing.SM, pady=Spacing.XXS)
-        container.pack(fill=tk.X, padx=Spacing.SM, pady=(0, Spacing.XXS))
-        text_wrap = tk.Frame(container, bg=Colors.HERO_PANEL_BG)
+        container = tk.Frame(parent, bg=Colors.BG_MAIN, padx=Spacing.MD, pady=Spacing.SM)
+        container.pack(fill=tk.X, padx=0, pady=(0, Spacing.SM))
+        
+        text_wrap = tk.Frame(container, bg=Colors.BG_MAIN)
         text_wrap.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
         tk.Label(
             text_wrap,
             text=title,
-            bg=Colors.HERO_PANEL_BG,
+            bg=Colors.BG_MAIN,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
+        
         tk.Label(
             text_wrap,
             text=subtitle,
-            bg=Colors.HERO_PANEL_BG,
+            bg=Colors.BG_MAIN,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w", pady=(Spacing.XS, 0))
+        
         if actions:
-            action_frame = tk.Frame(container, bg=Colors.HERO_PANEL_BG)
+            action_frame = tk.Frame(container, bg=Colors.BG_MAIN)
             action_frame.pack(side=tk.RIGHT, anchor="e")
             for action in actions:
                 btn = DesignUtils.button(action_frame, **action)
@@ -83,9 +91,9 @@ class DesignUtils:
 
     @staticmethod
     def create_nav_button(parent, text: str, command: Callable | None = None):
-        """Create a navigation button."""
+        """Create a navigation button with subtle hover."""
         ThemeManager.ensure()
-        kwargs = {"text": text, "style": "Locomm.Nav.TButton"}
+        kwargs = {"text": text, "style": "Locomm.Nav.TButton", "cursor": "pointinghand"}
         if command is not None:
             kwargs["command"] = command
         return ttk.Button(parent, **kwargs)
@@ -103,21 +111,8 @@ class DesignUtils:
         """Create an entry with reduced internal padding for tighter spacing."""
         ThemeManager.ensure()
         style = ttk.Style()
-        # Create a compact style for password fields
         compact_style = "Locomm.Compact.TEntry"
-        try:
-            # Configure compact entry style with minimal padding
-            style.configure(compact_style,
-                          fieldbackground=Colors.SURFACE_RAISED,
-                          foreground=Colors.TEXT_PRIMARY,
-                          bordercolor=Colors.BORDER,
-                          lightcolor=Colors.BORDER,
-                          darkcolor=Colors.BORDER)
-            return ttk.Entry(parent, style=compact_style, **kwargs)
-        except tk.TclError:
-            # Fallback to regular entry style if compact style fails
-            entry_style = "Locomm.Input.TEntry"
-            return ttk.Entry(parent, style=entry_style, **kwargs)
+        return ttk.Entry(parent, style=compact_style, **kwargs)
 
     @staticmethod
     def create_pin_entry(parent, **kwargs):
