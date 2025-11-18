@@ -1,5 +1,6 @@
 #include "LoCommAPI.h"
 #include "functions.h"
+#include "globals.h"
 
 uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
 uint8_t computer_out_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -27,10 +28,10 @@ extern bool loraTxLock;
 extern portMUX_TYPE serialLoraBridgeSpinLock;
 extern bool serialLoraBridgeLock;
 
-const uint8_t default_password[32] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd',
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+//const uint8_t default_password[32] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd',
+//    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+//    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+//    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 uint8_t password_hash[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -121,6 +122,9 @@ void handle_message_from_computer(){
 
     else if(message_type_match(message_type, "SEND", MESSAGE_TYPE_SIZE)){
         handle_SEND_packet();
+    }
+    else if(message_type_match(message_type, "SNOD", MESSAGE_TYPE_SIZE)){
+        handle_SNOD_packet();
     }
 
     else{
@@ -247,6 +251,18 @@ void handle_CONN_packet(){
     //gets the password hash from sorage
     storage.getBytes("password", password_hash, 32);
 
+    //sets the epoch time
+    uint32_t epoch = ((uint32_t)computer_in_packet[12] << 24) |
+        ((uint32_t)computer_in_packet[13] << 16) |
+        ((uint32_t)computer_in_packet[14] << 8)  |
+        ((uint32_t)computer_in_packet[15]);
+
+    epochAtBoot = epoch - (millis() / 1000);
+
+    display.setCursor(0,0);
+    display.printf("----%d----", epoch);
+    display.display();
+
     build_CACK_packet();
     message_to_computer_flag = true;
     message_from_computer_flag = false;
@@ -258,13 +274,14 @@ void handle_SEND_packet(){
     //lcd.setCursor(0,0);
     //lcd.print("handle SEND packet");
     //delay(1000);
-    memcpy(device_out_packet, computer_in_packet, MAX_PACKET_SIZE);
+    uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
+    
+    memcpy(device_out_packet, computer_in_packet, packet_size);
 
     //set the message_to_device flag
     message_to_device_flag = true;
 
     //gets the packet size
-    uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
     device_out_size = packet_size;
 
     //build SACK
@@ -292,7 +309,7 @@ void handle_message_to_device(){
     //lcd.print("handle message to device");
     //delay(1000);
     //while(message_to_device_flag){
-    if (addMessageToTxArray(&(device_out_packet[0]), device_out_size, 1 - deviceID)) {
+    if (addMessageToTxArray(&(device_out_packet[0]), device_out_size, device_out_packet[12])) {
       build_SACK_packet();
       message_to_device_flag = false; // Completed transfer to Ethans code
       device_out_size = 0;
@@ -327,6 +344,7 @@ void handle_message_from_device(){
 
       Serial.write(&(rxMessageBuffer[addr]), size);
       rxMessageBuffer.free(addr);
+      serialReadyToSendArray.remove(0);
     }
 
     Serial.flush();
@@ -380,4 +398,14 @@ void handle_message_from_device(){
 
     //complete and set the appropate flags
     device_out_size = 0;
+}
+
+void handle_SNOD_packet(){
+    memcpy(device_name, &computer_in_packet[12], 32);
+
+    displayName();
+
+    build_SNAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }

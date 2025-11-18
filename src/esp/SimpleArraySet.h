@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 //we assume that the first byte and second byte are identifiers we plan to search, and the rest of the bytes in each unit is just general data
 
 template <int SIZE, int UNIT_SIZE>

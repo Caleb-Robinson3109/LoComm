@@ -67,11 +67,13 @@ void init_password(){
     //check to see if there is storage of the password if not add default password
     size_t passowrd_len = storage.getBytesLength("password");
     if(passowrd_len == 0){
-        //mbedtls_sha256(default_password, 32, password_hash, 0);
+        mbedtls_sha256(default_password, 32, password_hash, 0);
         storage.putBytes("password", password_hash, 32);
     }
     else{
-        storage.getBytes("password", password_hash, 32);
+        mbedtls_sha256(default_password, 32, password_hash, 0);
+        //storage.getBytes("password", password_hash, 32);
+        storage.putBytes("password", password_hash, 32);
     }
 
 }
@@ -208,4 +210,19 @@ void debug_simulate_device_in_packet(){
 
     message_from_device_flag = true;
     device_in_size = 40;
+}
+
+void displayName(){
+    //displays the name
+    display.clearDisplay();
+    display.setCursor(1,1);
+    display.printf("Device Name:");
+    display.display();
+    display.setCursor(2,40);
+    for(int i = 0; i < 32; i++){
+        if(device_name[i] != 0x00){
+            display.printf("%c", device_name[i]);
+            display.display();
+        }
+    }
 }

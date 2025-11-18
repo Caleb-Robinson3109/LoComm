@@ -6,12 +6,12 @@ import math
 from api_funcs.LoCommContext import LoCommContext
 from api_funcs.LoCommDebugPacket import print_packet_debug
 
-def craft_SEND_packet(tag: int, name: str, text: str, total_packets: int, curr_packet) -> bytes:
+def craft_SEND_packet(tag: int, name: str, id: int, text: str, total_packets: int, curr_packet) -> bytes:
     start_bytes: int = 0x1234
-    packet_size: int = len(name) + len(text) + 23
+    packet_size: int = len(name) + len(text) + 24
     message_type: bytes = b"SEND"
     #total_packets - 2, curr_packet - 2, name len - 1, text len -2, name, text
-    message: bytes = struct.pack(f">HHBH{len(name)}s{len(text)}s", total_packets, curr_packet, len(name), len(text), name.encode('ascii'), text.encode('ascii'))
+    message: bytes = struct.pack(f">BHHBH{len(name)}s{len(text)}s", id, total_packets, curr_packet + 1, len(name), len(text), name.encode('ascii'), text.encode('ascii'))
 
     #computer the payload for the checksum
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag) + message 
@@ -52,7 +52,7 @@ def check_SACK_packet(packet: bytes, tag: int, total_packets: int, packet_num: i
     if ret_tag != tag:
         return f"tag mismatch {tag}, {ret_tag}", False
     
-    if packet_num != message:
+    if packet_num + 1 != message:
         return f"packet number error {packet_num}, {message}", False
     
     payload: bytes = struct.pack(">H4sIH", packet_size, message_type, tag, message)
@@ -66,7 +66,7 @@ def check_SACK_packet(packet: bytes, tag: int, total_packets: int, packet_num: i
     
     return "no error", True 
 
-def locomm_api_send_message(name: str, message: str, ser: serial.Serial, context: LoCommContext) -> bool:
+def locomm_api_send_message(sender_name: str, reciver_id: int, message: str, ser: serial.Serial, context: LoCommContext) -> bool:
     #split the message into 1000 char chucnks and send each chunk (same tag)
     tag: int = random.randint(0, 0xFFFFFFFF)
     total_packets = math.ceil(len(message) / 1000)
@@ -74,11 +74,11 @@ def locomm_api_send_message(name: str, message: str, ser: serial.Serial, context
         #for each chucnk also checks if its the last chunk
         chunk: str = message[i * 1000 : (i+1) * 1000] if i != total_packets else message[i * 1000 : len(message)]
         #build packet
-        packet: bytes = craft_SEND_packet(tag, name, chunk, total_packets, i)
+        packet: bytes = craft_SEND_packet(tag, sender_name, reciver_id, chunk, total_packets, i)
 
         #send_recv_packet
         try:
-            print_packet_debug(packet, True)
+            print_packet_debug(packet, True) 
             ser.write(packet)
             ser.flush()
 

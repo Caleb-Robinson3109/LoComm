@@ -6,6 +6,9 @@ This file contianes the helper functions that the other functions will use e.g. 
 #define LIB_H
 
 #include "LoCommAPI.h"
+#include "globals.h"
+//#include <string.h> //memcpy
+#include "string.h" //memcpy
 
 #include <stdint.h> //uint8_t, uint32_t, ...
 #include <stddef.h> //size_t
@@ -39,5 +42,7 @@ void init_password();
 
 //this function chechs the send ack to confirm that it is all good
 bool check_SACK();
+
+void displayName();
 
 #endif

@@ -14,9 +14,10 @@ This file contianes the functions that hande the state of the device to computer
 //persistant storage (for password hash sotrage and keys)
 #include <Preferences.h>
 #include <string.h> //memcpy
+//#include <cstring> // memcpy
 #include "mbedtls/sha256.h" // sha256
 
-#define MAX_PACKET_SIZE 1055
+#define MAX_PACKET_SIZE 1056
 #define MAX_COMPUTER_PACKET_SIZE MAX_PACKET_SIZE
 #define MAX_DEVICE_PACKET_SIZE MAX_PACKET_SIZE
 #define MESSAGE_TYPE_SIZE 4
@@ -54,7 +55,7 @@ extern size_t computer_in_size;
 extern size_t device_in_size;
 
 //this is the defalt password
-extern const uint8_t default_password[32];
+//extern const uint8_t default_password[32];
 
 //this is where the password hash is held the default is the hash of password
 extern uint8_t password_hash[32];
@@ -99,4 +100,7 @@ void handle_message_to_device();
 //this function takes a message from the packet in buf from the  device and send it to the computer
 //it also waits for an ack from the computer
 void handle_message_from_device();
+
+//this function handles an incomming SNOD packet. the name of the  device will be stored in the device name var
+void handle_SNOD_packet();
 #endif

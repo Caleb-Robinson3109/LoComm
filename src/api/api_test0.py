@@ -8,9 +8,17 @@ def recv_thread():
         name, message = receive_message()
         print(f"{name}: {message}")
 
+#run_deviceless_mode()
+
+i = 0
 while(not connect_to_device()):
-    pass
+    i = i + 1
+    if i == 10:
+        raise ValueError(f"tried to connect to device {i} times")
+
 enter_password("password")
+store_name_on_device("Bob")
+print(f"{scan_for_devices()}")
 
 t =threading.Thread(target=recv_thread)
 t.start()
@@ -23,6 +31,6 @@ while True:
         disconnect_from_device()
         break
     else:
-        send_message("test name", cmd)
+        send_message("Bob", 1, cmd)
 
 t.join()

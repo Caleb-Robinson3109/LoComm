@@ -24,6 +24,7 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         packet_size: int
         packet_type: bytes
         tag: int
+        id: int
         total_packet: int
         curr_packet: int
         name_len: int
@@ -33,8 +34,8 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         crc: int
         end_bytes: int
         
-        start_bytes, packet_size, packet_type, tag, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIHHBH", LoCommGlobals.context.SEND_packet[:19])
-        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[19:])
+        start_bytes, packet_size, packet_type, tag, id, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIBHHBH", LoCommGlobals.context.SEND_packet[:20])
+        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[20:])
 
         #check SEND packet
         if(start_bytes != 0x1234):
@@ -48,7 +49,7 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         if(message_len != len(message_b)):
             raise ValueError(f"message lenght fail {len(message_b)}, {message_len}")
 
-        payload:bytes = struct.pack(f">H4sIHHBH{name_len}s{message_len}s", packet_size, packet_type, tag, total_packet, curr_packet, name_len, message_len, name_b, message_b)
+        payload:bytes = struct.pack(f">H4sIBHHBH{name_len}s{message_len}s", packet_size, packet_type, tag, id, total_packet, curr_packet, name_len, message_len, name_b, message_b)
         crc_check: int = binascii.crc_hqx(payload, 0)
 
         if(crc != crc_check):

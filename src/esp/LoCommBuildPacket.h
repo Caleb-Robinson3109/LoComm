@@ -16,6 +16,7 @@ This file contianes the functions that build the packets like SACK, SEND, PACK, 
 #define DCAK_SIZE 16
 #define SPAK_SIZE 20
 #define SACK_SIZE 18
+#define SNAK_SIZE 16
 
 //builds the CACK (send ack) packet
 void build_CACK_packet();
@@ -31,5 +32,7 @@ void build_SPAK_packet();
 
 //sets the send ack
 void build_SACK_packet();
+
+void build_SNAK_packet();
 
 #endif
