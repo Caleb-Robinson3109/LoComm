@@ -255,3 +255,20 @@ class DesignUtils:
                 justify="left",
             ).pack(fill=tk.X, padx=Spacing.MD, pady=(Spacing.XXS, Spacing.SM))
         return container
+
+    @staticmethod
+    def create_back_button(parent, command: Callable | None = None, text: str = "Back"):
+        """Standard back button used across pages."""
+        ThemeManager.ensure()
+
+        label = f"← {text}"
+        style_name = "Locomm.Nav.TButton"
+
+        kwargs = {
+            "text": label,
+            "style": style_name,
+        }
+        if command is not None:
+            kwargs["command"] = command
+
+        return ttk.Button(parent, **kwargs)

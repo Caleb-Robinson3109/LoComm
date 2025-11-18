@@ -20,6 +20,7 @@ class PeersPage(BasePage):
         self.controller = context.controller if context else None
         self.session = context.session if context else None
         self.host = context.navigator if context else None
+        self.navigator = context.navigator if context else None
         self.on_device_paired = on_device_paired
 
         self.ui_store = get_ui_store()
@@ -34,9 +35,9 @@ class PeersPage(BasePage):
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
-            self, 
-            bg=Colors.SURFACE, 
-            padding=(0, Spacing.LG)
+            self,
+            bg=Colors.SURFACE,
+            padding=(0, Spacing.LG),
         )
         body = scroll.frame
 
@@ -46,8 +47,42 @@ class PeersPage(BasePage):
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
 
+    def _handle_back(self):
+        nav = getattr(self, "navigator", None)
+        if not nav:
+            return
+        if hasattr(nav, "go_back"):
+            nav.go_back()
+        elif hasattr(nav, "navigate_to"):
+            nav.navigate_to("home")
+
     def _build_title(self, parent):
         """Build simple title section like chat page."""
+        # Top back button row
+        back_row = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Space.XXS,
+        )
+        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
+
+        back_button = tk.Button(
+            back_row,
+            text="← Back",
+            command=self._handle_back,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            padx=Space.SM,
+            pady=int(Space.XS / 2),
+            activebackground=Colors.SURFACE,
+            activeforeground=Colors.TEXT_PRIMARY,
+            cursor="hand2",
+        )
+        back_button.pack(anchor="w")
+
+        # Main title row with Refresh on the right
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -79,9 +114,6 @@ class PeersPage(BasePage):
             justify="left",
         ).pack(anchor="w", pady=(Space.XXS, 0))
 
-        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
-        separator.pack(fill=tk.X, pady=(0, Space.SM))
-
         self.refresh_btn = DesignUtils.button(
             action_wrap,
             text="Refresh",
@@ -89,6 +121,9 @@ class PeersPage(BasePage):
             command=self._scan_for_devices,
         )
         self.refresh_btn.pack()
+
+        separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)
+        separator.pack(fill=tk.X, pady=(0, Space.SM))
 
     def _build_devices_section(self, parent):
         """Build clean devices section."""
@@ -99,7 +134,7 @@ class PeersPage(BasePage):
             pady=Space.MD,
         )
         content.pack(fill=tk.BOTH, expand=True)
-        
+
         # Section title
         tk.Label(
             content,
@@ -108,11 +143,11 @@ class PeersPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
+
         # Device list
         list_frame = tk.Frame(content, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
-        
+
         self._build_device_list(list_frame)
 
     def _go_to_chat(self):
@@ -374,5 +409,6 @@ class PeersPage(BasePage):
             except Exception:
                 pass
             self._scan_timer_id = None
+
 
 PairPage = PeersPage

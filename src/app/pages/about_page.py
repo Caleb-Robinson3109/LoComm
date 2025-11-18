@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 import tkinter as tk
 
-from utils.design_system import Colors, DesignUtils, Typography, Spacing, Space
+from utils.design_system import Colors, Typography, Spacing, Space
 from ui.helpers import create_scroll_container
 from .base_page import BasePage, PageContext
 
@@ -17,12 +17,13 @@ class AboutPage(BasePage):
         self.app = context.app if context else None
         self.controller = context.controller if context else None
         self.session = context.session if context else None
+        self.navigator = context.navigator if context else None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
-            self, 
-            bg=Colors.SURFACE, 
-            padding=(0, Spacing.LG)
+            self,
+            bg=Colors.SURFACE,
+            padding=(0, Spacing.LG),
         )
         body = scroll.frame
 
@@ -30,8 +31,42 @@ class AboutPage(BasePage):
         self._build_info_section(body)
         self._build_specs_section(body)
 
+    def _handle_back(self):
+        nav = getattr(self, "navigator", None)
+        if not nav:
+            return
+        if hasattr(nav, "go_back"):
+            nav.go_back()
+        elif hasattr(nav, "navigate_to"):
+            nav.navigate_to("home")
+
     def _build_title(self, parent):
-        """Build simple title section like chat page."""
+        """Back button at very top, then title block below."""
+        # Top back button row
+        back_row = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Space.XXS,
+        )
+        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
+
+        back_button = tk.Button(
+            back_row,
+            text="← Back",
+            command=self._handle_back,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            padx=Space.SM,
+            pady=int(Space.XS / 2),
+            activebackground=Colors.SURFACE,
+            activeforeground=Colors.TEXT_PRIMARY,
+            cursor="hand2",
+        )
+        back_button.pack(anchor="w")
+
+        # Title and subtitle block under the back button
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -64,8 +99,7 @@ class AboutPage(BasePage):
         """Build clean info section like chat content area."""
         section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
         section.pack(fill=tk.BOTH, expand=True)
-        
-        # Section title
+
         tk.Label(
             section,
             text="About Locomm Desktop",
@@ -73,12 +107,10 @@ class AboutPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
-        # Info content
+
         content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
         content.pack(fill=tk.X, pady=(0, Space.SM))
-        
-        # Build info
+
         tk.Label(
             content,
             text="Desktop build",
@@ -93,8 +125,7 @@ class AboutPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
-        # Transport info
+
         tk.Label(
             content,
             text="Transport backend",
@@ -109,8 +140,7 @@ class AboutPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
-        # Theme info
+
         tk.Label(
             content,
             text="UI Theme",
@@ -130,8 +160,7 @@ class AboutPage(BasePage):
         """Build clean technical specs section."""
         section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
         section.pack(fill=tk.BOTH, expand=True)
-        
-        # Section title
+
         tk.Label(
             section,
             text="Technical Specifications",
@@ -139,18 +168,17 @@ class AboutPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
-        # Specs content
+
         content = tk.Frame(section, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.MD)
         content.pack(fill=tk.X)
-        
+
         specs = [
             "Transport: LoCommTransport abstraction + mock backend",
             "UI: Tkinter + Locomm Design System v3",
-            "Authentication: 8-digit PIN pairing",
+            "Authentication: 8 digit PIN pairing",
             "Session storage: Local session.json cache",
         ]
-        
+
         for spec in specs:
             tk.Label(
                 content,

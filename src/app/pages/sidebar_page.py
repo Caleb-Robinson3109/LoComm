@@ -13,9 +13,13 @@ from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 class SidebarPage(tk.Frame):
     """Left sidebar navigation component for main navigation."""
 
-    def __init__(self, master, nav_items: list[tuple[str, str]],
-                 on_nav_select: Optional[Callable[[str], None]] = None,
-                 on_theme_toggle: Optional[Callable[[bool], None]] = None):
+    def __init__(
+        self,
+        master,
+        nav_items: list[tuple[str, str]],
+        on_nav_select: Optional[Callable[[str], None]] = None,
+        on_theme_toggle: Optional[Callable[[bool], None]] = None,
+    ):
         ThemeManager.ensure()
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
         self.on_nav_select = on_nav_select
@@ -78,7 +82,8 @@ class SidebarPage(tk.Frame):
     def set_status(self, status_text: str):
         """Compatibility stub so main_frame can call without popup badge."""
         return
-    # Public helpers ------------------------------------------------------
+
+    # Public helpers ------------------------------------------------------ #
     def show_chat(self):
         self._handle_nav_click("chat")
 

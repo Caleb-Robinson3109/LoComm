@@ -19,6 +19,7 @@ class TestPage(BasePage):
         self.app = context.app if context else None
         self.controller = context.controller if context else None
         self.session = context.session if context else None
+        self.navigator = context.navigator if context else None
         self.host = context.navigator if context else None
         self.on_device_paired = on_device_paired
 
@@ -46,8 +47,43 @@ class TestPage(BasePage):
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
 
+    def _handle_back(self):
+        nav = getattr(self, "navigator", None)
+        if not nav:
+            return
+        if hasattr(nav, "go_back"):
+            nav.go_back()
+        elif hasattr(nav, "navigate_to"):
+            nav.navigate_to("home")
+
     def _build_title(self, parent):
         """Build simple title section like chat page."""
+
+        # Top back button row
+        back_row = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Space.XXS,
+        )
+        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
+
+        back_button = tk.Button(
+            back_row,
+            text="← Back",
+            command=self._handle_back,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            padx=Space.SM,
+            pady=int(Space.XS / 2),
+            activebackground=Colors.SURFACE,
+            activeforeground=Colors.TEXT_PRIMARY,
+            cursor="hand2",
+        )
+        back_button.pack(anchor="w")
+
+        # Existing title row
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -114,6 +150,7 @@ class TestPage(BasePage):
         list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Space.SM))
 
         self._build_device_list(list_frame)
+
         # Chat button below the table
         chat_btn = DesignUtils.button(
             content,
@@ -122,6 +159,7 @@ class TestPage(BasePage):
             variant="primary",
         )
         chat_btn.pack(anchor="w", pady=(Spacing.SM, 0))
+
     def _build_device_list(self, parent):
         """Build simple device list."""
         header = tk.Frame(parent, bg=Colors.SURFACE_ALT)

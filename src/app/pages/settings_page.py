@@ -14,16 +14,19 @@ class SettingsPage(BasePage):
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
+        self.context = context
+        self.navigator = context.navigator if context else None
+
         self.user_settings = get_user_settings()
         self._toggle_vars: dict[str, tk.BooleanVar] = {}
         self._toggle_buttons: dict[str, tk.Widget] = {}
         self._theme_button: tk.Widget | None = None
-        
+
         # Simple scroll container like chat page
         scroll = create_scroll_container(
-            self, 
-            bg=Colors.SURFACE, 
-            padding=(0, Spacing.LG)
+            self,
+            bg=Colors.SURFACE,
+            padding=(0, Spacing.LG),
         )
         body = scroll.frame
 
@@ -31,8 +34,43 @@ class SettingsPage(BasePage):
         self._build_appearance_section(body)
         self._build_settings_section(body)
 
+    def _handle_back(self):
+        nav = getattr(self, "navigator", None)
+        if not nav:
+            return
+        if hasattr(nav, "go_back"):
+            nav.go_back()
+        elif hasattr(nav, "navigate_to"):
+            nav.navigate_to("home")
+
     def _build_title(self, parent):
         """Build simple title section like chat page."""
+
+        # Top back button row
+        back_row = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Space.XXS,
+        )
+        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
+
+        back_button = tk.Button(
+            back_row,
+            text="← Back",
+            command=self._handle_back,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            padx=Space.SM,
+            pady=int(Space.XS / 2),
+            activebackground=Colors.SURFACE,
+            activeforeground=Colors.TEXT_PRIMARY,
+            cursor="hand2",
+        )
+        back_button.pack(anchor="w")
+
+        # Existing title block
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -65,7 +103,7 @@ class SettingsPage(BasePage):
         """Build clean appearance section."""
         section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
         section.pack(fill=tk.BOTH, expand=True)
-        
+
         # Section title
         tk.Label(
             section,
@@ -74,17 +112,17 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
+
         # Theme setting
         self._build_theme_setting(section)
-        
+
         # Accent color setting removed for simplicity
-    
+
     def _build_settings_section(self, parent):
         """Build simple settings section."""
         section = tk.Frame(parent, bg=Colors.SURFACE, padx=Space.LG, pady=Space.MD)
         section.pack(fill=tk.BOTH, expand=True)
-        
+
         # Section title
         tk.Label(
             section,
@@ -93,7 +131,7 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         ).pack(anchor="w", pady=(0, Spacing.SM))
-        
+
         # Settings toggles
         self._build_toggle_setting(section, "Desktop notifications", "notifications_enabled", True)
         self._build_toggle_setting(section, "Sound alerts", "sound_alerts_enabled", False)
@@ -102,7 +140,7 @@ class SettingsPage(BasePage):
         """Build theme setting with simple layout."""
         setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
         setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
-        
+
         # Setting label
         tk.Label(
             setting_frame,
@@ -111,7 +149,7 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
         ).pack(anchor="w")
-        
+
         # Description
         tk.Label(
             setting_frame,
@@ -120,7 +158,7 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w", pady=(Space.XXS, 0))
-        
+
         # Toggle button
         self.theme_var = tk.BooleanVar(value=self.user_settings.theme_mode == "dark")
         toggle_btn = DesignUtils.button(
@@ -137,7 +175,7 @@ class SettingsPage(BasePage):
         """Build accent color setting."""
         setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
         setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
-        
+
         # Setting label
         tk.Label(
             setting_frame,
@@ -146,7 +184,7 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
         ).pack(anchor="w")
-        
+
         # Description
         tk.Label(
             setting_frame,
@@ -155,11 +193,11 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w", pady=(Space.XXS, 0))
-        
+
         # Color preview
         preview_frame = tk.Frame(setting_frame, bg=Colors.SURFACE_ALT)
         preview_frame.pack(anchor="w", pady=(Space.SM, 0))
-        
+
         # Show current accent color
         tk.Label(
             preview_frame,
@@ -168,7 +206,7 @@ class SettingsPage(BasePage):
             fg=Colors.STATE_INFO,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w")
-        
+
         # Accent color cycling button
         DesignUtils.button(
             setting_frame,
@@ -182,7 +220,7 @@ class SettingsPage(BasePage):
         """Build a simple toggle setting."""
         setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
         setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
-        
+
         # Setting label
         tk.Label(
             setting_frame,
@@ -191,23 +229,24 @@ class SettingsPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
         ).pack(anchor="w")
-        
+
         # Toggle button
         current_value = getattr(self.user_settings, attr, initial)
         var = tk.BooleanVar(master=self, value=current_value)
         btn = DesignUtils.button(
-            setting_frame, 
-            text="On" if current_value else "Off", 
+            setting_frame,
+            text="On" if current_value else "Off",
             variant="ghost",
             width=8,
         )
         btn.pack(side=tk.RIGHT)
-        
+
         def toggle_setting():
             var.set(not var.get())
             btn.configure(text="On" if var.get() else "Off")
             setattr(self.user_settings, attr, var.get())
             save_user_settings(self.user_settings)
+
         btn.configure(command=toggle_setting)
         self._toggle_vars[attr] = var
         self._toggle_buttons[attr] = btn
@@ -225,16 +264,16 @@ class SettingsPage(BasePage):
     def _cycle_accent_color(self):
         """Cycle through accent colors."""
         current = ThemeManager.get_current_accent_name()
-        accents = ['blue', 'purple', 'green', 'orange', 'pink', 'red']
+        accents = ["blue", "purple", "green", "orange", "pink", "red"]
         current_index = accents.index(current) if current in accents else 0
         next_index = (current_index + 1) % len(accents)
         next_accent = accents[next_index]
-        
+
         # Set the new accent color
         ThemeManager.set_accent_color(next_accent)
-        
+
         # Update the preview
-        if hasattr(self, 'accent_preview_label'):
+        if hasattr(self, "accent_preview_label"):
             self.accent_preview_label.configure(text=f"● Current: {next_accent.title()}")
 
     def on_show(self):

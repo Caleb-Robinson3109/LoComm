@@ -14,6 +14,11 @@ class HelpPage(BasePage):
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
 
+        self.app = context.app if context else None
+        self.controller = context.controller if context else None
+        self.session = context.session if context else None
+        self.navigator = context.navigator if context else None
+
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
@@ -21,7 +26,41 @@ class HelpPage(BasePage):
         self._build_help_section(body)
         self._build_topics_section(body)
 
+    def _handle_back(self):
+        nav = getattr(self, "navigator", None)
+        if not nav:
+            return
+        if hasattr(nav, "go_back"):
+            nav.go_back()
+        elif hasattr(nav, "navigate_to"):
+            nav.navigate_to("home")
+
     def _build_title(self, parent):
+        # Top back button row
+        back_row = tk.Frame(
+            parent,
+            bg=Colors.SURFACE,
+            padx=Spacing.SM,
+            pady=Space.XXS,
+        )
+        back_row.pack(fill=tk.X, pady=(0, Space.XXS))
+
+        back_button = tk.Button(
+            back_row,
+            text="← Back",
+            command=self._handle_back,
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            padx=Space.SM,
+            pady=int(Space.XS / 2),
+            activebackground=Colors.SURFACE,
+            activeforeground=Colors.TEXT_PRIMARY,
+            cursor="hand2",
+        )
+        back_button.pack(anchor="w")
+
+        # Existing title block under the back button
         title_wrap = tk.Frame(
             parent,
             bg=Colors.SURFACE,
@@ -67,7 +106,7 @@ class HelpPage(BasePage):
 
         paragraphs = [
             "Use the sidebar to switch between Home, Chat, Devices, Settings, About, and Help.",
-            "The top bar shows your local device name and connection badge. ",
+            "The top bar shows your local device name and connection badge.",
             "It updates whenever the transport state changes.",
         ]
         for paragraph in paragraphs:
