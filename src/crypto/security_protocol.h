@@ -132,13 +132,13 @@ void sec_resetPairing();
 /**
  * @brief Encrypts a message using AES-GCM.
  * Adds a 12-byte IV and a 16-byte Authentication Tag.
- * * Overhead: The output will be exactly (plaintextLen + 28) bytes.
+ * * Overhead: The output will be exactly (plaintextLen + 20) bytes.
  * Format: [IV (12 bytes)] [Ciphertext (N bytes)] [Auth Tag (16 bytes)]
  * * @param plaintext Source data to encrypt.
  * @param plaintextLen Length of the source data.
  * @param ciphertextBuffer Dest buffer allocated by caller.
- * @param bufferSize Size of dest buffer. MUST be >= (plaintextLen + 28).
- * @param ciphertextLen Output pointer. Function writes the final size here (plaintextLen + 28).
+ * @param bufferSize Size of dest buffer. MUST be >= (plaintextLen + 20).
+ * @param ciphertextLen Output pointer. Function writes the final size here (plaintextLen + 20).
  * @return true on success, false if buffer too small or not logged in.
  */
 bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen);
@@ -150,7 +150,7 @@ bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_
  * * @param ciphertext Source encrypted data (IV + Ciphertext + Tag).
  * @param ciphertextLen Total length of encrypted data.
  * @param plaintextBuffer Dest buffer allocated by caller.
- * @param bufferSize Size of dest buffer. MUST be >= (ciphertextLen - 28).
+ * @param bufferSize Size of dest buffer. MUST be >= (ciphertextLen - 20).
  * @param plaintextLen Output pointer. Function writes final decrypted size here.
  * @return true if integrity check passed and decryption succeeded.
  * @return false if authentication failed (tampering) or buffer too small.
