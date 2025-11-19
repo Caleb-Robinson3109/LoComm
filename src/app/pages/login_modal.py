@@ -95,7 +95,8 @@ class LoginModal:
             self.parent.geometry(f"{new_w}x{new_h}+{pos_x}+{pos_y}")
 
         # Prevent shrinking below the content
-        self.parent.minsize(new_w, new_h)
+        min_h = int(new_h * 1.14)
+        self.parent.minsize(new_w, min_h)
 
     # ------------------------------------------------------------------ #
     # Content and interactions
@@ -191,7 +192,7 @@ class LoginModal:
         links_frame = tk.Frame(main_container, bg=Colors.SURFACE)
         links_frame.pack(fill=tk.X)
 
-        register_label = tk.Label(
+        self.register_label = tk.Label(
             links_frame,
             text="Register",
             bg=Colors.SURFACE,
@@ -199,12 +200,12 @@ class LoginModal:
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
             cursor="hand2",
         )
-        register_label.pack(side=tk.LEFT, padx=(0, 4))
-        register_label.bind("<Button-1>", lambda e: self._on_register_click())
-        register_label.bind("<Enter>", lambda e: register_label.configure(fg=Colors.LINK_HOVER))
-        register_label.bind("<Leave>", lambda e: register_label.configure(fg=Colors.LINK_PRIMARY))
+        self.register_label.pack(side=tk.LEFT, padx=(0, 4))
+        self.register_label.bind("<Button-1>", lambda e: self._on_register_click())
+        self.register_label.bind("<Enter>", lambda e: self.register_label.configure(fg=Colors.LINK_HOVER))
+        self.register_label.bind("<Leave>", lambda e: self.register_label.configure(fg=Colors.LINK_PRIMARY))
 
-        forgot_label = tk.Label(
+        self.forgot_label = tk.Label(
             links_frame,
             text="Forgot Password",
             bg=Colors.SURFACE,
@@ -212,10 +213,13 @@ class LoginModal:
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
             cursor="hand2",
         )
-        forgot_label.pack(side=tk.LEFT)
-        forgot_label.bind("<Button-1>", lambda e: self._on_forgot_password_click())
-        forgot_label.bind("<Enter>", lambda e: forgot_label.configure(fg=Colors.LINK_HOVER))
-        forgot_label.bind("<Leave>", lambda e: forgot_label.configure(fg=Colors.LINK_PRIMARY))
+        self.forgot_label.pack(side=tk.LEFT)
+        self.forgot_label.bind("<Button-1>", lambda e: self._on_forgot_password_click())
+        self.forgot_label.bind("<Enter>", lambda e: self.forgot_label.configure(fg=Colors.LINK_HOVER))
+        self.forgot_label.bind("<Leave>", lambda e: self.forgot_label.configure(fg=Colors.LINK_PRIMARY))
+
+        self.error_container = tk.Frame(main_container, bg=Colors.SURFACE)
+        self.error_container.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
         # Focus and key bindings
         self.modal_window.after(100, self._set_initial_focus)
@@ -322,8 +326,10 @@ class LoginModal:
             self.modal_window.after(50, self.password_entry.focus_set)
 
     def _show_validation_error(self, message: str):
+        target_parent = self.error_container if hasattr(self, "error_container") and self.error_container else self.modal_window
+        pack_opts = {"fill": tk.X, "pady": (Spacing.XXS, 0)}
         error_label = tk.Label(
-            self.modal_window,
+            target_parent,
             text=message,
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
@@ -331,10 +337,13 @@ class LoginModal:
             padx=Spacing.SM,
             pady=Spacing.XXS,
         )
-        error_label.pack(pady=(Spacing.XXS, 0))
+        if pack_opts:
+            error_label.pack(**pack_opts)
+        else:
+            error_label.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
-        if self.modal_window:
-            self.modal_window.after(3000, error_label.destroy)
+        if target_parent:
+            target_parent.after(3000, error_label.destroy)
 
     def _on_close(self):
         from tkinter import messagebox

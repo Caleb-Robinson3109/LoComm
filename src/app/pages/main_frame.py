@@ -227,8 +227,10 @@ class MainFrame(ttk.Frame):
             bg=Colors.BG_ELEVATED,
             fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            anchor="center",
+            justify="center",
         )
-        self.chatroom_label.grid(row=0, column=1, sticky="", padx=Space.SM)
+        self.chatroom_label.grid(row=0, column=1, sticky="ew", padx=Space.SM)
 
         brand_label = tk.Label(
             bar,

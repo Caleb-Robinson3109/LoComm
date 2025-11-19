@@ -90,7 +90,7 @@ class PeersPage(BasePage):
         create_page_header(
             parent,
             title="Peers",
-            subtitle="Manage your peers and device sessions",
+            subtitle="Chat with your peers",
             actions=actions,
         )
 
@@ -117,15 +117,6 @@ class PeersPage(BasePage):
             child.destroy()
 
         if not self.devices:
-            AutoWrapLabel(
-                self.device_list_container,
-                text="No devices found. Try scanning or manual pairing.",
-                bg=Colors.SURFACE_ALT,
-                fg=Colors.TEXT_SECONDARY,
-                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-                justify="left",
-                padding_x=Spacing.MD,
-            ).pack(anchor="w")
             return
 
         for device in self.devices:

@@ -35,7 +35,7 @@ class HomePage(BasePage):
         ]
         create_page_header(
             body,
-            title="Welcome to Locomm",
+            title="Welcome",
             subtitle="Secure LoRa messaging for desktop",
             actions=actions,
         )

@@ -38,17 +38,8 @@ class ChatroomWindow(tk.Frame):
         self._create_ui()
 
     def _create_ui(self):
-        layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.SM)
+        layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.LG, pady=Spacing.LG)
         layout.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(
-            layout,
-            text="Chatroom",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
-        ).pack(anchor="center", pady=(0, Spacing.LG))
-
 
         self._build_tab_strip(layout)
         self._content_frame = tk.Frame(layout, bg=Colors.SURFACE)
@@ -70,18 +61,23 @@ class ChatroomWindow(tk.Frame):
 
     def _build_tab_strip(self, parent: tk.Frame):
         strip = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
-        strip.pack(fill=tk.X)
+        strip.pack(fill=tk.X, padx=Spacing.SM)
 
-        tab_width = 18
-        for key, label in (("join", "Join"), ("create", "Create")):
+        tabs = (("join", "Join"), ("create", "Create"))
+        for idx, (key, label) in enumerate(tabs):
+            strip.grid_columnconfigure(idx, weight=1)
             btn = DesignUtils.button(
                 strip,
                 text=label,
                 variant="ghost",
                 command=lambda k=key: self._switch_mode(k),
-                width=tab_width,
             )
-            btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
+            btn.grid(
+                row=0,
+                column=idx,
+                sticky="ew",
+                padx=(0, Spacing.SM) if idx > 0 else (0, Spacing.SM),
+            )
             self._tab_buttons[key] = btn
 
     def _build_join_content(self):
@@ -89,29 +85,24 @@ class ChatroomWindow(tk.Frame):
         frame.pack(fill=tk.BOTH, expand=True)
         self._join_frame = frame
 
+        join_entry_row = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        join_entry_row.pack(fill=tk.X, pady=(0, Spacing.XS))
         self.entry_widget = DesignUtils.create_chat_entry(
-            frame,
+            join_entry_row,
             textvariable=self._entry_var,
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
-            width=20,
         )
-        self.entry_widget.pack(fill=tk.X, pady=(0, Spacing.XS))
+        self.entry_widget.pack(fill=tk.X)
         self.entry_widget.bind("<KeyRelease>", self._on_code_key)
         self.entry_widget.bind("<Return>", self._on_submit_chatroom_code)
         self.entry_widget.focus_set()
 
-        helper = tk.Label(
-            frame,
-            text="Format: ABCDE-FGHIJ-KLMNO-PQRST",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_10),
-        )
-        helper.pack(anchor="w", pady=(0, Spacing.XXS))
-
-        actions = tk.Frame(frame, bg=Colors.SURFACE)
+        actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
+        actions.columnconfigure(0, weight=1)
+        actions.columnconfigure(1, weight=0)
+        actions.columnconfigure(2, weight=0)
 
         self.enter_btn = DesignUtils.button(
             actions,
@@ -120,7 +111,7 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._on_submit_chatroom_code,
         )
-        self.enter_btn.pack(side=tk.RIGHT)
+        self.enter_btn.grid(row=0, column=2, sticky="e")
 
         self.clear_btn = DesignUtils.button(
             actions,
@@ -129,11 +120,13 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._clear_entry,
         )
-        self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+        self.clear_btn.grid(row=0, column=1, padx=(0, Spacing.SM), sticky="e")
         self.enter_btn.configure(state="disabled")
         
-        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        disconnect_actions.columnconfigure(0, weight=1)
+        disconnect_actions.columnconfigure(1, weight=0)
         
         self.disconnect_btn = DesignUtils.button(
             disconnect_actions,
@@ -142,32 +135,28 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._disconnect_from_chatroom,
         )
-        self.disconnect_btn.pack(side=tk.RIGHT)
+        self.disconnect_btn.grid(row=0, column=1, sticky="e")
 
     def _build_create_content(self):
         frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
         frame.pack(fill=tk.BOTH, expand=True)
         self._create_frame = frame
 
+        create_entry_row = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        create_entry_row.pack(fill=tk.X, pady=(0, Spacing.XS))
         create_entry = DesignUtils.create_chat_entry(
-            frame,
+            create_entry_row,
             textvariable=self._create_var,
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
-            width=20,
             state="readonly",
         )
-        create_entry.pack(fill=tk.X, pady=(0, Spacing.XS))
-        helper2 = tk.Label(
-            frame,
-            text="Format: ABCDE-FGHIJ-KLMNO-PQRST",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_MUTED,
-            font=(Typography.FONT_UI, Typography.SIZE_10),
-        )
-        helper2.pack(anchor="w", pady=(0, Spacing.XXS))
-        actions = tk.Frame(frame, bg=Colors.SURFACE)
+        create_entry.pack(fill=tk.X)
+        actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
+        actions.columnconfigure(0, weight=1)
+        actions.columnconfigure(1, weight=0)
+        actions.columnconfigure(2, weight=0)
 
         self.enter_btn_create = DesignUtils.button(
             actions,
@@ -176,7 +165,7 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._on_submit_create_chatroom_code,
         )
-        self.enter_btn_create.pack(side=tk.RIGHT, padx=(0, Spacing.SM))
+        self.enter_btn_create.grid(row=0, column=2, sticky="e")
 
         self.create_btn = DesignUtils.button(
             actions,
@@ -185,11 +174,13 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._create_chatroom_code,
         )
-        self.create_btn.pack(side=tk.RIGHT)
+        self.create_btn.grid(row=0, column=1, padx=(0, Spacing.SM), sticky="e")
         self.enter_btn_create.configure(state="disabled")
         
-        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
+        disconnect_actions.columnconfigure(0, weight=1)
+        disconnect_actions.columnconfigure(1, weight=0)
         
         self.disconnect_btn_create = DesignUtils.button(
             disconnect_actions,
@@ -198,7 +189,7 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._disconnect_from_chatroom,
         )
-        self.disconnect_btn_create.pack(side=tk.RIGHT)
+        self.disconnect_btn_create.grid(row=0, column=1, sticky="e")
 
     def _switch_mode(self, mode: str):
         self._mode = mode
