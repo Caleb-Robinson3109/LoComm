@@ -61,7 +61,7 @@ class App(tk.Tk):
         self.app_controller.register_message_callback(self._handle_business_message)
 
         #connect to device
-
+        run_deviceless_mode()
         while not connect_to_device():
             pass
 
