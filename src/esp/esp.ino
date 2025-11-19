@@ -10,6 +10,7 @@ extern Preferences storage;
 
 uint8_t deviceID = 255; //TODO This should eventually be stored on the EEPROM
 uint8_t deviceIDList[32]; //TODO this should eventually be stored on the EEPROM
+bool deviceIDDataChanged = false;
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -36,7 +37,7 @@ uint8_t deviceIDTableRequestBuffer[10+AES_GCM_OVERHEAD];
 bool receiveReady = false;
 bool messageDispatched = false;
 bool ackDispatched = false;
-bool enableLora = true;
+bool enableLora = false;
 CyclicArrayList<uint16_t, 128> previouslySeenIds;
 CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 
@@ -176,12 +177,6 @@ void loop() {
     tempDeviceMode = lastDeviceMode;
   }
 
-  //Debug: if we are in unit test mode, run the unit tests and then halt
-  if (RUN_UNIT_TESTS) {
-    runTests();
-    HALT();
-  }
-
   //----------------------------------------------------- MISC State Behavior -------------------------------------------------
   if (lastDeviceMode == CAD_FAILED) { //if CAD detected a signal, then just go back to RX mode until CAD is ready to try again
     LoRa.receive();
@@ -189,10 +184,13 @@ void loop() {
     LError("CAD detected a signal! trying again later");
   }
 
+  enableLora = sec_isPaired() && sec_isLoggedIn();
   static bool lastLoraEnableStatus = !enableLora;
   if (lastLoraEnableStatus != enableLora) {
+    LDebug("Lora Enable status has changed!");
     switch (lastLoraEnableStatus) {
       case true: //actually false since we are checking the previous state
+        LDebug("Lora has been disabled, putting into sleep mode");
         LoRa.sleep();
         lastDeviceMode = SLEEP_MODE;
         receiveReady = false;
@@ -215,6 +213,7 @@ void loop() {
         serialReadyToSendArray.clearAll();
       break;
       case false: //actually true since we are checking the opposite case
+        LDebug("Lora has been enabled");
         LoRa.receive();
         lastDeviceMode = RX_MODE;
     }
@@ -226,33 +225,55 @@ void loop() {
   static bool initializedDeviceRouting = false;
   static bool startedDeviceIDAcquire = false;
   //if we have logged in, then pull the device ID and table from memory. if they arent stored, then just put 255 in for the device ID and a blank table in
-  if (sec_isLoggedIn()) {
+  if (sec_isLoggedIn() && sec_isPaired()) {
+    //If we have not initialized the device routing yet, then initialize it
     if (!initializedDeviceRouting) {
+      LDebug("Logged in and paired! initializing device routing variables");
       initializedDeviceRouting = true;
       initializeDeviceRouting();
     }
 
     //If the deviceIDchanged flag is set, then the table has changed, or the device ID has changed. Either way, trigger a full rewrite to EEPROM
     if (deviceIDDataChanged) {
+      LDebug("Device ID data has changed!, attempting to write data to EEPROM");
       storeDeviceIDData(false);
     }
 
     //if our device ID is currently 255, then we are in searching mode, 
     if (deviceID == 255) {
-      if (startedDeviceIDAcquire) {
-        startedDeviceIDAcquire = false;
-        receivedDeviceIDTable = false;
+      if (!startedDeviceIDAcquire) {
+        LDebug("Device ID is set to 255, trying to acquire a device ID");
+        startedDeviceIDAcquire = true;
+        receivedDeviceIDTable = false; //TODO this logic is fucked, need to fix
       }
       sendDeviceIDQueryMessages();
       if (receivedDeviceIDTable) {
+        LDebug("Device ID table has been received, attempting to acquire a device ID");
         chooseOpenDeviceID();
+        LDebug("Acquired Device ID!");
+        //now that an id has been chosen, send out ID
+        sendDeviceIDResponseFunc();
       }
     } else {
       startedDeviceIDAcquire = false;
     }
-  } else if (initializedDeviceRouting) {
-    //If we aren't logged in but initializedDeviceRouting was still true, then we just logged out, so reset the device ID and device ID table data
-    resetDeviceRouting();
+
+    //Every 60 or so seconds, send out an additional device ID request
+    if ((millis() / 1000) % 60) {
+      LDebug("Sending additional random device ID request");
+      sendDeviceIDRequestFunc();
+    }
+
+  } else if (sec_isLoggedIn()) {
+    //logged in, but unpaired, so clear the device routing completely
+    if (initializedDeviceRouting) {
+      LDebug("User is logged in but is not paired, clearing local routing data");
+      resetDeviceRouting();
+      initializedDeviceRouting = false;
+    }
+  } else {
+    //we are not logged in anymore, so just clear the local variabes, dont need to worry about deleting the eeprom
+    deviceID = 255;
     initializedDeviceRouting = false;
   }
    
@@ -377,6 +398,9 @@ void loop() {
                   if (previouslySeenIds.size() >= 128) {
                     previouslySeenIds.dropFront(1);
                   }
+
+                  //log the deviceID of the sender
+                  addDeviceIDToTable(tempBuf[0]);
                   breakout = true; //the message was intended for this device, so indicate we should break out
                 }
                 break;
@@ -450,7 +474,7 @@ void loop() {
               }
 
               //Add the sender ID to our list of known device IDs
-              deviceIDList[tempBuf[1]] = 1;
+              addDeviceIDToTable(tempBuf[1]);
               
 
               //check if the message number is already being tracked in rxMessageArray
@@ -572,7 +596,7 @@ void loop() {
               }
 
               //Add the sender ID to our list of known device IDs
-              deviceIDList[tempBuf[1]] = 1;
+              addDeviceIDToTable(tempBuf[1]);
 
               //First, search for the relevant message in the txMessageArray by its message number and sequence number
               for (int i = 0; i < txMessageArray.size(); i++) {
@@ -583,6 +607,7 @@ void loop() {
                 }
               }
             } else if (packetType == 2) {
+              LDebug("Processing Device ID request");
               if (plaintextLen != 5) {
                 LWarn("Received Device ID Scan message with incorrect size!");
                 break;
@@ -590,57 +615,33 @@ void loop() {
               //we received a valid device ID request, so indicate to the send functionality that we should dispatch the device ID only if we havent received one in 10 seconds
               if ((millis() / 1000) > lastDeviceIDResponseTime + 10) {
                 lastDeviceIDResponseTime = millis() / 1000;
-                
-                //fill plaintext buffer
-                uint8_t pBuf[5]; 
-                pBuf[0] = deviceID;
-                pBuf[1] = lastDeviceIDResponseTime >> 24;
-                pBuf[2] = (lastDeviceIDResponseTime >> 16) & 0xFF;
-                pBuf[3] = (lastDeviceIDResponseTime >> 8) & 0xFF;
-                pBuf[4] = (lastDeviceIDResponseTime) & 0xFF;
-                
-                //encrypt message contents
-                size_t ciphertextLen;
-                if (encryptD2DMessage(&(pBuf[0]), 5, &(deviceIDResponseBuffer[2]), 5 + AES_GCM_OVERHEAD, &ciphertextLen)) {
-                  LDebug("Successfully encrypted device id response message content");
-                } else {
-                  LError("Failed to encrypt device id response message content");
-                  HALT();
-                }
-                if (ciphertextLen != 5 + AES_GCM_OVERHEAD) {
-                  LError("Unexpected ciphertext length");
-                }
-
-                //Calculate CRC on everything after the start byte
-                uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(deviceIDResponseBuffer[1])), 6 + AES_GCM_OVERHEAD))^0xffffffff;
-                deviceIDResponseBuffer[7 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
-                deviceIDResponseBuffer[8 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
-
-                //Now that the message is ready to dispatch, set the flag
-                sendDeviceIDResponse = true;
-                LDebug("Setting sendDeviceIDResponse to true");      
+                LDebug("Constructing device id response packet");
+                sendDeviceIDResponseFunc();      
               } else {
                 LDebug("Not setting sendDeviceIDResponse since one has been dispatched in the past 10 seconds");
               }
             } else if (packetType == 3) {
+              LDebug("Processing Device ID Response");
               if (plaintextLen != 5) {
                 LWarn("Received Device ID Scan Response message with incorrect size!");
                 break;
               }
               //we received a valid device ID response, so log the ID has being taken in our device ID list
               const uint8_t receivedDeviceID = tempBuf[0];
-              deviceIDList[receivedDeviceID] = 1;
+              addDeviceIDToTable(receivedDeviceID);
               if (receivedDeviceID == 255) {
                 LWarn("Received a device ID response from the broadcast ID, which was unexpected! ignoring");
                 break;
               }
             } else if (packetType == 4) {
+              LDebug("Processing Device ID Table Request");
               if (plaintextLen != 5) {
                 LWarn("Received Device ID Table request message with incorrect size!");
                 break;
               }
               //we received a device Table request, so indicate to the send functionality that we should dispatch the full device Table only if we havent received one in 10 seconds
               if ((millis() / 1000) > lastDeviceIDTableResponseTime + 10) {
+                LDebug("Creating device id table requst packet");
                 lastDeviceIDTableResponseTime = millis() / 1000;
                 
                 //plaintext buffer
@@ -650,17 +651,7 @@ void loop() {
                 pBuf[2] = (lastDeviceIDTableResponseTime >> 8) & 0xFF;
                 pBuf[3] = (lastDeviceIDTableResponseTime) & 0xFF;
 
-                //zero out the rest of th ebuffer
-                for (int i = 0; i < 32; i++) {
-                  pBuf[4+i] = 0;
-                }
-
-                //populate buffer with device id table
-                for (int byteNum = 0; byteNum < 32; byteNum++) {
-                  for (int bitNum = 0; bitNum < 8; bitNum++) {
-                    pBuf[4+byteNum] |= deviceIDList[byteNum * 8 + bitNum] << (bitNum);
-                  }
-                }
+                memcpy(&(pBuf[4]), &(deviceIDList[0]), 32);
 
                 //encrypt message contents
                 size_t ciphertextLen;
@@ -687,17 +678,18 @@ void loop() {
               }
               
             } else if (packetType == 5) {
+              LDebug("Processing Device ID Table response packet");
               if (plaintextLen != 36) {
                 LWarn("Received Device ID Table response message with incorrect size!");
               }
 
               receivedDeviceIDTable = true;
-
               //we received a full device table, so update our device table 
               for (int byteNum = 0; byteNum < 32; byteNum++) {
-                for (int bitNum = 0; bitNum < 8; bitNum++) {
-                  deviceIDList[byteNum * 8 + bitNum] |= (tempBuf[4+byteNum] >> (7 - bitNum));
+                if (~deviceIDList[byteNum] & tempBuf[4+byteNum]) {
+                  deviceIDDataChanged = true;
                 }
+                deviceIDList[byteNum] |= tempBuf[4+byteNum];
               }
             }
             //If we've gotten this far, then a message was successfully processed, so break out of the loop checking this specific start byte
@@ -1037,7 +1029,7 @@ void initializeDeviceRouting() {
     storage.getBytes("DeviceIDs", &(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD);
     uint8_t pBuf[1 + 32];
     size_t plaintextLen;
-    if (!decryptD2DMessage(&(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD, (&pBuf[0]), 1 + 32, &plaintextLen) {
+    if (!decryptD2DMessage(&(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD, (&pBuf[0]), 1 + 32, &plaintextLen)) {
       LError("Decryption Failed, Resetting the device id and table");
       resetDeviceRouting();
       return;
@@ -1052,6 +1044,7 @@ void initializeDeviceRouting() {
     //now that we have the data, place it.
     deviceID = pBuf[0];
     memcpy(&(deviceIDList[0]), &(pBuf[1]), 32);
+  }
 }
 
 void sendAck(const uint8_t dstID, const uint16_t messageNumber, const uint8_t sequenceNumber) {
@@ -1105,6 +1098,11 @@ bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID) {
 
   if (destinationID == deviceID) {
     LWarn("Ignoring message attempting to be sent to own device");
+    return false;
+  }
+
+  if (deviceID == 255 || deviceID == 0) {
+    LWarn("Device has invalid ID, ignoring");
     return false;
   }
 
@@ -1257,7 +1255,7 @@ void enterChannelActivityDetectionMode() {
   }
 }
 
-bool sendDeviceIdTableRequest(uint8_t targetDeviceID) {
+bool sendDeviceIDTableRequestFunc(uint8_t targetDeviceID) {
   //TODO consider adding a rate limit here
   LDebug("Request to send device id table request");
   //plaintext data
@@ -1292,7 +1290,41 @@ bool sendDeviceIdTableRequest(uint8_t targetDeviceID) {
   return true;
 }
 
-bool sendDeviceIdRequest() {
+bool sendDeviceIDResponseFunc() {
+  //fill plaintext buffer
+  uint8_t pBuf[5]; 
+  uint32_t t = millis();
+  pBuf[0] = deviceID;
+  pBuf[1] = t >> 24;
+  pBuf[2] = (t >> 16) & 0xFF;
+  pBuf[3] = (t >> 8) & 0xFF;
+  pBuf[4] = (t) & 0xFF;
+  
+  //encrypt message contents
+  size_t ciphertextLen;
+  if (encryptD2DMessage(&(pBuf[0]), 5, &(deviceIDResponseBuffer[2]), 5 + AES_GCM_OVERHEAD, &ciphertextLen)) {
+    LDebug("Successfully encrypted device id response message content");
+  } else {
+    LError("Failed to encrypt device id response message content");
+    HALT();
+  }
+  if (ciphertextLen != 5 + AES_GCM_OVERHEAD) {
+    LError("Unexpected ciphertext length");
+  }
+
+  //Calculate CRC on everything after the start byte
+  uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(deviceIDResponseBuffer[1])), 6 + AES_GCM_OVERHEAD))^0xffffffff;
+  deviceIDResponseBuffer[7 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
+  deviceIDResponseBuffer[8 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
+
+  //Now that the message is ready to dispatch, set the flag
+  sendDeviceIDResponse = true;
+  LDebug("Setting sendDeviceIDResponse to true");
+
+  return true;
+}
+
+bool sendDeviceIDRequestFunc() {
   //TODO consider adding a rate limit here
   LDebug("Request to send device id request");
   //plaintext data
@@ -1373,6 +1405,12 @@ void chooseOpenDeviceID() {
   uint8_t id;
   while(1) {
     id = esp_random();
+    if (id == 0 || id == 255) break;
+    if (deviceIDList[id / 32] >> (7 - (id % 8)) == 0) {
+      deviceID = id;
+      deviceIDList[id / 32] |= (1 << (7 - (id % 8)));
+      return;
+    }
   }
 }
 
@@ -1382,18 +1420,29 @@ void chooseOpenDeviceID() {
 void sendDeviceIDQueryMessages() {
   static uint32_t lastCallTime = millis();
   if (millis()/1000 - lastCallTime < 5) {
+    LDebug("Not Sending device ID query messages: last one sent too recently");
     return;
   } 
+  LDebug("Starting device ID query messages");
   lastCallTime = millis();
-  sendDeviceIDRequest();
+  sendDeviceIDRequestFunc();
   for (int b = 0; b < 32; b++) {
     for (int bit = 0; bit < 8; bit++) {
       if (deviceIDList[b] >> (7 - bit) == 1) {
         //device id set, so send a table request
-        sendDeviceIDTableRequest(b * 8 + bit);
+        LDebug("Found a device ID to send a table response to"); //TODO dont just send to the first ID
+        sendDeviceIDTableRequestFunc(b * 8 + bit);
         return;
       }
     }
+  }
+}
+
+void addDeviceIDToTable(uint8_t id) {
+  if (deviceIDList[id / 32] >> (7 - (id % 8)) == 0) {
+    deviceIDList[id / 32] |= 1 << (7 - (id % 8));
+    deviceIDDataChanged = true;
+    LDebug("Adding device ID to table");
   }
 }
 
