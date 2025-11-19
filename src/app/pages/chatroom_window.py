@@ -38,12 +38,12 @@ class ChatroomWindow(tk.Frame):
         self._create_ui()
 
     def _create_ui(self):
-        layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.LG)
+        layout = tk.Frame(self, bg=Colors.SURFACE)
         layout.pack(fill=tk.BOTH, expand=True)
 
         self._build_tab_strip(layout)
         self._content_frame = tk.Frame(layout, bg=Colors.SURFACE)
-        self._content_frame.pack(fill=tk.BOTH, expand=True)
+        self._content_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM)
 
         self._build_join_content()
         self._build_create_content()
@@ -56,7 +56,7 @@ class ChatroomWindow(tk.Frame):
             fg=Colors.STATE_ERROR,
             font=(Typography.FONT_UI, Typography.SIZE_10),
         )
-        self._error_label.pack(fill=tk.X, pady=(Spacing.XXS, 0))
+        self._error_label.pack(fill=tk.X, padx=Spacing.SM, pady=(Spacing.XXS, 0))
 
 
     def _build_tab_strip(self, parent: tk.Frame):

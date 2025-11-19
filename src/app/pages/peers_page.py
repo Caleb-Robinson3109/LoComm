@@ -18,7 +18,7 @@ from .base_page import BasePage, PageContext
 from .chat_page import ChatWindow
 
 
-from .manual_pairing_modal import ManualPairingModal
+from .manual_pairing_window import ManualPairingWindow
 
 class PeersPage(BasePage):
     """Devices page with chat-style clean, simple design."""
@@ -35,7 +35,7 @@ class PeersPage(BasePage):
         self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self._scan_timer_id: Optional[str] = None
-        self._manual_pairing_modal: Optional[ManualPairingModal] = None
+        self._manual_pairing_window: Optional[ManualPairingWindow] = None
         
         self.devices: list[dict] = []  # List of {name, id, status}
         self.device_list_container: Optional[tk.Frame] = None
@@ -195,10 +195,10 @@ class PeersPage(BasePage):
     # ------------------------------------------------------------------ #
 
     def _show_manual_pairing_modal(self):
-        if self._manual_pairing_modal:
+        if self._manual_pairing_window:
             return
             
-        self._manual_pairing_modal = ManualPairingModal(
+        self._manual_pairing_window = ManualPairingWindow(
             self.winfo_toplevel(),
             on_pair=self._handle_manual_pair
         )

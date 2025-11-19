@@ -1,5 +1,5 @@
 """
-Modal for manually pairing with a device by entering Name and ID.
+Window for manually pairing with a device by entering Name and ID.
 """
 from __future__ import annotations
 
@@ -10,8 +10,9 @@ from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from ui.helpers import create_centered_modal, create_form_row
 from utils.window_sizing import get_manual_pair_modal_size
 
-class ManualPairingModal:
-    """Modal dialog for manual device pairing."""
+
+class ManualPairingWindow:
+    """Window dialog for manual device pairing."""
 
     def __init__(
         self,
@@ -20,24 +21,24 @@ class ManualPairingModal:
     ):
         self.parent = parent
         self.on_pair = on_pair
-        
+
         self.device_name_var = tk.StringVar()
         self.device_id_var = tk.StringVar()
-        
-        self.modal_scaffold = None
+
+        self.window_scaffold = None
         self.pair_btn: Optional[tk.Widget] = None
 
-        self._create_modal()
+        self._create_window()
 
-    def _create_modal(self):
-        self.modal_scaffold = create_centered_modal(
+    def _create_window(self):
+        self.window_scaffold = create_centered_modal(
             self.parent,
             title="Manual Pairing",
             window_size=get_manual_pair_modal_size(),
         )
-        
-        content_frame = self.modal_scaffold.body
-        
+
+        content_frame = self.window_scaffold.body
+
         # Device Name Input
         create_form_row(
             content_frame,
@@ -84,8 +85,8 @@ class ManualPairingModal:
         self.pair_btn.pack(side=tk.RIGHT)
 
         # Bind Enter key
-        self.modal_scaffold.toplevel.bind("<Return>", lambda e: self._on_pair_click())
-        self.modal_scaffold.toplevel.bind("<Escape>", lambda e: self.close())
+        self.window_scaffold.toplevel.bind("<Return>", lambda e: self._on_pair_click())
+        self.window_scaffold.toplevel.bind("<Escape>", lambda e: self.close())
 
     def _on_pair_click(self):
         name = self.device_name_var.get().strip()
@@ -99,6 +100,6 @@ class ManualPairingModal:
         self.close()
 
     def close(self):
-        if self.modal_scaffold and self.modal_scaffold.toplevel:
-            self.modal_scaffold.toplevel.destroy()
-            self.modal_scaffold = None
+        if self.window_scaffold and self.window_scaffold.toplevel:
+            self.window_scaffold.toplevel.destroy()
+            self.window_scaffold = None

@@ -10,7 +10,7 @@ from typing import Optional
 from services import AppController
 from utils.state.status_manager import get_status_manager
 
-from pages.login_modal import LoginModal
+from pages.login_window import LoginWindow
 from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
@@ -128,7 +128,7 @@ class App(tk.Tk):
 
         # Create login modal if not exists
         if not self.login_modal:
-            self.login_modal = LoginModal(
+            self.login_modal = LoginWindow(
                 self,
                 on_login=self._handle_login_success,
                 on_register=self._handle_register_click,
