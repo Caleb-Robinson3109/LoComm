@@ -14,6 +14,7 @@ from pages.login_modal import LoginModal
 from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
+from utils.user_settings import get_user_settings
 from utils.window_sizing import calculate_initial_window_size
 from ui.helpers import create_centered_modal, ModalScaffold
 
@@ -36,9 +37,9 @@ class App(tk.Tk):
         # Set up styles and force light mode on startup
         ensure_styles_initialized()
         # Canonical theme flag for the whole app
-        self.is_dark_mode: bool = False
-        # Force ThemeManager into light mode regardless of saved settings
-        ThemeManager.toggle_mode(False)
+        self.user_settings = get_user_settings()
+        self.is_dark_mode: bool = self.user_settings.theme_mode == "dark"
+        ThemeManager.toggle_mode(self.is_dark_mode)
 
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)

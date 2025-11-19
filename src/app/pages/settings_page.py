@@ -1,181 +1,158 @@
-"""Settings page matching chat page's clean, simple design."""
+"""Rebuilt settings page with a fresh, minimal layout."""
 from __future__ import annotations
 
 import tkinter as tk
+from typing import Callable
 
-from utils.design_system import Colors, Spacing, DesignUtils, ThemeManager, Typography, Space
+from utils.design_system import Colors, Spacing, DesignUtils, Typography
 from utils.user_settings import get_user_settings, save_user_settings
-from ui.helpers import (
-    create_scroll_container,
-    create_page_header,
-    create_standard_section,
-    AutoWrapLabel,
-)
+from ui.helpers import AutoWrapLabel, create_page_header, create_scroll_container
 from .base_page import BasePage, PageContext
 
 
 class SettingsPage(BasePage):
-    """Settings page with chat-style clean, simple design."""
+    """Minimal settings page focused on appearance and preferences."""
 
     def __init__(self, master, context: PageContext):
         super().__init__(master, context=context, bg=Colors.SURFACE)
         self.context = context
-        self.navigator = context.navigator if context else None
-
+        self.navigator = getattr(context, "navigator", None)
         self.user_settings = get_user_settings()
-        self._toggle_vars: dict[str, tk.BooleanVar] = {}
-        self._toggle_buttons: dict[str, tk.Widget] = {}
+        self._toggle_widgets: dict[str, tuple[tk.BooleanVar, tk.Widget]] = {}
         self._theme_button: tk.Widget | None = None
 
-        # Simple scroll container like chat page
-        scroll = create_scroll_container(
-            self,
-            bg=Colors.SURFACE,
-            padding=(0, Spacing.LG),
-        )
+        scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
 
-        # Standard header with AutoWrap subtitle and back button
         create_page_header(
             body,
             title="Settings",
-            subtitle="Configure your Locomm experience.",
+            subtitle="Choose how Locomm looks and feels for you.",
         )
 
-        self._build_appearance_section(body)
-        self._build_settings_section(body)
+        self._build_sections(body)
 
-    def _handle_back(self):
-        nav = getattr(self, "navigator", None)
-        if not nav:
-            return
-        if hasattr(nav, "go_back"):
-            nav.go_back()
-        elif hasattr(nav, "navigate_to"):
-            nav.navigate_to("home")
+    # ------------------------------------------------------------------ #
+    # Layout helpers
+    def _build_sections(self, parent: tk.Misc) -> None:
+        self._build_appearance_section(parent)
+        self._build_preferences_section(parent)
 
-    def _build_appearance_section(self, parent):
-        """Build clean appearance section with standard section helper."""
-        _, section_body = create_standard_section(
+    def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:
+        section = tk.Frame(parent, bg=Colors.SURFACE_ALT, bd=0, relief="flat", padx=Spacing.MD, pady=Spacing.SM)
+        section.pack(fill=tk.X, padx=Spacing.LG, pady=(0, Spacing.MD))
+
+        header = tk.Label(
+            section,
+            text=title,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        )
+        header.pack(anchor="w")
+
+        AutoWrapLabel(
+            section,
+            text=description,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12),
+            padding_x=Spacing.MD,
+        ).pack(fill=tk.X, pady=(Spacing.XS, Spacing.SM))
+
+        return section
+
+    # ------------------------------------------------------------------ #
+    # Appearance controls
+    def _build_appearance_section(self, parent: tk.Misc) -> None:
+        section = self._create_section(
             parent,
-            title="Appearance",
-            bg=Colors.SURFACE,
-            inner_bg=Colors.SURFACE,
-            with_card=False,
+            "Appearance",
+            "Toggle between a lighter workspace or the default dark canvas depending on your environment.",
         )
 
-        # Single Button for Dark Mode
-        is_dark = self.user_settings.theme_mode == "dark"
-        self.theme_var = tk.BooleanVar(value=is_dark)
-        
-        toggle_btn = DesignUtils.button(
-            section_body,
-            text=f"Dark Mode: {'On' if is_dark else 'Off'}",
+        self._theme_button = DesignUtils.button(
+            section,
+            text=self._theme_button_label(),
             variant="secondary",
+            width=16,
+            command=self._toggle_theme,
         )
-        toggle_btn.pack(anchor="w", pady=(0, Spacing.SM))
-        self._theme_button = toggle_btn
+        self._theme_button.pack(anchor="w")
 
-        def _on_toggle():
-            # 1. Immediate UI Update
-            new_state = not self.theme_var.get()
-            self.theme_var.set(new_state)
-            toggle_btn.configure(text=f"Dark Mode: {'On' if new_state else 'Off'}")
+    def _theme_button_label(self) -> str:
+        return f"Dark Mode: {'On' if self.user_settings.theme_mode == 'dark' else 'Off'}"
 
-            # 2. Defer Heavy Lifting
-            def _apply_theme_change():
-                app = getattr(self.context, "app", None)
-                if app and hasattr(app, "toggle_theme"):
-                    app.toggle_theme(new_state)
-                
-                self.user_settings.theme_mode = "dark" if new_state else "light"
-                save_user_settings(self.user_settings)
+    def _toggle_theme(self) -> None:
+        next_mode = "light" if self.user_settings.theme_mode == "dark" else "dark"
+        self.user_settings.theme_mode = next_mode
+        save_user_settings(self.user_settings)
 
-            self.after(10, _apply_theme_change)
+        app = getattr(self.context, "app", None)
+        if app and hasattr(app, "toggle_theme"):
+            app.toggle_theme(next_mode == "dark")
 
-        toggle_btn.configure(command=_on_toggle)
+        if self._theme_button and self._theme_button.winfo_exists():
+            self._theme_button.configure(text=self._theme_button_label())
 
-    def _build_settings_section(self, parent):
-        """Build simple settings section with standard helpers."""
-        _, section_body = create_standard_section(
+    # ------------------------------------------------------------------ #
+    # Preference toggles
+    def _build_preferences_section(self, parent: tk.Misc) -> None:
+        section = self._create_section(
             parent,
-            title="Notifications & Diagnostics",
-            bg=Colors.SURFACE,
-            inner_bg=Colors.SURFACE,
-            with_card=False,
+            "Preferences",
+            "Fine tune notifications and sounds so you stay informed without distractions.",
         )
 
-        self._build_toggle_setting(section_body, "Desktop notifications", "notifications_enabled", True)
-        self._build_toggle_setting(section_body, "Sound alerts", "sound_alerts_enabled", False)
+        self._add_toggle(section, "Desktop notifications", "notifications_enabled")
+        self._add_toggle(section, "Sound alerts", "sound_alerts_enabled")
 
-    def _build_toggle_setting(self, parent, label: str, attr: str, initial: bool):
-        """Build a simple toggle setting card."""
-        setting_frame = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
-        setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
+    def _add_toggle(self, parent: tk.Misc, label: str, attr: str) -> None:
+        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        row.pack(fill=tk.X, pady=(0, Spacing.XS))
 
         tk.Label(
-            setting_frame,
+            row,
             text=label,
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
+            font=(Typography.FONT_UI, Typography.SIZE_14),
+        ).pack(side=tk.LEFT)
 
-        current_value = getattr(self.user_settings, attr, initial)
-        var = tk.BooleanVar(master=self, value=current_value)
+        value = getattr(self.user_settings, attr, False)
+        var = tk.BooleanVar(master=self, value=value)
         btn = DesignUtils.button(
-            setting_frame,
-            text="On" if current_value else "Off",
+            row,
+            text=self._bool_label(value),
             variant="ghost",
             width=8,
         )
+        def _command(attr=attr, var=var, widget=btn):
+            self._toggle_setting(attr, var, widget)
+        btn.configure(command=_command)
         btn.pack(side=tk.RIGHT)
 
-        def toggle_setting():
-            # Immediate UI update
-            new_val = not var.get()
-            var.set(new_val)
-            btn.configure(text="On" if new_val else "Off")
-            
-            # Update settings object
-            setattr(self.user_settings, attr, new_val)
-            
-            # Save in background (or just don't block if possible, but here we just call it)
-            # Ideally save_user_settings should be fast or async.
-            # For now, we ensure UI updates first.
-            self.after(10, lambda: save_user_settings(self.user_settings))
+        self._toggle_widgets[attr] = (var, btn)
 
-        btn.configure(command=toggle_setting)
-        self._toggle_vars[attr] = var
-        self._toggle_buttons[attr] = btn
+    def _toggle_setting(self, attr: str, var: tk.BooleanVar, btn: tk.Widget) -> None:
+        new_value = not var.get()
+        var.set(new_value)
+        setattr(self.user_settings, attr, new_value)
+        save_user_settings(self.user_settings)
 
+        btn.configure(text=self._bool_label(new_value))
 
-    def _cycle_accent_color(self):
-        """Cycle through accent colors."""
-        current = ThemeManager.get_current_accent_name()
-        accents = ["blue", "purple", "green", "orange", "pink", "red"]
-        current_index = accents.index(current) if current in accents else 0
-        next_index = (current_index + 1) % len(accents)
-        next_accent = accents[next_index]
+    def _bool_label(self, value: bool) -> str:
+        return "On" if value else "Off"
 
-        ThemeManager.set_accent_color(next_accent)
-
-        if hasattr(self, "accent_preview_label"):
-            self.accent_preview_label.configure(text=f"● Current: {next_accent.title()}")
-
-    def on_show(self):
+    # ------------------------------------------------------------------ #
+    # Lifecycle
+    def on_show(self) -> None:
         self.user_settings = get_user_settings()
-        current = self.user_settings.theme_mode == "dark"
-        if hasattr(self, "theme_var"):
-            self.theme_var.set(current)
-            self._sync_theme_button(current)
-        for attr, btn in self._toggle_buttons.items():
-            value = getattr(self.user_settings, attr, False)
-            var = self._toggle_vars.get(attr)
-            if var:
-                var.set(value)
-            btn.configure(text="On" if value else "Off")
-
-    def destroy(self):
-        return super().destroy()
-
+        if self._theme_button and self._theme_button.winfo_exists():
+            self._theme_button.configure(text=self._theme_button_label())
+        for attr, (var, btn) in self._toggle_widgets.items():
+            current = getattr(self.user_settings, attr, False)
+            var.set(current)
+            if isinstance(btn, tk.Button):
+                btn.configure(text=self._bool_label(current))
