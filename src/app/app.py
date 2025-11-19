@@ -214,6 +214,11 @@ class App(tk.Tk):
     def _close_chatroom_modal(self):
         """Close the chatroom modal."""
         self.chatroom_modal_frame = None
+        if hasattr(self, "app_controller") and self.app_controller:
+            try:
+                self.app_controller.status_manager.update_status(AppConfig.STATUS_READY)
+            except Exception:
+                pass
         if self.chatroom_modal and self.chatroom_modal.toplevel.winfo_exists():
             try:
                 self.chatroom_modal.toplevel.destroy()

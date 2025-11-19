@@ -64,6 +64,7 @@ class StatusManager:
         self._current_status: str = "Disconnected"
         self._status_callbacks: list[Callable[[str, str], None]] = []
         self._callback_lock = threading.Lock()
+        self._ready_reset_timer: Optional[threading.Timer] = None
         self.logger = get_logger("status_manager")
 
         # Device state management
@@ -153,6 +154,11 @@ class StatusManager:
         elif category in ["disconnected", "error"]:
             self.current_device.is_connected = False
 
+        if category in ("disconnected", "error", "transport_error"):
+            self._schedule_ready_reset()
+        else:
+            self._cancel_ready_reset()
+
         # CRITICAL FIX: Thread-safe callback execution with proper synchronization
         callbacks_to_execute = []
 
@@ -197,6 +203,24 @@ class StatusManager:
             display_status = status_text
 
         return display_status, color
+
+    def _schedule_ready_reset(self, delay: float = 5.0):
+        self._cancel_ready_reset()
+
+        def _reset():
+            try:
+                self.update_status(AppConfig.STATUS_READY)
+            except Exception as exc:
+                self.logger.warning("Ready reset failed: %s", exc)
+
+        self._ready_reset_timer = threading.Timer(delay, _reset)
+        self._ready_reset_timer.daemon = True
+        self._ready_reset_timer.start()
+
+    def _cancel_ready_reset(self):
+        if self._ready_reset_timer:
+            self._ready_reset_timer.cancel()
+            self._ready_reset_timer = None
 
     def register_status_callback(self, callback: Callable[[str, str], None]):
         """

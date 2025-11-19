@@ -18,9 +18,11 @@ class ManualPairingWindow:
         self,
         parent: tk.Misc,
         on_pair: Callable[[str, str], None],
+        on_close: Optional[Callable[[], None]] = None,
     ):
         self.parent = parent
         self.on_pair = on_pair
+        self.on_close = on_close
 
         self.device_name_var = tk.StringVar()
         self.device_id_var = tk.StringVar()
@@ -36,6 +38,7 @@ class ManualPairingWindow:
             title="Manual Pairing",
             window_size=get_manual_pair_modal_size(),
         )
+        self.window_scaffold.toplevel.protocol("WM_DELETE_WINDOW", self.close)
 
         content_frame = self.window_scaffold.body
 
@@ -103,3 +106,8 @@ class ManualPairingWindow:
         if self.window_scaffold and self.window_scaffold.toplevel:
             self.window_scaffold.toplevel.destroy()
             self.window_scaffold = None
+        if self.on_close:
+            try:
+                self.on_close()
+            except Exception:
+                pass

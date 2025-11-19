@@ -302,11 +302,19 @@ class PeersPage(BasePage):
 
     def _show_manual_pairing_modal(self):
         if self._manual_pairing_window:
-            return
-            
+            scaffold = getattr(self._manual_pairing_window, "window_scaffold", None)
+            if scaffold and getattr(scaffold, "toplevel", None) and scaffold.toplevel.winfo_exists():
+                scaffold.toplevel.lift()
+                scaffold.toplevel.focus_force()
+                return
+
+        def _clear_window():
+            self._manual_pairing_window = None
+
         self._manual_pairing_window = ManualPairingWindow(
             self.winfo_toplevel(),
-            on_pair=self._handle_manual_pair
+            on_pair=self._handle_manual_pair,
+            on_close=_clear_window,
         )
 
     def _handle_manual_pair(self, name: str, device_id: str):

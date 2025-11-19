@@ -39,11 +39,11 @@ class ChatroomWindow(tk.Frame):
 
     def _create_ui(self):
         layout = tk.Frame(self, bg=Colors.SURFACE)
-        layout.pack(fill=tk.BOTH, expand=True)
+        layout.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=Spacing.SM)
 
         self._build_tab_strip(layout)
         self._content_frame = tk.Frame(layout, bg=Colors.SURFACE)
-        self._content_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM)
+        self._content_frame.pack(fill=tk.BOTH, expand=True)
 
         self._build_join_content()
         self._build_create_content()
@@ -81,11 +81,11 @@ class ChatroomWindow(tk.Frame):
             self._tab_buttons[key] = btn
 
     def _build_join_content(self):
-        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE, padx=Spacing.SM)
         frame.pack(fill=tk.BOTH, expand=True)
         self._join_frame = frame
 
-        join_entry_row = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        join_entry_row = tk.Frame(frame, bg=Colors.SURFACE)
         join_entry_row.pack(fill=tk.X, pady=(0, Spacing.XS))
         self.entry_widget = DesignUtils.create_chat_entry(
             join_entry_row,
@@ -99,7 +99,7 @@ class ChatroomWindow(tk.Frame):
         self.entry_widget.bind("<Return>", self._on_submit_chatroom_code)
         self.entry_widget.focus_set()
 
-        actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        actions = tk.Frame(frame, bg=Colors.SURFACE)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
         actions.columnconfigure(0, weight=1)
         actions.columnconfigure(1, weight=0)
@@ -123,12 +123,12 @@ class ChatroomWindow(tk.Frame):
         )
         self.clear_btn.grid(row=0, column=1, padx=(0, Spacing.SM), sticky="e")
         self.enter_btn.configure(state="disabled")
-        
-        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
         disconnect_actions.columnconfigure(0, weight=1)
         disconnect_actions.columnconfigure(1, weight=0)
-        
+
         self.disconnect_btn = DesignUtils.button(
             disconnect_actions,
             text="Disconnect",
@@ -139,11 +139,11 @@ class ChatroomWindow(tk.Frame):
         self.disconnect_btn.grid(row=0, column=1, sticky="e")
 
     def _build_create_content(self):
-        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE)
+        frame = tk.Frame(self._content_frame, bg=Colors.SURFACE, padx=Spacing.SM)
         frame.pack(fill=tk.BOTH, expand=True)
         self._create_frame = frame
 
-        create_entry_row = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        create_entry_row = tk.Frame(frame, bg=Colors.SURFACE)
         create_entry_row.pack(fill=tk.X, pady=(0, Spacing.XS))
         create_entry = DesignUtils.create_chat_entry(
             create_entry_row,
@@ -154,7 +154,7 @@ class ChatroomWindow(tk.Frame):
             width=28,
         )
         create_entry.pack(fill=tk.X)
-        actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+        actions = tk.Frame(frame, bg=Colors.SURFACE)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
         actions.columnconfigure(0, weight=1)
         actions.columnconfigure(1, weight=0)
@@ -178,12 +178,12 @@ class ChatroomWindow(tk.Frame):
         )
         self.create_btn.grid(row=0, column=1, padx=(0, Spacing.SM), sticky="e")
         self.enter_btn_create.configure(state="disabled")
-        
-        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
+
+        disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
         disconnect_actions.pack(fill=tk.X, pady=(Spacing.MD, 0))
         disconnect_actions.columnconfigure(0, weight=1)
         disconnect_actions.columnconfigure(1, weight=0)
-        
+
         self.disconnect_btn_create = DesignUtils.button(
             disconnect_actions,
             text="Disconnect",
