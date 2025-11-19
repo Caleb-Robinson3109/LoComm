@@ -27,10 +27,10 @@ _APP_WINDOW = WindowSize(
     min_height=AppConfig.MIN_WINDOW_HEIGHT,
 )
 
-_LOGIN_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
-_CHATROOM_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
-_CHAT_WINDOW = WindowSize(width=500, height=500, min_width=500, min_height=500)
-_MANUAL_PAIR_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
+_LOGIN_MODAL = WindowSize(width=500, height=425, min_width=500, min_height=425)
+_CHATROOM_MODAL = WindowSize(width=575, height=500, min_width=575, min_height=500)
+_CHAT_WINDOW = WindowSize(width=500, height=575, min_width=500, min_height=575)
+_MANUAL_PAIR_MODAL = WindowSize(width=500, height=475, min_width=500, min_height=475)
 
 
 def get_app_window_size() -> WindowSize:

@@ -92,6 +92,7 @@ class ChatroomWindow(tk.Frame):
             textvariable=self._entry_var,
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
+            width=28,
         )
         self.entry_widget.pack(fill=tk.X)
         self.entry_widget.bind("<KeyRelease>", self._on_code_key)
@@ -150,6 +151,7 @@ class ChatroomWindow(tk.Frame):
             font=(Typography.FONT_MONO, Typography.SIZE_16, Typography.WEIGHT_BOLD),
             justify="center",
             state="readonly",
+            width=28,
         )
         create_entry.pack(fill=tk.X)
         actions = tk.Frame(frame, bg=Colors.SURFACE, padx=Spacing.SM)
