@@ -13,6 +13,7 @@ from ui.theme_tokens import Colors, Spacing, Typography
 from ui.theme_manager import ensure_styles_initialized
 from utils.design_system import AppConfig
 from utils.state.status_manager import get_status_manager
+from utils.window_sizing import get_chat_window_size
 
 
 class ChatWindow(tk.Toplevel):
@@ -37,10 +38,7 @@ class ChatWindow(tk.Toplevel):
         self.peer_name = peer_name or "Peer"
         self.local_device_name = local_device_name or "Orion"
         self.title("Chat")
-        self.geometry("387x465")
-        min_width = int(387 * 1.05)
-        min_height = int(465 * 1.05)
-        self.minsize(min_width, min_height)
+        self._apply_default_geometry()
         self.resizable(True, True)
         self.configure(bg=Colors.SURFACE)
         self.configure(bg=Colors.SURFACE)
@@ -54,6 +52,20 @@ class ChatWindow(tk.Toplevel):
 
         ChatWindow._open_windows[self.peer_name] = self
         self._has_history = False
+
+    def _apply_default_geometry(self):
+        size = get_chat_window_size()
+        self.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        width = min(size.width, screen_w)
+        height = min(size.height, screen_h)
+        width = max(width, size.min_width)
+        height = max(height, size.min_height)
+        pos_x = max((screen_w - width) // 2, 0)
+        pos_y = max((screen_h - height) // 2, 0)
+        self.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
+        self.minsize(size.min_width, size.min_height)
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self):

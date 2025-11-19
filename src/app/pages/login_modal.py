@@ -10,6 +10,7 @@ from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from ui.helpers import create_form_row
+from utils.window_sizing import get_login_modal_size
 
 import os
 import sys
@@ -72,31 +73,32 @@ class LoginModal:
         self.parent.after(0, self._ensure_window_fits_content)
 
     def _ensure_window_fits_content(self):
-        """Ensure the main window is at least as big as the login content."""
+        """Apply centralized sizing to the login window while honoring content needs."""
         if not self.modal_window or not self.modal_window.winfo_exists():
             return
 
+        size = get_login_modal_size()
         self.parent.update_idletasks()
 
         req_w = self.modal_window.winfo_reqwidth() + 2 * Spacing.SM
         req_h = self.modal_window.winfo_reqheight() + 2 * Spacing.SM
 
-        cur_w = max(self.parent.winfo_width(), 1)
-        cur_h = max(self.parent.winfo_height(), 1)
+        screen_w = self.parent.winfo_screenwidth()
+        screen_h = self.parent.winfo_screenheight()
 
-        new_w = max(cur_w, req_w)
-        new_h = max(cur_h, req_h)
+        target_w = max(size.width, req_w)
+        target_h = max(size.height, req_h)
+        target_w = min(target_w, screen_w)
+        target_h = min(target_h, screen_h)
 
-        if new_w != cur_w or new_h != cur_h:
-            screen_w = self.parent.winfo_screenwidth()
-            screen_h = self.parent.winfo_screenheight()
-            pos_x = max((screen_w - new_w) // 2, 0)
-            pos_y = max((screen_h - new_h) // 2, 0)
-            self.parent.geometry(f"{new_w}x{new_h}+{pos_x}+{pos_y}")
+        min_w = min(size.min_width, screen_w)
+        min_h = min(size.min_height, screen_h)
 
-        # Prevent shrinking below the content
-        min_h = int(new_h * 1.14)
-        self.parent.minsize(new_w, min_h)
+        pos_x = max((screen_w - target_w) // 2, 0)
+        pos_y = max((screen_h - target_h) // 2, 0)
+
+        self.parent.geometry(f"{target_w}x{target_h}+{pos_x}+{pos_y}")
+        self.parent.minsize(min_w, min_h)
 
     # ------------------------------------------------------------------ #
     # Content and interactions

@@ -15,7 +15,7 @@ from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
 from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
 from utils.user_settings import get_user_settings
-from utils.window_sizing import calculate_initial_window_size
+from utils.window_sizing import calculate_initial_window_size, get_chatroom_modal_size
 from ui.helpers import create_centered_modal, ModalScaffold
 
 import os
@@ -192,12 +192,9 @@ class App(tk.Tk):
         scaffold = create_centered_modal(
             self,
             title="Chatroom",
-            width_ratio=0.0,
-            height_ratio=0.0,
-            min_width=560,
-            min_height=500,
             bg=Colors.SURFACE,
             use_scroll=False,
+            window_size=get_chatroom_modal_size(),
         )
 
         self.chatroom_modal = scaffold

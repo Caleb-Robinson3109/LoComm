@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from ui.helpers import create_centered_modal, create_form_row
+from utils.window_sizing import get_manual_pair_modal_size
 
 class ManualPairingModal:
     """Modal dialog for manual device pairing."""
@@ -32,10 +33,7 @@ class ManualPairingModal:
         self.modal_scaffold = create_centered_modal(
             self.parent,
             title="Manual Pairing",
-            width_ratio=0.3,
-            height_ratio=0.3,
-            min_width=350,
-            min_height=250,
+            window_size=get_manual_pair_modal_size(),
         )
         
         content_frame = self.modal_scaffold.body

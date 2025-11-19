@@ -38,7 +38,7 @@ class ChatroomWindow(tk.Frame):
         self._create_ui()
 
     def _create_ui(self):
-        layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.LG, pady=Spacing.LG)
+        layout = tk.Frame(self, bg=Colors.SURFACE, padx=Spacing.SM, pady=Spacing.LG)
         layout.pack(fill=tk.BOTH, expand=True)
 
         self._build_tab_strip(layout)

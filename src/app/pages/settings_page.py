@@ -51,14 +51,15 @@ class SettingsPage(BasePage):
         )
         header.pack(anchor="w")
 
-        AutoWrapLabel(
-            section,
-            text=description,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12),
-            padding_x=Spacing.MD,
-        ).pack(fill=tk.X, pady=(Spacing.XS, Spacing.SM))
+        if description:
+            AutoWrapLabel(
+                section,
+                text=description,
+                bg=Colors.SURFACE_ALT,
+                fg=Colors.TEXT_SECONDARY,
+                font=(Typography.FONT_UI, Typography.SIZE_12),
+                padding_x=Spacing.MD,
+            ).pack(fill=tk.X, pady=(Spacing.XS, Spacing.SM))
 
         return section
 
@@ -68,17 +69,10 @@ class SettingsPage(BasePage):
         section = self._create_section(
             parent,
             "Appearance",
-            "Toggle between a lighter workspace or the default dark canvas depending on your environment.",
+            "",
         )
 
-        self._theme_button = DesignUtils.button(
-            section,
-            text=self._theme_button_label(),
-            variant="secondary",
-            width=16,
-            command=self._toggle_theme,
-        )
-        self._theme_button.pack(anchor="w")
+        self._add_toggle(section, "Dark mode", "theme_mode", is_theme=True)
 
     def _theme_button_label(self) -> str:
         return f"Dark Mode: {'On' if self.user_settings.theme_mode == 'dark' else 'Off'}"
@@ -101,13 +95,13 @@ class SettingsPage(BasePage):
         section = self._create_section(
             parent,
             "Preferences",
-            "Fine tune notifications and sounds so you stay informed without distractions.",
+            "",
         )
 
         self._add_toggle(section, "Desktop notifications", "notifications_enabled")
         self._add_toggle(section, "Sound alerts", "sound_alerts_enabled")
 
-    def _add_toggle(self, parent: tk.Misc, label: str, attr: str) -> None:
+    def _add_toggle(self, parent: tk.Misc, label: str, attr: str, *, is_theme: bool = False) -> None:
         row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
         row.pack(fill=tk.X, pady=(0, Spacing.XS))
 
@@ -119,7 +113,10 @@ class SettingsPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_14),
         ).pack(side=tk.LEFT)
 
-        value = getattr(self.user_settings, attr, False)
+        if is_theme:
+            value = self.user_settings.theme_mode == "dark"
+        else:
+            value = getattr(self.user_settings, attr, False)
         var = tk.BooleanVar(master=self, value=value)
         btn = DesignUtils.button(
             row,
@@ -127,20 +124,26 @@ class SettingsPage(BasePage):
             variant="ghost",
             width=8,
         )
-        def _command(attr=attr, var=var, widget=btn):
-            self._toggle_setting(attr, var, widget)
+        def _command(attr=attr, var=var, widget=btn, is_theme=is_theme):
+            self._toggle_setting(attr, var, widget, is_theme=is_theme)
         btn.configure(command=_command)
         btn.pack(side=tk.RIGHT)
 
         self._toggle_widgets[attr] = (var, btn)
 
-    def _toggle_setting(self, attr: str, var: tk.BooleanVar, btn: tk.Widget) -> None:
+    def _toggle_setting(self, attr: str, var: tk.BooleanVar, btn: tk.Widget, *, is_theme: bool = False) -> None:
         new_value = not var.get()
         var.set(new_value)
-        setattr(self.user_settings, attr, new_value)
+        if is_theme:
+            self.user_settings.theme_mode = "dark" if new_value else "light"
+            app = getattr(self.context, "app", None)
+            if app and hasattr(app, "toggle_theme"):
+                app.toggle_theme(new_value)
+        else:
+            setattr(self.user_settings, attr, new_value)
         save_user_settings(self.user_settings)
-
-        btn.configure(text=self._bool_label(new_value))
+        if btn and btn.winfo_exists():
+            btn.configure(text=self._bool_label(new_value))
 
     def _bool_label(self, value: bool) -> str:
         return "On" if value else "Off"

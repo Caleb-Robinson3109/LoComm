@@ -8,6 +8,7 @@ from typing import Callable, Optional, List, Any
 from ui.theme_tokens import Colors, Spacing, Typography
 from ui.theme_manager import ensure_styles_initialized
 from ui.components import DesignUtils
+from utils.window_sizing import WindowSize
 
 
 # --------------------------------------------------------------------------- #
@@ -507,6 +508,7 @@ def create_centered_modal(
     bg: str | None = None,
     use_scroll: bool = False,
     padding: tuple[int, int] = (Spacing.LG, Spacing.LG),
+    window_size: WindowSize | None = None,
 ) -> ModalScaffold:
     """
     Create a responsive centered modal suitable for login, pairing, etc.
@@ -527,14 +529,24 @@ def create_centered_modal(
     screen_w = modal.winfo_screenwidth()
     screen_h = modal.winfo_screenheight()
 
-    target_w = max(int(screen_w * width_ratio), min_width)
-    target_h = max(int(screen_h * height_ratio), min_height)
+    if window_size:
+        target_w = min(window_size.width, screen_w)
+        target_h = min(window_size.height, screen_h)
+        modal_min_width = min(window_size.min_width, screen_w)
+        modal_min_height = min(window_size.min_height, screen_h)
+        target_w = max(target_w, modal_min_width)
+        target_h = max(target_h, modal_min_height)
+    else:
+        target_w = max(int(screen_w * width_ratio), min_width)
+        target_h = max(int(screen_h * height_ratio), min_height)
+        modal_min_width = min_width
+        modal_min_height = min_height
 
     pos_x = (screen_w - target_w) // 2
     pos_y = (screen_h - target_h) // 2
 
     modal.geometry(f"{target_w}x{target_h}+{pos_x}+{pos_y}")
-    modal.minsize(min_width, min_height)
+    modal.minsize(modal_min_width, modal_min_height)
     modal.resizable(True, True)
     modal.transient(parent.winfo_toplevel())
     modal.grab_set()

@@ -3,9 +3,54 @@ Helpers for calculating window dimensions and modal sizing consistently.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import tkinter as tk
 
-from utils.design_system import AppConfig
+from ui.theme_tokens import AppConfig
+
+
+@dataclass(frozen=True)
+class WindowSize:
+    """Represents default and minimum sizing for a window."""
+
+    width: int
+    height: int
+    min_width: int
+    min_height: int
+
+
+_APP_WINDOW = WindowSize(
+    width=AppConfig.WINDOW_WIDTH,
+    height=AppConfig.WINDOW_HEIGHT,
+    min_width=AppConfig.MIN_WINDOW_WIDTH,
+    min_height=AppConfig.MIN_WINDOW_HEIGHT,
+)
+
+_LOGIN_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
+_CHATROOM_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
+_CHAT_WINDOW = WindowSize(width=500, height=500, min_width=500, min_height=500)
+_MANUAL_PAIR_MODAL = WindowSize(width=500, height=500, min_width=500, min_height=500)
+
+
+def get_app_window_size() -> WindowSize:
+    return _APP_WINDOW
+
+
+def get_login_modal_size() -> WindowSize:
+    return _LOGIN_MODAL
+
+
+def get_chatroom_modal_size() -> WindowSize:
+    return _CHATROOM_MODAL
+
+
+def get_chat_window_size() -> WindowSize:
+    return _CHAT_WINDOW
+
+
+def get_manual_pair_modal_size() -> WindowSize:
+    return _MANUAL_PAIR_MODAL
 
 
 def calculate_initial_window_size(root: tk.Misc) -> tuple[int, int]:
@@ -13,8 +58,11 @@ def calculate_initial_window_size(root: tk.Misc) -> tuple[int, int]:
     screen_w = root.winfo_screenwidth()
     screen_h = root.winfo_screenheight()
     width_ratio = AppConfig.WINDOW_WIDTH_RATIO * 0.94
-    target_w = int(screen_w * width_ratio)
-    target_h = int(screen_h * AppConfig.WINDOW_HEIGHT_RATIO)
+    app_size = get_app_window_size()
+    target_w = min(app_size.width, int(screen_w * width_ratio))
+    target_h = min(app_size.height, int(screen_h * AppConfig.WINDOW_HEIGHT_RATIO))
+    target_w = max(target_w, min(app_size.min_width, screen_w))
+    target_h = max(target_h, min(app_size.min_height, screen_h))
     return target_w, target_h
 
 
