@@ -124,6 +124,7 @@ class MainFrame(ttk.Frame):
             nav_items=nav_items,
             on_nav_select=self.navigate_to,
             on_theme_toggle=self.on_theme_toggle,
+            on_back=self.go_back,
         )
         self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.sidebar.pack_propagate(False)

@@ -37,8 +37,6 @@ class HomePage(BasePage):
             body,
             title="Welcome to Locomm",
             subtitle="Secure LoRa messaging for desktop",
-            show_back=True,
-            on_back=self._handle_back,
             actions=actions,
         )
         # No extra content below yet, but body will grow and text will reflow

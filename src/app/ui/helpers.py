@@ -203,21 +203,22 @@ def create_page_scaffold(
     actions: Optional[List[dict[str, Any]]] = None,
     use_scroll: bool = True,
     padding: tuple[int, int] = (0, Spacing.LG),
-    bg: str = Colors.SURFACE,
+    bg: str | None = None,
 ) -> PageScaffold:
     """
-    Legacy scaffold that uses DesignUtils.hero_header.
     For new pages prefer create_page_header directly.
     """
-    root = tk.Frame(parent, bg=bg)
+    ensure_styles_initialized()
+    resolved_bg = bg or Colors.SURFACE
+    root = tk.Frame(parent, bg=resolved_bg)
     root.pack(fill=tk.BOTH, expand=True)
 
     if use_scroll:
-        scroll = create_scroll_container(root, bg=bg, padding=padding)
+        scroll = create_scroll_container(root, bg=resolved_bg, padding=padding)
         body = scroll.frame
     else:
         scroll = None
-        body = tk.Frame(root, bg=bg)
+        body = tk.Frame(root, bg=resolved_bg)
         body.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
 
     header = DesignUtils.hero_header(body, title=title, subtitle=subtitle, actions=actions)
@@ -503,7 +504,7 @@ def create_centered_modal(
     height_ratio: float = 0.4,
     min_width: int = 400,
     min_height: int = 280,
-    bg: str = Colors.SURFACE,
+    bg: str | None = None,
     use_scroll: bool = False,
     padding: tuple[int, int] = (Spacing.LG, Spacing.LG),
 ) -> ModalScaffold:
@@ -515,11 +516,12 @@ def create_centered_modal(
     - Optional internal scroll container so content always fits
     """
     ensure_styles_initialized()
+    resolved_bg = bg or Colors.SURFACE
 
     # Create modal window
     modal = tk.Toplevel(parent)
     modal.title(title)
-    modal.configure(bg=bg)
+    modal.configure(bg=resolved_bg)
 
     modal.update_idletasks()
     screen_w = modal.winfo_screenwidth()
@@ -538,26 +540,26 @@ def create_centered_modal(
     modal.grab_set()
 
     # Root content frame
-    root = tk.Frame(modal, bg=bg)
+    root = tk.Frame(modal, bg=resolved_bg)
     root.pack(fill=tk.BOTH, expand=True)
 
     # Optional scroll inside modal so content is never cut off
     if use_scroll:
-        scroll = create_scroll_container(root, bg=bg, padding=padding)
+        scroll = create_scroll_container(root, bg=resolved_bg, padding=padding)
         body = scroll.frame
     else:
         scroll = None
-        body = tk.Frame(root, bg=bg)
+        body = tk.Frame(root, bg=resolved_bg)
         body.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
 
     # Simple header row for modal title
-    header = tk.Frame(body, bg=bg, padx=Spacing.SM, pady=Spacing.SM)
+    header = tk.Frame(body, bg=resolved_bg, padx=Spacing.SM, pady=Spacing.SM)
     header.pack(fill=tk.X, pady=(0, Spacing.SM))
 
     tk.Label(
         header,
         text=title,
-        bg=bg,
+        bg=resolved_bg,
         fg=Colors.TEXT_PRIMARY,
         font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         anchor="w",

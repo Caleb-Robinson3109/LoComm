@@ -19,11 +19,13 @@ class SidebarPage(tk.Frame):
         nav_items: list[tuple[str, str]],
         on_nav_select: Optional[Callable[[str], None]] = None,
         on_theme_toggle: Optional[Callable[[bool], None]] = None,
+        on_back: Optional[Callable[[], None]] = None,
     ):
         ThemeManager.ensure()
         super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
         self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
+        self.on_back = on_back
         self.nav_items = nav_items
         self.current_view = nav_items[0][0] if nav_items else "home"
 
@@ -37,6 +39,11 @@ class SidebarPage(tk.Frame):
         self._update_active_button(self.current_view)
 
     def _build_nav_sections(self):
+        # Back button at the very top
+        if self.on_back:
+            back_btn = DesignUtils.create_nav_button(self.container, text="← Back", command=self.on_back)
+            back_btn.pack(fill=tk.X, pady=(0, Spacing.MD))
+
         top_items = []
         bottom_items = []
         for key, label in self.nav_items:
