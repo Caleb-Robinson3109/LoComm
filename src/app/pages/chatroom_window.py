@@ -72,7 +72,7 @@ class ChatroomWindow(tk.Frame):
         strip = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
         strip.pack(fill=tk.X)
 
-        for key, label in (("join", "Join"), ("create", "Create Chatroom")):
+        for key, label in (("join", "Join"), ("create", "Create")):
             btn = DesignUtils.button(
                 strip,
                 text=label,

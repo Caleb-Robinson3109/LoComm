@@ -40,8 +40,6 @@ class SettingsPage(BasePage):
             body,
             title="Settings",
             subtitle="Configure your Locomm experience.",
-            show_back=True,
-            on_back=self._handle_back,
         )
 
         self._build_appearance_section(body)
@@ -66,40 +64,36 @@ class SettingsPage(BasePage):
             with_card=False,
         )
 
-        # Theme setting card
-        setting_frame = tk.Frame(section_body, bg=Colors.SURFACE_ALT, padx=Space.MD, pady=Space.SM)
-        setting_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
-
-        tk.Label(
-            setting_frame,
-            text="Dark Mode",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w")
-
-        AutoWrapLabel(
-            setting_frame,
-            text="Use dark theme for better battery life and reduced eye strain.",
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-            justify="left",
-            padding_x=Spacing.SM * 2,
-            min_wrap=260,
-        ).pack(anchor="w", fill=tk.X, expand=True, pady=(Space.XXS, 0))
-
-        # Toggle button
-        self.theme_var = tk.BooleanVar(value=self.user_settings.theme_mode == "dark")
+        # Single Button for Dark Mode
+        is_dark = self.user_settings.theme_mode == "dark"
+        self.theme_var = tk.BooleanVar(value=is_dark)
+        
         toggle_btn = DesignUtils.button(
-            setting_frame,
-            text="On" if self.theme_var.get() else "Off",
+            section_body,
+            text=f"Dark Mode: {'On' if is_dark else 'Off'}",
             variant="secondary",
-            command=self._toggle_theme,
         )
-        toggle_btn.pack(side=tk.RIGHT)
+        toggle_btn.pack(anchor="w", pady=(0, Spacing.SM))
         self._theme_button = toggle_btn
-        self._sync_theme_button()
+
+        def _on_toggle():
+            # 1. Immediate UI Update
+            new_state = not self.theme_var.get()
+            self.theme_var.set(new_state)
+            toggle_btn.configure(text=f"Dark Mode: {'On' if new_state else 'Off'}")
+
+            # 2. Defer Heavy Lifting
+            def _apply_theme_change():
+                app = getattr(self.context, "app", None)
+                if app and hasattr(app, "toggle_theme"):
+                    app.toggle_theme(new_state)
+                
+                self.user_settings.theme_mode = "dark" if new_state else "light"
+                save_user_settings(self.user_settings)
+
+            self.after(10, _apply_theme_change)
+
+        toggle_btn.configure(command=_on_toggle)
 
     def _build_settings_section(self, parent):
         """Build simple settings section with standard helpers."""
@@ -138,28 +132,23 @@ class SettingsPage(BasePage):
         btn.pack(side=tk.RIGHT)
 
         def toggle_setting():
-            var.set(not var.get())
-            btn.configure(text="On" if var.get() else "Off")
-            setattr(self.user_settings, attr, var.get())
-            save_user_settings(self.user_settings)
+            # Immediate UI update
+            new_val = not var.get()
+            var.set(new_val)
+            btn.configure(text="On" if new_val else "Off")
+            
+            # Update settings object
+            setattr(self.user_settings, attr, new_val)
+            
+            # Save in background (or just don't block if possible, but here we just call it)
+            # Ideally save_user_settings should be fast or async.
+            # For now, we ensure UI updates first.
+            self.after(10, lambda: save_user_settings(self.user_settings))
 
         btn.configure(command=toggle_setting)
         self._toggle_vars[attr] = var
         self._toggle_buttons[attr] = btn
 
-    def _toggle_theme(self):
-        """Toggle between light and dark themes."""
-        new_value = not self.theme_var.get()
-        self.theme_var.set(new_value)
-        self._sync_theme_button(new_value)
-
-        # Only call app.toggle_theme if available
-        app = getattr(self.context, "app", None)
-        if app and hasattr(app, "toggle_theme"):
-            app.toggle_theme(new_value)
-
-        self.user_settings.theme_mode = "dark" if new_value else "light"
-        save_user_settings(self.user_settings)
 
     def _cycle_accent_color(self):
         """Cycle through accent colors."""
@@ -190,11 +179,3 @@ class SettingsPage(BasePage):
     def destroy(self):
         return super().destroy()
 
-    def _sync_theme_button(self, value: bool | None = None):
-        if not self._theme_button:
-            return
-        if value is None and hasattr(self, "theme_var"):
-            value = self.theme_var.get()
-        if value is None:
-            value = False
-        self._theme_button.configure(text="On" if value else "Off")

@@ -32,8 +32,6 @@ class HelpPage(BasePage):
             body,
             title="Help and Support",
             subtitle="Quick tips and guidance for using Locomm on your desktop.",
-            show_back=True,
-            on_back=self._handle_back,
         )
 
         # Getting started section
@@ -41,7 +39,7 @@ class HelpPage(BasePage):
             body,
             title="Getting Started",
             bg=Colors.SURFACE,
-            inner_bg=Colors.SURFACE_ALT,
+            inner_bg=Colors.SURFACE,
             with_card=True,
         )
 
@@ -65,7 +63,7 @@ class HelpPage(BasePage):
             body,
             title="Troubleshooting",
             bg=Colors.SURFACE,
-            inner_bg=Colors.SURFACE_ALT,
+            inner_bg=Colors.SURFACE,
             with_card=True,
         )
 

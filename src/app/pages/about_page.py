@@ -32,8 +32,6 @@ class AboutPage(BasePage):
             body,
             title="About Locomm",
             subtitle="Locomm is a desktop client for secure LoRa powered messaging.",
-            show_back=True,
-            on_back=self._handle_back,
         )
 
         # Main about section
@@ -41,7 +39,7 @@ class AboutPage(BasePage):
             body,
             title="What is Locomm?",
             bg=Colors.SURFACE,
-            inner_bg=Colors.SURFACE_ALT,
+            inner_bg=Colors.SURFACE,
             with_card=True,
         )
 
