@@ -140,6 +140,7 @@ class StatusManager:
             Tuple of (display_status, status_color)
         """
         self._current_status = status_text
+        lowered = status_text.lower()
         color = self.get_status_color(status_text)
 
         # Update device status

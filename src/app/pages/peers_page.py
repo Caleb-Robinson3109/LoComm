@@ -6,7 +6,7 @@ from typing import Optional, Callable
 
 from tkinter import messagebox
 
-from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
+from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import (
     create_scroll_container,
@@ -37,7 +37,7 @@ class PeersPage(BasePage):
         self._scan_timer_id: Optional[str] = None
         self._manual_pairing_window: Optional[ManualPairingWindow] = None
         
-        self.devices: list[dict] = []  # List of {name, id, status}
+        self.devices: dict[str, dict] = {}  # Map of normalized id -> metadata
         self.device_list_container: Optional[tk.Frame] = None
 
         # Simple scroll container like chat page
@@ -50,6 +50,7 @@ class PeersPage(BasePage):
 
         self._build_header(body)
         self._build_devices_section(body)
+        self._refresh_from_session()
 
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
@@ -72,7 +73,7 @@ class PeersPage(BasePage):
     # ------------------------------------------------------------------ #
 
     def _build_header(self, parent: tk.Misc):
-        # Standardized header with back button and Refresh action
+        # Standardized header with back button and Scan action
         actions = [
             {
                 "text": "Manual Pair",
@@ -81,7 +82,7 @@ class PeersPage(BasePage):
                 "padx": (0, Spacing.XS),
             },
             {
-                "text": "Refresh",
+                "text": "Scan",
                 "command": self._scan_for_devices,
                 "variant": "secondary",
             }
@@ -116,10 +117,18 @@ class PeersPage(BasePage):
         for child in self.device_list_container.winfo_children():
             child.destroy()
 
-        if not self.devices:
+        devices = sorted(self.devices.values(), key=lambda d: d["name"].lower())
+        if not devices:
+            AutoWrapLabel(
+                self.device_list_container,
+                text="No peers yet. Use Scan or Manual Pair to add a device by ID.",
+                bg=Colors.SURFACE,
+                fg=Colors.TEXT_SECONDARY,
+                font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            ).pack(fill=tk.X, pady=Spacing.SM)
             return
 
-        for device in self.devices:
+        for device in devices:
             self._create_device_row(device)
 
     def _create_device_row(self, device: dict):
@@ -138,13 +147,16 @@ class PeersPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
         
+        meta_frame = tk.Frame(info_frame, bg=Colors.SURFACE_ALT)
+        meta_frame.pack(fill=tk.X)
+
         tk.Label(
-            info_frame,
-            text=f"ID: {device['id']}",
+            meta_frame,
+            text=f"ID: {device['display_id']}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-        ).pack(anchor="w")
+        ).pack(side=tk.LEFT, anchor="w")
 
         button_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
         button_frame.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
@@ -153,34 +165,114 @@ class PeersPage(BasePage):
             button_frame,
             text="Chat",
             command=lambda d=device: self._chat_with_device(d),
-            variant="ghost",
-            width=8,
+            variant="primary",
+            width=10,
         ).pack(anchor="e", pady=(0, Spacing.XXS))
 
-        DesignUtils.button(
-            button_frame,
-            text="Connect",
-            command=lambda d=device: self._connect_and_chat(d),
-            variant="secondary",
-            width=8,
-        ).pack(anchor="e")
+    # ------------------------------------------------------------------ #
+    # Device list management
+    # ------------------------------------------------------------------ #
+
+    def _normalize_device_identifier(self, device_id: str) -> str:
+        return ''.join(ch for ch in (device_id or "") if ch.isalnum()).upper()
+
+    def _format_device_identifier(self, device_id: str) -> str:
+        normalized = self._normalize_device_identifier(device_id)
+        if not normalized:
+            return "UNKNOWN"
+        return ' '.join(
+            normalized[i:i + 4] for i in range(0, len(normalized), 4)
+        )
+
+    def _status_variant_for(self, status: str) -> str:
+        mapping = {
+            "available": "info",
+            "connecting": "warning",
+            "connected": "success",
+            "disconnected": "danger",
+        }
+        return mapping.get(status.lower(), "info")
+
+    def _upsert_device(self, name: str, device_id: str, *, status: str = "Available", source: str = "scan", render: bool = True) -> Optional[dict]:
+        normalized = self._normalize_device_identifier(device_id)
+        if not normalized:
+            return None
+
+        entry = self.devices.get(normalized)
+        if entry is None:
+            entry = {"raw_id": normalized}
+            self.devices[normalized] = entry
+
+        entry["name"] = (name or "").strip() or entry.get("name") or "Unnamed Device"
+        entry["id"] = (device_id or "").strip() or normalized
+        entry["raw_id"] = normalized
+        entry["display_id"] = self._format_device_identifier(device_id or normalized)
+        entry["status"] = status
+        entry["status_variant"] = self._status_variant_for(status)
+        entry["source"] = source
+
+        if render:
+            self._render_device_list()
+        return entry
+
+    def _update_device_status(self, device_id: str, status: str):
+        normalized = self._normalize_device_identifier(device_id)
+        entry = self.devices.get(normalized)
+        if not entry:
+            return
+        entry["status"] = status
+        entry["status_variant"] = self._status_variant_for(status)
+        self._render_device_list()
+
+    def _refresh_from_session(self):
+        if self.session and getattr(self.session, "device_id", None) and getattr(self.session, "device_name", None):
+            self._upsert_device(
+                self.session.device_name,
+                self.session.device_id,
+                status="Connected",
+                source="session",
+                render=False,
+            )
+
+        controller = getattr(self, "controller", None)
+        connection_manager = getattr(controller, "connection_manager", None) if controller else None
+        if connection_manager:
+            info = connection_manager.get_connected_device_info()
+            if info and info.get("id") and info.get("name"):
+                self._upsert_device(
+                    info["name"],
+                    info["id"],
+                    status="Connected" if info.get("is_connected") else "Available",
+                    source="session",
+                    render=False,
+                )
+
+        # Always re-render to ensure placeholder visibility stays in sync
+        self._render_device_list()
 
     def _connect_and_chat(self, device: dict):
         if not self.controller:
             self._open_chat_window(device)
             return
 
+        self._update_device_status(device["raw_id"], "Connecting")
+
         def _callback(success: bool, error: Optional[str] = None):
             if success:
+                self._update_device_status(device["raw_id"], "Connected")
                 self._open_chat_window(device)
             elif error:
+                self._update_device_status(device["raw_id"], "Available")
                 messagebox.showerror("Connection Failed", error, parent=self.winfo_toplevel())
+            else:
+                self._update_device_status(device["raw_id"], "Available")
 
         self.controller.start_session(device["id"], device["name"], callback=_callback)
 
     def _chat_with_device(self, device: dict):
         session_device = getattr(self.session, "device_id", None) if self.session else None
-        if session_device == device["id"]:
+        normalized_session = self._normalize_device_identifier(session_device or "")
+        if normalized_session and normalized_session == device["raw_id"]:
             self._open_chat_window(device)
         else:
             self._connect_and_chat(device)
@@ -188,7 +280,21 @@ class PeersPage(BasePage):
     def _open_chat_window(self, device: dict):
         master = self.winfo_toplevel()
         local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
-        ChatWindow(master, peer_name=device["name"], local_device_name=local_name)
+        ChatWindow(
+            master,
+            peer_name=device["name"],
+            local_device_name=local_name,
+            on_close_callback=lambda raw=device["raw_id"]: self._handle_chat_closed(raw),
+        )
+
+    def _handle_chat_closed(self, raw_id: Optional[str] = None):
+        if self.controller:
+            self.controller.stop_session()
+        if raw_id:
+            normalized = self._normalize_device_identifier(raw_id)
+            if normalized in self.devices:
+                del self.devices[normalized]
+                self._render_device_list()
 
     # ------------------------------------------------------------------ #
     # Scan / device-stage logic (UI-only, no mock data)
@@ -204,18 +310,9 @@ class PeersPage(BasePage):
         )
 
     def _handle_manual_pair(self, name: str, device_id: str):
-        # Add to local list
-        new_device = {"name": name, "id": device_id, "status": "available"}
-        
-        # Avoid duplicates
-        existing = next((d for d in self.devices if d["id"] == device_id), None)
-        if not existing:
-            self.devices.append(new_device)
-            self._render_device_list()
-        
-        # Auto-connect
-        if self.controller:
-            self.controller.start_session(device_id, name)
+        entry = self._upsert_device(name, device_id, status="Available", source="manual")
+        if entry:
+            self._connect_and_chat(entry)
 
     def _scan_for_devices(self):
         """Trigger a scan. In production this should call the real transport."""
@@ -245,6 +342,7 @@ class PeersPage(BasePage):
             self.controller.status_manager.update_status(AppConfig.STATUS_READY)
 
         self._scan_timer_id = None
+        self._refresh_from_session()
 
     def _set_stage(self, stage: DeviceStage, device_name: Optional[str] = None):
         """Update global device status via UI store (used by top bar)."""

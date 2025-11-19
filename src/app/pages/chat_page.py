@@ -13,6 +13,7 @@ from ui.theme_tokens import Colors, Spacing, Typography
 from ui.theme_manager import ensure_styles_initialized
 from utils.design_system import AppConfig
 from utils.state.status_manager import get_status_manager
+from utils.state.connection_manager import get_connection_manager
 from utils.window_sizing import get_chat_window_size
 
 
@@ -21,7 +22,7 @@ class ChatWindow(tk.Toplevel):
 
     _open_windows: dict[str, 'ChatWindow'] = {}
 
-    def __init__(self, master: tk.Misc, peer_name: str | None = None, local_device_name: str | None = None):
+    def __init__(self, master: tk.Misc, peer_name: str | None = None, local_device_name: str | None = None, on_close_callback: Callable[[], None] | None = None):
         # Check if window already open for this peer
         if peer_name and peer_name in self._open_windows:
             existing = self._open_windows[peer_name]
@@ -37,6 +38,7 @@ class ChatWindow(tk.Toplevel):
         ensure_styles_initialized()
         self.peer_name = peer_name or "Peer"
         self.local_device_name = local_device_name or "Orion"
+        self._on_close_callback = on_close_callback
         self.title("Chat")
         self._apply_default_geometry()
         self.resizable(True, True)
@@ -294,6 +296,15 @@ class ChatWindow(tk.Toplevel):
                 return
 
         get_status_manager().update_status(AppConfig.STATUS_DISCONNECTED)
+        try:
+            get_connection_manager().disconnect_device()
+        except Exception:
+            pass
+        if self._on_close_callback:
+            try:
+                self._on_close_callback()
+            except Exception:
+                pass
         # self._bridge.unregister_peer_callback(self._handle_incoming)
         if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
             del self._open_windows[self.peer_name]

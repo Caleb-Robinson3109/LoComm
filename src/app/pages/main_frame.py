@@ -348,9 +348,13 @@ class MainFrame(ttk.Frame):
             DeviceStage.READY: ("Ready", Colors.STATE_READY),
             DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
             DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
+            DeviceStage.AWAITING_PEER: ("Awaiting Peer", Colors.STATE_INFO),
             DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
             DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
             DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
+            DeviceStage.INVALID_PIN: ("Invalid PIN", Colors.STATE_ERROR),
+            DeviceStage.TRANSPORT_ERROR: ("Transport Error", Colors.STATE_ERROR),
+            DeviceStage.CONNECTION_FAILED: ("Connection Failed", Colors.STATE_ERROR),
         }
         return mapping.get(stage, ("Status", Colors.STATE_ERROR))
 

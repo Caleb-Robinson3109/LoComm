@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Dict
 
+from utils.design_system import AppConfig
 from utils.state.connection_manager import get_connection_manager
 from utils.state.status_manager import get_status_manager
 
@@ -15,6 +16,10 @@ class DeviceStage(Enum):
     CONNECTING = auto()
     CONNECTED = auto()
     DISCONNECTED = auto()
+    AWAITING_PEER = auto()
+    INVALID_PIN = auto()
+    TRANSPORT_ERROR = auto()
+    CONNECTION_FAILED = auto()
 
 
 @dataclass
@@ -41,6 +46,7 @@ class UIStore:
         self._device_callbacks: List[Callable[[DeviceStatusSnapshot], None]] = []
         self._status_callback: Optional[Callable[[str, str], None]] = None
         self._device_info_callback: Optional[Callable] = None
+        self._status_text_stage_map: Dict[str, DeviceStage] = self._build_status_text_stage_map()
 
         self._status_callback = self._handle_status_text
         self._device_info_callback = self._handle_device_change
@@ -67,26 +73,78 @@ class UIStore:
 
     # ------------------------------------------------------------------ #
     def _handle_status_text(self, status_text: str, _color: str):
-        text = status_text.lower()
         device_name = self._status_manager.get_current_device().device_name
-        if "scan" in text:
-            self.set_pairing_stage(DeviceStage.SCANNING, device_name)
-        elif "awaiting" in text:
-            self.set_pairing_stage(DeviceStage.AWAITING_PIN, device_name)
-        elif "connecting" in text:
-            self.set_pairing_stage(DeviceStage.CONNECTING, device_name)
-        elif "disconnect" in text:
-            self.set_pairing_stage(DeviceStage.DISCONNECTED, device_name)
-        elif "connected" in text:
-            self.set_pairing_stage(DeviceStage.CONNECTED, device_name)
-        elif "ready" in text:
-            self.set_pairing_stage(DeviceStage.READY, device_name)
-        elif any(keyword in text for keyword in ("error", "failed", "invalid")):
-            self.set_pairing_stage(DeviceStage.DISCONNECTED, device_name)
+        stage = self._determine_stage_from_status(status_text)
+        self.set_pairing_stage(stage, device_name)
 
     def _handle_device_change(self, device_info):
         if not device_info.is_connected and device_info.device_name:
             self.set_pairing_stage(DeviceStage.DISCONNECTED, device_info.device_name)
+
+    def _build_status_text_stage_map(self) -> Dict[str, DeviceStage]:
+        pairs = [
+            (AppConfig.STATUS_READY, DeviceStage.READY),
+            (AppConfig.STATUS_CONNECTED, DeviceStage.CONNECTED),
+            (AppConfig.STATUS_DISCONNECTED, DeviceStage.DISCONNECTED),
+            (AppConfig.STATUS_NOT_CONNECTED, DeviceStage.DISCONNECTED),
+            (AppConfig.STATUS_CONNECTION_FAILED, DeviceStage.CONNECTION_FAILED),
+            (AppConfig.STATUS_CONNECTION_DEVICE_FAILED, DeviceStage.CONNECTION_FAILED),
+            (AppConfig.STATUS_INVALID_PIN, DeviceStage.INVALID_PIN),
+            (AppConfig.STATUS_AWAITING_PEER, DeviceStage.AWAITING_PEER),
+            (AppConfig.STATUS_TRANSPORT_ERROR, DeviceStage.TRANSPORT_ERROR),
+        ]
+        mapping: Dict[str, DeviceStage] = {}
+        for text, stage in pairs:
+            key = (text or "").strip().lower()
+            if key:
+                mapping[key] = stage
+        return mapping
+
+    def _determine_stage_from_status(self, status_text: str) -> DeviceStage:
+        lowered = (status_text or "").strip().lower()
+        if not lowered:
+            return DeviceStage.READY
+
+        explicit_stage = self._status_text_stage_map.get(lowered)
+        if explicit_stage:
+            return explicit_stage
+
+        checks: List[tuple[Callable[[str], bool], DeviceStage]] = [
+            (lambda text: "scan" in text, DeviceStage.SCANNING),
+            (lambda text: "await" in text and "peer" in text, DeviceStage.AWAITING_PEER),
+            (lambda text: "await" in text and "pin" in text, DeviceStage.AWAITING_PIN),
+            (lambda text: "invalid" in text and "pin" in text, DeviceStage.INVALID_PIN),
+            (lambda text: "transport" in text and "error" in text, DeviceStage.TRANSPORT_ERROR),
+            (lambda text: "connection failed" in text, DeviceStage.CONNECTION_FAILED),
+            (lambda text: "connect" in text and "fail" in text, DeviceStage.CONNECTION_FAILED),
+            (lambda text: "not connected" in text, DeviceStage.DISCONNECTED),
+            (lambda text: "disconnect" in text, DeviceStage.DISCONNECTED),
+            (lambda text: "connecting" in text, DeviceStage.CONNECTING),
+            (lambda text: "connected" in text, DeviceStage.CONNECTED),
+            (lambda text: "ready" in text, DeviceStage.READY),
+        ]
+
+        for predicate, stage in checks:
+            try:
+                if predicate(lowered):
+                    return stage
+            except Exception:
+                continue
+
+        category = self._status_manager.categorize_status(status_text)
+        return self._stage_for_category(category)
+
+    @staticmethod
+    def _stage_for_category(category: Optional[str]) -> DeviceStage:
+        mapping = {
+            "ready": DeviceStage.READY,
+            "connected": DeviceStage.CONNECTED,
+            "disconnected": DeviceStage.DISCONNECTED,
+            "transport_error": DeviceStage.TRANSPORT_ERROR,
+            "error": DeviceStage.CONNECTION_FAILED,
+            "warning": DeviceStage.CONNECTING,
+        }
+        return mapping.get(category, DeviceStage.READY)
 
     def _snapshot_for_stage(self, stage: DeviceStage, device_name: Optional[str]) -> DeviceStatusSnapshot:
         if stage == DeviceStage.SCANNING:
@@ -131,6 +189,39 @@ class UIStore:
                 title="Disconnected",
                 subtitle=f"Disconnected ({label}).",
                 detail="Reconnect from the Devices tab.",
+                device_name=device_name
+            )
+        if stage == DeviceStage.AWAITING_PEER:
+            return DeviceStatusSnapshot(
+                stage=stage,
+                title="Awaiting peer",
+                subtitle="Waiting for the remote device to respond.",
+                detail="Ask the peer to confirm the pairing request.",
+                device_name=device_name
+            )
+        if stage == DeviceStage.INVALID_PIN:
+            return DeviceStatusSnapshot(
+                stage=stage,
+                title="Invalid PIN",
+                subtitle="The pairing code was rejected.",
+                detail="Check the digits and try again.",
+                device_name=device_name
+            )
+        if stage == DeviceStage.TRANSPORT_ERROR:
+            return DeviceStatusSnapshot(
+                stage=stage,
+                title="Transport error",
+                subtitle="LoRa transport reported an error.",
+                detail="Check hardware connections and retry.",
+                device_name=device_name
+            )
+        if stage == DeviceStage.CONNECTION_FAILED:
+            label = device_name or "device"
+            return DeviceStatusSnapshot(
+                stage=stage,
+                title="Connection failed",
+                subtitle=f"Could not connect to {label}.",
+                detail="Retry pairing from the Devices tab.",
                 device_name=device_name
             )
         # Default ready state
