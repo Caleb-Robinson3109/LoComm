@@ -61,7 +61,9 @@ class App(tk.Tk):
         self.app_controller.register_message_callback(self._handle_business_message)
 
         #connect to device
-        connect_to_device()
+
+        while not connect_to_device():
+            pass
 
 
         # Initialize UI with login modal
