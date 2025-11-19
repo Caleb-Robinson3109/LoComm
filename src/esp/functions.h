@@ -48,6 +48,8 @@
 #include <SPI.h>
 #include "LoRa.h"
 #include "ScopedLock.h"
+#include "Preferences.h"
+#include "security_protocol.h"
 
 //Libraries for OLED Display
 #include <Wire.h>

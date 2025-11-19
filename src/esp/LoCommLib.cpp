@@ -62,7 +62,6 @@ bool message_type_match(const uint8_t* buf, const char* str, size_t len){
 
 void init_password(){
     //open the namespace LoComm or create it if it has not be made yet, 0 for RW mode
-    storage.begin("LoComm", 0);
 
     //check to see if there is storage of the password if not add default password
     size_t passowrd_len = storage.getBytesLength("password");

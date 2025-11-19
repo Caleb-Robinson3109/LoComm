@@ -2,8 +2,7 @@
 This file contianes the functions that hande the state of the device to computer communcation
 */
 
-#ifndef API_H
-#define API_H
+#pragma once
 
 #include "LoCommBuildPacket.h"
 #include "LoCommLib.h"
@@ -63,9 +62,6 @@ extern uint8_t password_hash[32];
 //this is used to encript the keys. also good to have it stored on the device (volitile)
 extern uint8_t password_ascii[32];
 
-//this is the storage that will be used to store the password hash and the keys
-extern Preferences storage;
-
 //This function waits for 1 sec and if there is no message to be recived from the computer continues
 //if there is a message it sets the message_from_computer_flag to true, and stores the message in the computer_in_packet buf
 void recive_packet_from_computer();
@@ -103,4 +99,3 @@ void handle_message_from_device();
 
 //this function handles an incomming SNOD packet. the name of the  device will be stored in the device name var
 void handle_SNOD_packet();
-#endif

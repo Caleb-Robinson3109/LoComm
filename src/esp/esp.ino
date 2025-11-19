@@ -6,8 +6,10 @@
 //api functions
 #include "apiCode.h"
 
-uint8_t deviceID = 0; //TODO This should eventually be stored on the EEPROM
-uint8_t deviceIDList[256]; //TODO this should eventually be stored on the EEPROM
+extern Preferences storage;
+
+uint8_t deviceID = 255; //TODO This should eventually be stored on the EEPROM
+uint8_t deviceIDList[32]; //TODO this should eventually be stored on the EEPROM
 
 uint8_t lastDeviceMode = IDLE_MODE;
 uint32_t nextCADTime = 0;
@@ -62,6 +64,8 @@ bool loraTxLock = false;
 portMUX_TYPE serialLoraBridgeSpinLock = portMUX_INITIALIZER_UNLOCKED;
 bool serialLoraBridgeLock = false;
 
+bool receivedDeviceIDTable = false;
+
 StackType_t apiStack[API_CODE_STACK_SIZE];
 StaticTask_t apiStackBuffer;
 
@@ -81,6 +85,11 @@ void setup() {
   serialReadyToSendArray = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4>();
   previouslySeenIds = CyclicArrayList<uint16_t, 128>();
   previouslyProcessedIds = CyclicArrayList<uint16_t, 128>();
+
+  if (!storage.begin("LoComm", 0)) {
+    LError("Failed to start storage instance!");
+    HALT();
+  }
 
   //preload address resolution buffers with data that doesnt change
   deviceIDRequestBuffer[0] = START_BYTE;
@@ -212,6 +221,44 @@ void loop() {
     lastLoraEnableStatus = enableLora;
   }
 
+
+  //-------------------------------------------------------Device ID management ----------------------------------------------------
+  static bool initializedDeviceRouting = false;
+  static bool startedDeviceIDAcquire = false;
+  //if we have logged in, then pull the device ID and table from memory. if they arent stored, then just put 255 in for the device ID and a blank table in
+  if (sec_isLoggedIn()) {
+    if (!initializedDeviceRouting) {
+      initializedDeviceRouting = true;
+      initializeDeviceRouting();
+    }
+
+    //If the deviceIDchanged flag is set, then the table has changed, or the device ID has changed. Either way, trigger a full rewrite to EEPROM
+    if (deviceIDDataChanged) {
+      storeDeviceIDData(false);
+    }
+
+    //if our device ID is currently 255, then we are in searching mode, 
+    if (deviceID == 255) {
+      if (startedDeviceIDAcquire) {
+        startedDeviceIDAcquire = false;
+        receivedDeviceIDTable = false;
+      }
+      sendDeviceIDQueryMessages();
+      if (receivedDeviceIDTable) {
+        chooseOpenDeviceID();
+      }
+    } else {
+      startedDeviceIDAcquire = false;
+    }
+  } else if (initializedDeviceRouting) {
+    //If we aren't logged in but initializedDeviceRouting was still true, then we just logged out, so reset the device ID and device ID table data
+    resetDeviceRouting();
+    initializedDeviceRouting = false;
+  }
+   
+
+
+  
   
 
   //------------------------------------------------------RX Interrupt flag handling ------------------------------------------------
@@ -643,6 +690,9 @@ void loop() {
               if (plaintextLen != 36) {
                 LWarn("Received Device ID Table response message with incorrect size!");
               }
+
+              receivedDeviceIDTable = true;
+
               //we received a full device table, so update our device table 
               for (int byteNum = 0; byteNum < 32; byteNum++) {
                 for (int bitNum = 0; bitNum < 8; bitNum++) {
@@ -930,6 +980,78 @@ void loop() {
 
   //test code to test sending::
   
+}
+
+void resetDeviceRouting() {
+  deviceID = 255;
+  memset(&(deviceIDList), 0, 256);
+  storage.remove("DeviceIDs");
+  storeDeviceIDData(true);
+}
+
+void storeDeviceIDData(bool forceUpdate) {
+  static uint32_t lastEEPROMUpdateTime = 0;
+  if (!forceUpdate) {
+    if ((millis() / 1000) - lastEEPROMUpdateTime < 10) {
+      LDebug("Store Device Data requested, but ignored");
+      return;
+    }
+  }
+  deviceIDDataChanged = false;
+  uint8_t pBuf[1 + 32];
+  uint8_t eBuf[1 + 32 + AES_GCM_OVERHEAD];
+
+  //place id data into plaintext buf
+  pBuf[0] = deviceID;
+  memcpy(&(pBuf[1]), &(deviceIDList[0]), 32);
+
+  //try to encrypt the data
+  size_t ciphertextLen;
+  if (!encryptD2DMessage(&(pBuf[0]), 1 + 32, &(eBuf[0]), 1 + 32 + AES_GCM_OVERHEAD, &ciphertextLen)) {
+    LError("Failed to encrypt EEPROM data for some reason, device id information will not be stored!");
+    return;
+  } 
+
+  if (ciphertextLen != 1 + 32 + AES_GCM_OVERHEAD) {
+    LError("Unexpected decryption size!!!");
+    HALT();
+  }
+
+  //now that its been successfully encrypted, store the data the eeprom
+  storage.putBytes("DeviceIDs", &(eBuf[0]), 1 + 32 + AES_GCM_OVERHEAD);
+  return;
+}
+
+void initializeDeviceRouting() {
+  //we just logged in, so pull device ID and related data from EEPROM
+  if (storage.isKey("DeviceIDs")) {
+    //check that the key is the right size
+    if (storage.getBytesLength("DeviceIDs") != 1 + 32 + AES_GCM_OVERHEAD) {
+      LError("Unexpected device id eeprom data size, resetting device id list");
+      resetDeviceRouting();
+      return;
+    }
+
+    //key does exist, so pull it, decrypt it with the aes-gcm decryption, 
+    uint8_t tempBuf[1 + 32 + AES_GCM_OVERHEAD];
+    storage.getBytes("DeviceIDs", &(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD);
+    uint8_t pBuf[1 + 32];
+    size_t plaintextLen;
+    if (!decryptD2DMessage(&(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD, (&pBuf[0]), 1 + 32, &plaintextLen) {
+      LError("Decryption Failed, Resetting the device id and table");
+      resetDeviceRouting();
+      return;
+    }
+
+    //assert decryption is the correct size
+    if (plaintextLen != 1 + 32) {
+      LError("Unexpected decryption size!");
+      HALT();
+    }
+
+    //now that we have the data, place it.
+    deviceID = pBuf[0];
+    memcpy(&(deviceIDList[0]), &(pBuf[1]), 32);
 }
 
 void sendAck(const uint8_t dstID, const uint16_t messageNumber, const uint8_t sequenceNumber) {
@@ -1245,6 +1367,34 @@ void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
     Serial.printf("%d ", src[i]);
   }
   Serial.printf("\n");
+}
+
+void chooseOpenDeviceID() {
+  uint8_t id;
+  while(1) {
+    id = esp_random();
+  }
+}
+
+//This function will do quite a bit of heavy lifting. 
+//Every 5 seconds, it will send out a device ID request along with a device ID Table request if a device has been found
+//After it detects that at least one device list has been received, it will choose a random ID from those not available before setting it and then sending it out
+void sendDeviceIDQueryMessages() {
+  static uint32_t lastCallTime = millis();
+  if (millis()/1000 - lastCallTime < 5) {
+    return;
+  } 
+  lastCallTime = millis();
+  sendDeviceIDRequest();
+  for (int b = 0; b < 32; b++) {
+    for (int bit = 0; bit < 8; bit++) {
+      if (deviceIDList[b] >> (7 - bit) == 1) {
+        //device id set, so send a table request
+        sendDeviceIDTableRequest(b * 8 + bit);
+        return;
+      }
+    }
+  }
 }
 
 void enterSleepMode() {
