@@ -169,15 +169,6 @@ class ChatroomWindow(tk.Frame):
         actions = tk.Frame(frame, bg=Colors.SURFACE)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
-        self.create_btn = DesignUtils.button(
-            actions,
-            text="Create",
-            variant="secondary",
-            width=12,
-            command=self._create_chatroom_code,
-        )
-        self.create_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
-        
         self.enter_btn_create = DesignUtils.button(
             actions,
             text="Enter",
@@ -185,7 +176,16 @@ class ChatroomWindow(tk.Frame):
             width=12,
             command=self._on_submit_create_chatroom_code,
         )
-        self.enter_btn_create.pack(side=tk.RIGHT)
+        self.enter_btn_create.pack(side=tk.RIGHT, padx=(0, Spacing.SM))
+
+        self.create_btn = DesignUtils.button(
+            actions,
+            text="Create",
+            variant="secondary",
+            width=12,
+            command=self._create_chatroom_code,
+        )
+        self.create_btn.pack(side=tk.RIGHT)
         self.enter_btn_create.configure(state="disabled")
         
         disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
