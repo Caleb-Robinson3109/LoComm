@@ -28,7 +28,7 @@ _APP_WINDOW = WindowSize(
 )
 
 _LOGIN_MODAL = WindowSize(width=425, height=425, min_width=425, min_height=425)
-_CHATROOM_MODAL = WindowSize(width=475, height=450, min_width=475, min_height=450)
+_CHATROOM_MODAL = WindowSize(width=530, height=450, min_width=530, min_height=450)
 _CHAT_WINDOW = WindowSize(width=500, height=575, min_width=500, min_height=575)
 _MANUAL_PAIR_MODAL = WindowSize(width=500, height=475, min_width=500, min_height=475)
 
