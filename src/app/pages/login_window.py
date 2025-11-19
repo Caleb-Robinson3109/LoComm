@@ -89,7 +89,7 @@ class LoginWindow:
 
         tk.Label(
             header_frame,
-            text="LoRa Chat",
+            text="Locomm",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
@@ -306,7 +306,7 @@ class LoginWindow:
 
         result = messagebox.askyesno(
             "Confirm Exit",
-            "Are you sure you want to close LoRa Chat?",
+            "Are you sure you want to close Locomm?",
             parent=self.parent,
         )
         if result:
