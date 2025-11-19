@@ -252,11 +252,18 @@ class LoginModal:
             return
 
         self.validate_btn.configure(state="disabled", text="Validating...")
+        if self.login_btn:
+            self.login_btn.configure(state="disabled")
 
-        okay: bool = enter_password(password)
+        try:
+            okay: bool = enter_password(password)
+        except Exception:
+            self._handle_validation_failure("Unable to validate password. Please try again.")
+            return
+
         if not okay:
-            self._show_validation_error("password failed on device")
-            return 
+            self._handle_validation_failure("Incorrect password. Please try again.")
+            return
 
         if self.modal_window:
             self.modal_window.after(300, self._on_validation_complete)
@@ -299,6 +306,20 @@ class LoginModal:
     def _on_forgot_password_click(self):
         if self.on_forgot_password:
             self.on_forgot_password()
+
+    def _handle_validation_failure(self, message: str):
+        """Reset UI state after a failed password validation attempt."""
+        self._is_password_validated = False
+        if self.validate_btn and self.validate_btn.winfo_exists():
+            self.validate_btn.configure(state="normal", text="Validate")
+        if self.device_name_entry and self.device_name_entry.winfo_exists():
+            self.device_name_entry.configure(state="disabled")
+        if self.login_btn and self.login_btn.winfo_exists():
+            self.login_btn.configure(state="disabled", text="Login")
+        self.password_var.set("")
+        self._show_validation_error(message)
+        if self.password_entry and self.password_entry.winfo_exists() and self.modal_window:
+            self.modal_window.after(50, self.password_entry.focus_set)
 
     def _show_validation_error(self, message: str):
         error_label = tk.Label(

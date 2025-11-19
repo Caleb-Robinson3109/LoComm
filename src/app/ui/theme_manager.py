@@ -1,4 +1,6 @@
-"""Theme registration and helper utilities for Locomm UI."""
+"""
+Simplified theme manager that only focuses on a reliable light/dark toggle.
+"""
 from __future__ import annotations
 
 from typing import Dict
@@ -7,10 +9,9 @@ import tkinter as tk
 from tkinter import ttk
 
 from ui.theme_tokens import Colors, Palette, Spacing, Typography
-# Custom themes imported lazily inside functions to avoid circular imports
 
 
-_THEME_DEFINITIONS = {
+_BASE_THEMES: Dict[str, Dict[str, str]] = {
     "dark": {
         "BG_MAIN": "#1E1E1E",
         "BG_ELEVATED": "#252526",
@@ -120,12 +121,12 @@ _THEME_DEFINITIONS = {
         "STATE_SUCCESS": Palette.SIGNAL_TEAL,
         "STATE_WARNING": "#F2A93B",
         "STATE_ERROR": "#C63C3C",
-        "STATE_INFO": "#2389FF",
-        "STATE_READY": "#2389FF",
+        "STATE_INFO": "#0B7CFF",
+        "STATE_READY": "#0B7CFF",
         "STATE_TRANSPORT_ERROR": "#6E3FEF",
         "BUTTON_PRIMARY_BG": Palette.PRIMARY,
         "BUTTON_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "BUTTON_SECONDARY_BG": "#F3F4F6",
+        "BUTTON_SECONDARY_BG": Palette.CLOUD_100,
         "BUTTON_GHOST_BG": Palette.WHITE,
         "BUTTON_DANGER_HOVER": "#B23535",
         "BUTTON_DANGER_ACTIVE": "#B23535",
@@ -135,49 +136,110 @@ _THEME_DEFINITIONS = {
         "BUTTON_WARNING_ACTIVE": "#F28D1A",
         "ACCENT_PRIMARY": Palette.PRIMARY,
         "ACCENT_PRIMARY_HOVER": Palette.PRIMARY_HOVER,
-        "ACCENT_SECONDARY": "#B19CD9",
-        "BG_CHAT_AREA": Palette.CLOUD_050,
+        "ACCENT_SECONDARY": "#1E293B",
+        "BG_CHAT_AREA": Palette.WHITE,
         "BG_MESSAGE_OWN": Palette.PRIMARY,
-        "BG_MESSAGE_OTHER": Palette.CLOUD_100,
-        "BG_MESSAGE_SYSTEM": Palette.CLOUD_050,
-        "BG_INPUT_AREA": Palette.CLOUD_100,
-        "TEXT_PLACEHOLDER": "#9CA3AF",
-        "TEXT_TIMESTAMP": "#9CA3AF",
-        "MESSAGE_SYSTEM_TEXT": "#9CA3AF",
+        "BG_MESSAGE_OTHER": Palette.CLOUD_050,
+        "BG_MESSAGE_SYSTEM": Palette.CLOUD_100,
+        "BG_INPUT_AREA": Palette.CLOUD_050,
+        "TEXT_PLACEHOLDER": "#6B7280",
+        "TEXT_TIMESTAMP": "#6B7280",
+        "MESSAGE_SYSTEM_TEXT": "#6B7280",
         "MESSAGE_BUBBLE_OWN_BG": Palette.PRIMARY,
-        "MESSAGE_BUBBLE_OTHER_BG": Palette.CLOUD_100,
-        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_050,
-        "CHAT_SHELL_BG": Palette.CLOUD_050,
-        "CHAT_HISTORY_BG": Palette.CLOUD_050,
-        "CHAT_COMPOSER_BG": Palette.CLOUD_100,
-        "CHAT_HEADER_BG": Palette.CLOUD_100,
+        "MESSAGE_BUBBLE_OTHER_BG": Palette.CLOUD_050,
+        "MESSAGE_BUBBLE_SYSTEM_BG": Palette.CLOUD_100,
+        "CHAT_SHELL_BG": Palette.WHITE,
+        "CHAT_HISTORY_BG": Palette.WHITE,
+        "CHAT_COMPOSER_BG": Palette.CLOUD_050,
+        "CHAT_HEADER_BG": Palette.CLOUD_050,
         "CHAT_HEADER_TEXT": Palette.SLATE_900,
         "CHAT_BADGE_BG": Palette.CLOUD_200,
-        "CHAT_TEXTURE": Palette.CLOUD_100,
+        "CHAT_TEXTURE": Palette.CLOUD_050,
         "CHAT_BUBBLE_SELF_BG": Palette.PRIMARY,
-        "CHAT_BUBBLE_OTHER_BG": Palette.CLOUD_100,
-        "CHAT_BUBBLE_SYSTEM_BG": Palette.CLOUD_050,
-        "CHAT_BUBBLE_SELF_TEXT": Palette.WHITE,
+        "CHAT_BUBBLE_OTHER_BG": Palette.CLOUD_050,
+        "CHAT_BUBBLE_SYSTEM_BG": Palette.CLOUD_100,
+        "CHAT_BUBBLE_SELF_TEXT": "#FFFFFF",
         "CHAT_BUBBLE_OTHER_TEXT": Palette.SLATE_900,
-        "CHAT_BUBBLE_SYSTEM_TEXT": Palette.SLATE_700,
-        "NAV_BUTTON_BG": "#F3F4F6",
-        "NAV_BUTTON_HOVER": "#E5E7EB",
+        "CHAT_BUBBLE_SYSTEM_TEXT": "#6B7280",
+        "NAV_BUTTON_BG": Palette.CLOUD_050,
+        "NAV_BUTTON_HOVER": Palette.CLOUD_200,
         "NAV_BUTTON_ACTIVE_BG": Palette.PRIMARY,
-        "NAV_BUTTON_ACTIVE_FG": "#FFFFFF",
-        "NAV_BUTTON_BORDER": "#D1D5DB",
-        "SCROLLBAR_TRACK": Palette.WHITE,
-        "SCROLLBAR_THUMB": "#D1D5DB",
-        "SCROLLBAR_THUMB_HOVER": "#4B4B4B",
+        "NAV_BUTTON_ACTIVE_FG": Palette.WHITE,
+        "NAV_BUTTON_BORDER": Palette.CLOUD_200,
+        "SCROLLBAR_TRACK": Palette.CLOUD_050,
+        "SCROLLBAR_THUMB": Palette.CLOUD_200,
+        "SCROLLBAR_THUMB_HOVER": Palette.CLOUD_300,
         "LINK_PRIMARY": Palette.PRIMARY,
         "LINK_HOVER": Palette.PRIMARY_HOVER,
     },
 }
+
+_ACCENTS = {
+    "blue": {"primary": Palette.PRIMARY, "hover": Palette.PRIMARY_HOVER},
+    "purple": {"primary": "#7C3AED", "hover": "#6D28D9"},
+    "green": {"primary": "#059669", "hover": "#047857"},
+    "orange": {"primary": "#F97316", "hover": "#EA580C"},
+    "pink": {"primary": "#DB2777", "hover": "#BE185D"},
+    "red": {"primary": "#DC2626", "hover": "#B91C1C"},
+}
+
+
+_AVAILABLE_MODES = list(_BASE_THEMES.keys())
+
+
+def get_theme_definition(name: str) -> Dict[str, str] | None:
+    theme = _BASE_THEMES.get(name)
+    if theme is None:
+        return None
+    return dict(theme)
+
+
+def register_custom_theme_definition(name: str, colors: Dict[str, str]) -> None:
+    _BASE_THEMES[name] = dict(colors)
+    if name not in _AVAILABLE_MODES:
+        _AVAILABLE_MODES.append(name)
+
+
+def unregister_custom_theme_definition(name: str) -> None:
+    if name in _BASE_THEMES:
+        del _BASE_THEMES[name]
+    if name in _AVAILABLE_MODES:
+        _AVAILABLE_MODES.remove(name)
+
+
+def _update_theme_colors(theme: Dict[str, str]) -> None:
+    for key, value in theme.items():
+        if hasattr(Colors, key):
+            setattr(Colors, key, value)
+    _update_status_colors()
+
+
+def _update_status_colors() -> None:
+    Colors.STATUS_CONNECTED = Colors.STATE_SUCCESS
+    Colors.STATUS_DISCONNECTED = Colors.STATE_ERROR
+    Colors.STATUS_CONNECTING = Colors.STATE_INFO
+    Colors.STATUS_PAIRING = Colors.STATE_INFO
+    Colors.STATUS_READY = Colors.STATE_READY
+    Colors.STATUS_TRANSPORT_ERROR = Colors.STATE_TRANSPORT_ERROR
+
+
+def _apply_accent(accent: str) -> None:
+    data = _ACCENTS.get(accent, _ACCENTS["blue"])
+    Colors.ACCENT_PRIMARY = data["primary"]
+    Colors.ACCENT_PRIMARY_HOVER = data["hover"]
+    Colors.ACCENT_SECONDARY = data["hover"]
+    Colors.BUTTON_PRIMARY_BG = data["primary"]
+    Colors.BUTTON_PRIMARY_HOVER = data["hover"]
+    Colors.LINK_PRIMARY = data["primary"]
+    Colors.LINK_HOVER = data["hover"]
+    Colors.BG_MESSAGE_OWN = data["primary"]
+    Colors.MESSAGE_BUBBLE_OWN_BG = data["primary"]
+    Colors.CHAT_BUBBLE_SELF_BG = data["primary"]
+
+
 class ThemeManager:
-    _initialized = False
-    _current_mode = "dark"
-    _current_accent_color = "blue"
-    _available_accent_colors = ['blue', 'purple', 'green', 'orange', 'pink', 'red']
-    _available_modes = ["dark", "light", "high_contrast_dark", "colorblind_friendly"]
+    """Minimal theme manager with reliable dark/light toggling."""
+
     BUTTON_STYLES = {
         "primary": "Locomm.Primary.TButton",
         "secondary": "Locomm.Secondary.TButton",
@@ -187,94 +249,100 @@ class ThemeManager:
         "warning": "Locomm.Warning.TButton",
     }
 
-    @classmethod
-    def ensure(cls):
-        if cls._initialized:
-            return
-        theme = _THEME_DEFINITIONS[cls._current_mode]
-        _apply_theme_definition(theme)
-        cls._register_button_styles()
-        cls._initialized = True
+    _current_mode = "light"
+    _current_accent = "blue"
+    _initialized = False
+    _available_modes = _AVAILABLE_MODES
 
-    @staticmethod
-    def _register_button_styles():
+    @classmethod
+    def ensure(cls) -> None:
+        cls._apply_theme()
+        cls._configure_styles()
+
+    @classmethod
+    def _apply_theme(cls) -> None:
+        theme = _BASE_THEMES.get(cls._current_mode, _BASE_THEMES["light"])
+        _update_theme_colors(theme)
+        _apply_accent(cls._current_accent)
+
+    @classmethod
+    def _configure_styles(cls) -> None:
         style = ttk.Style()
         try:
             style.theme_use("clam")
         except tk.TclError:
             pass
-        button_configs = {
+
+        cls._register_button_styles(style)
+        cls._configure_nav_styles(style)
+        cls._configure_entry_styles(style)
+        cls._configure_scrollbars(style)
+        cls._initialized = True
+
+    @classmethod
+    def _register_button_styles(cls, style: ttk.Style) -> None:
+        config = {
             "Locomm.Primary.TButton": dict(
                 bg=Colors.BUTTON_PRIMARY_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
-                active_bg=Colors.BUTTON_PRIMARY_HOVER,
+                hover=Colors.BUTTON_PRIMARY_HOVER,
+                active=Colors.BUTTON_PRIMARY_HOVER,
                 fg=Colors.SURFACE,
             ),
             "Locomm.Secondary.TButton": dict(
                 bg=Colors.BUTTON_SECONDARY_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_BG,
-                active_bg=Colors.BUTTON_PRIMARY_BG,
-                fg=Colors.SURFACE,
+                hover=Colors.BUTTON_PRIMARY_BG,
+                active=Colors.BUTTON_PRIMARY_BG,
+                fg=Colors.TEXT_PRIMARY,
             ),
             "Locomm.Ghost.TButton": dict(
                 bg=Colors.BUTTON_GHOST_BG,
-                hover_bg=Colors.BUTTON_PRIMARY_HOVER,
-                active_bg=Colors.BUTTON_PRIMARY_HOVER,
+                hover=Colors.SURFACE_ALT,
+                active=Colors.SURFACE_ALT,
                 fg=Colors.TEXT_PRIMARY,
             ),
             "Locomm.Danger.TButton": dict(
                 bg=Colors.STATE_ERROR,
-                hover_bg=Colors.BUTTON_DANGER_HOVER,
-                active_bg=Colors.BUTTON_DANGER_ACTIVE,
+                hover=Colors.BUTTON_DANGER_HOVER,
+                active=Colors.BUTTON_DANGER_ACTIVE,
                 fg=Colors.SURFACE,
             ),
             "Locomm.Success.TButton": dict(
                 bg=Colors.STATE_SUCCESS,
-                hover_bg=Colors.BUTTON_SUCCESS_HOVER,
-                active_bg=Colors.BUTTON_SUCCESS_ACTIVE,
+                hover=Colors.BUTTON_SUCCESS_HOVER,
+                active=Colors.BUTTON_SUCCESS_ACTIVE,
                 fg=Colors.SURFACE,
             ),
             "Locomm.Warning.TButton": dict(
                 bg=Colors.STATE_WARNING,
-                hover_bg=Colors.BUTTON_WARNING_HOVER,
-                active_bg=Colors.BUTTON_WARNING_ACTIVE,
+                hover=Colors.BUTTON_WARNING_HOVER,
+                active=Colors.BUTTON_WARNING_ACTIVE,
                 fg=Colors.SURFACE,
             ),
         }
-        for style_name, cfg in button_configs.items():
-            ThemeManager._register_button(style, style_name, **cfg)
-        ThemeManager._configure_nav_buttons(style)
-        ThemeManager._configure_entry_styles(style)
-        style.configure(
-            "Vertical.TScrollbar",
-            troughcolor=Colors.BG_MAIN,
-            background=Colors.SCROLLBAR_THUMB,
-            bordercolor=Colors.BG_MAIN,
-            arrowcolor=Colors.TEXT_MUTED,
-            gripcount=0,
-            width=10,
-        )
-        style.map(
-            "Vertical.TScrollbar",
-            background=[("active", Colors.SCROLLBAR_THUMB_HOVER)],
-        )
-        style.configure(
-            "Horizontal.TScrollbar",
-            troughcolor=Colors.BG_MAIN,
-            background=Colors.SCROLLBAR_THUMB,
-            bordercolor=Colors.BG_MAIN,
-            troughrelief="flat",
-            arrowcolor=Colors.TEXT_MUTED,
-            width=10,
-        )
-        style.map(
-            "Horizontal.TScrollbar",
-            background=[("active", Colors.SCROLLBAR_THUMB_HOVER)],
-        )
+
+        for style_name, cfg in config.items():
+            cls._register_button(style, style_name, **cfg)
 
     @staticmethod
-    def _register_button(style, style_name, *, bg, hover_bg, active_bg, fg):
-        ThemeManager._apply_button_layout(style, style_name)
+    def _register_button(style: ttk.Style, style_name: str, *, bg, hover, active, fg) -> None:
+        layout = [
+            (
+                "Button.border",
+                {
+                    "sticky": "nswe",
+                    "children": [
+                        (
+                            "Button.padding",
+                            {
+                                "sticky": "nswe",
+                                "children": [("Button.label", {"sticky": "nswe"})],
+                            },
+                        )
+                    ],
+                },
+            )
+        ]
+        style.layout(style_name, layout)
         style.configure(
             style_name,
             background=bg,
@@ -289,63 +357,35 @@ class ThemeManager:
         style.map(
             style_name,
             background=[
-                ("active", active_bg),
-                ("pressed", active_bg),
-                ("disabled", Colors.SURFACE_ALT),
+                ("pressed", active),
+                ("active", active),
+                ("hover", hover),
             ],
             foreground=[("disabled", Colors.TEXT_MUTED)],
             relief=[("pressed", "flat"), ("!pressed", "flat")],
         )
 
-    @staticmethod
-    def _apply_button_layout(style, style_name):
-        layout = [
-            (
-                "Button.border",
-                {
-                    "sticky": "nswe",
-                    "children": [
-                        (
-                            "Button.padding",
-                            {
-                                "sticky": "nswe",
-                                "children": [
-                                    ("Button.label", {"sticky": "nswe"}),
-                                ],
-                            },
-                        )
-                    ],
-                },
-            )
-        ]
-        style.layout(style_name, layout)
-
-    @staticmethod
-    def _configure_nav_buttons(style):
-        ThemeManager._apply_button_layout(style, "Locomm.Nav.TButton")
-        ThemeManager._apply_button_layout(style, "Locomm.NavActive.TButton")
-
-        layout = [
-            (
-                "Button.border",
-                {
-                    "sticky": "nswe",
-                    "children": [
-                        (
-                            "Button.padding",
-                            {
-                                "sticky": "nswe",
-                                "children": [
-                                    ("Button.label", {"sticky": "w"})
-                                ],
-                            },
-                        )
-                    ],
-                },
-            )
-        ]
-        style.layout("Locomm.Nav.TButton", layout)
-        style.layout("Locomm.NavActive.TButton", layout)
+    @classmethod
+    def _configure_nav_styles(cls, style: ttk.Style) -> None:
+        for style_name in ("Locomm.Nav.TButton", "Locomm.NavActive.TButton"):
+            layout = [
+                (
+                    "Button.border",
+                    {
+                        "sticky": "nswe",
+                        "children": [
+                            (
+                                "Button.padding",
+                                {
+                                    "sticky": "nswe",
+                                    "children": [("Button.label", {"sticky": "w"})],
+                                },
+                            )
+                        ],
+                    },
+                )
+            ]
+            style.layout(style_name, layout)
 
         style.configure(
             "Locomm.Nav.TButton",
@@ -354,7 +394,7 @@ class ThemeManager:
             bordercolor=Colors.NAV_BUTTON_BORDER,
             borderwidth=1,
             relief="flat",
-            padding=(12, 8),
+            padding=(Spacing.MD, Spacing.SM),
             anchor="w",
             focusthickness=0,
             highlightthickness=0,
@@ -362,18 +402,8 @@ class ThemeManager:
         )
         style.map(
             "Locomm.Nav.TButton",
-            background=[
-                ("hover", Colors.NAV_BUTTON_HOVER),
-                ("active", Colors.NAV_BUTTON_HOVER),
-            ],
-            foreground=[
-                ("hover", Colors.TEXT_PRIMARY),
-                ("active", Colors.TEXT_PRIMARY),
-            ],
-            bordercolor=[
-                ("hover", Colors.NAV_BUTTON_BORDER),
-                ("active", Colors.NAV_BUTTON_BORDER),
-            ],
+            background=[("hover", Colors.NAV_BUTTON_HOVER), ("active", Colors.NAV_BUTTON_HOVER)],
+            foreground=[("hover", Colors.TEXT_PRIMARY), ("active", Colors.TEXT_PRIMARY)],
         )
 
         style.configure(
@@ -383,30 +413,15 @@ class ThemeManager:
             bordercolor=Colors.NAV_BUTTON_BORDER,
             borderwidth=1,
             relief="flat",
-            padding=(12, 8),
+            padding=(Spacing.MD, Spacing.SM),
             anchor="w",
             focusthickness=0,
             highlightthickness=0,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         )
-        style.map(
-            "Locomm.NavActive.TButton",
-            background=[
-                ("hover", Colors.NAV_BUTTON_ACTIVE_BG),
-                ("active", Colors.NAV_BUTTON_ACTIVE_BG),
-            ],
-            foreground=[
-                ("hover", Colors.NAV_BUTTON_ACTIVE_FG),
-                ("active", Colors.NAV_BUTTON_ACTIVE_FG),
-            ],
-            bordercolor=[
-                ("hover", Colors.NAV_BUTTON_BORDER),
-                ("active", Colors.NAV_BUTTON_BORDER),
-            ],
-        )
 
-    @staticmethod
-    def _configure_entry_styles(style):
+    @classmethod
+    def _configure_entry_styles(cls, style: ttk.Style) -> None:
         style.configure(
             "Locomm.Input.TEntry",
             fieldbackground=Colors.SURFACE_RAISED,
@@ -429,381 +444,163 @@ class ThemeManager:
         )
 
     @classmethod
-    def toggle_mode(cls, dark: bool):
+    def _configure_scrollbars(cls, style: ttk.Style) -> None:
+        try:
+            style.configure(
+                "Vertical.TScrollbar",
+                troughcolor=Colors.BG_MAIN,
+                background=Colors.SCROLLBAR_THUMB,
+                bordercolor=Colors.BG_MAIN,
+                arrowcolor=Colors.TEXT_MUTED,
+                width=10,
+            )
+            style.map(
+                "Vertical.TScrollbar",
+                background=[("active", Colors.SCROLLBAR_THUMB_HOVER)],
+            )
+            style.configure(
+                "Horizontal.TScrollbar",
+                troughcolor=Colors.BG_MAIN,
+                background=Colors.SCROLLBAR_THUMB,
+                bordercolor=Colors.BG_MAIN,
+                arrowcolor=Colors.TEXT_MUTED,
+                width=10,
+            )
+            style.map(
+                "Horizontal.TScrollbar",
+                background=[("active", Colors.SCROLLBAR_THUMB_HOVER)],
+            )
+        except tk.TclError:
+            pass
+
+    @classmethod
+    def toggle_mode(cls, dark: bool) -> None:
         mode = "dark" if dark else "light"
         if mode == cls._current_mode:
             return
         cls._current_mode = mode
-        # Efficient theme switching - only update colors without reinitializing styles
-        _update_theme_colors(_THEME_DEFINITIONS[mode])
-        cls.refresh_styles()
-        cls._notify_theme_change()
+        cls._apply_theme()
+        if cls._initialized:
+            cls._configure_styles()
 
     @classmethod
-    def current_mode(cls):
+    def set_mode(cls, mode: str) -> None:
+        if mode not in _AVAILABLE_MODES:
+            raise ValueError(f"Unknown theme mode '{mode}'")
+        cls._current_mode = mode
+        cls._apply_theme()
+        if cls._initialized:
+            cls._configure_styles()
+
+    @classmethod
+    def current_mode(cls) -> str:
         return cls._current_mode
 
     @classmethod
-    def get_current_accent_name(cls):
-        """Get the current accent color name."""
-        return cls._current_accent_color or "blue"
+    def get_available_modes(cls) -> list[str]:
+        return list(_AVAILABLE_MODES)
 
     @classmethod
-    def set_accent_color(cls, accent_name: str):
-        """Set the accent color by name."""
-        if accent_name in cls._available_accent_colors:
-            cls._current_accent_color = accent_name
-            # Refresh styles to apply new accent color
-            cls.refresh_styles()
-        else:
-            raise ValueError(f"Unknown accent color: {accent_name}")
+    def get_current_accent_name(cls) -> str:
+        return cls._current_accent
 
     @classmethod
-    def _notify_theme_change(cls):
-        """Notify components of theme change for smooth updates."""
-        # This would be used to trigger theme change events in a more sophisticated system
-        pass
+    def set_accent_color(cls, accent: str) -> None:
+        if accent not in _ACCENTS:
+            raise ValueError(f"Unknown accent '{accent}'")
+        cls._current_accent = accent
+        _apply_accent(accent)
+        if cls._initialized:
+            cls._configure_styles()
 
     @classmethod
-    def get_available_modes(cls):
-        """Get list of available theme modes."""
-        return cls._available_modes.copy()
-
-    @classmethod
-    def set_mode(cls, mode_name: str):
-        """Set theme mode by name."""
-        if mode_name not in cls._available_modes:
-            raise ValueError(f"Unknown theme mode: {mode_name}")
-
-        if mode_name == cls._current_mode:
-            return
-
-        cls._current_mode = mode_name
-        _update_theme_colors(_THEME_DEFINITIONS[mode_name])
-        cls.refresh_styles()
-        cls._notify_theme_change()
-
-    @classmethod
-    def get_mode_info(cls):
-        """Get current mode information including accessibility features."""
-        mode_info = {
-            "name": cls._current_mode,
-            "display_name": cls._get_mode_display_name(cls._current_mode),
-            "accessibility_features": cls._get_accessibility_features(cls._current_mode)
-        }
-        return mode_info
-
-    @classmethod
-    def _get_mode_display_name(cls, mode_name: str) -> str:
-        """Get human-readable display name for theme mode."""
-        display_names = {
-            "dark": "Dark Mode",
-            "light": "Light Mode",
-            "high_contrast_dark": "High Contrast (Dark)",
-            "colorblind_friendly": "Colorblind Friendly"
-        }
-        return display_names.get(mode_name, mode_name)
-
-    @classmethod
-    def _get_accessibility_features(cls, mode_name: str) -> list:
-        """Get accessibility features for the specified mode."""
-        features = {
-            "dark": ["reduced_eye_strain", "low_light"],
-            "light": ["bright_environments", "daylight_readable"],
-            "high_contrast_dark": ["high_contrast", "vision_impairment", "colorblind_safe"],
-            "colorblind_friendly": ["colorblind_safe", "deuteranopia_safe", "protanopia_safe", "tritanopia_safe"]
-        }
-        return features.get(mode_name, [])
+    def refresh_styles(cls) -> None:
+        if cls._initialized:
+            cls._configure_styles()
 
     @classmethod
     def validate_contrast_ratio(cls, foreground: str, background: str) -> float:
-        """Calculate WCAG contrast ratio between two colors."""
         def get_luminance(color: str) -> float:
-            # Handle empty or invalid colors
-            if not color or not isinstance(color, str):
-                return 0.5  # Return mid-gray luminance for invalid colors
-
-            # Remove # if present
-            color = color.lstrip('#')
-
-            # Ensure we have exactly 6 characters
+            color = (color or "").lstrip("#")
             if len(color) != 6:
-                return 0.5  # Return mid-gray for invalid format
-
+                return 0.5
             try:
-                # Convert to RGB
-                r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+                r, g, b = (int(color[i:i + 2], 16) for i in (0, 2, 4))
             except ValueError:
-                return 0.5  # Return mid-gray for invalid hex values
+                return 0.5
 
-            # Calculate relative luminance
-            def linearize(c):
-                c = c / 255.0
-                return c / 12.92 if c <= 0.03928 else pow((c + 0.055) / 1.055, 2.4)
+            def linearize(component: int) -> float:
+                c = component / 255.0
+                return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
 
-            r_lin = linearize(r)
-            g_lin = linearize(g)
-            b_lin = linearize(b)
-
-            return 0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
+            return (
+                0.2126 * linearize(r)
+                + 0.7152 * linearize(g)
+                + 0.0722 * linearize(b)
+            )
 
         l1 = get_luminance(foreground)
         l2 = get_luminance(background)
-
-        # Ensure l1 is the lighter color
         if l1 < l2:
             l1, l2 = l2, l1
-
-        # Calculate contrast ratio
         return (l1 + 0.05) / (l2 + 0.05)
 
     @classmethod
     def check_wcag_compliance(cls, foreground: str, background: str, level: str = "AA") -> dict:
-        """Check WCAG compliance for color contrast."""
         ratio = cls.validate_contrast_ratio(foreground, background)
-
-        # WCAG thresholds
         thresholds = {
             "AA": {"normal": 4.5, "large": 3.0},
-            "AAA": {"normal": 7.0, "large": 4.5}
-        }
-
-        if level not in thresholds:
-            level = "AA"
-
-        thresholds = thresholds[level]
-
+            "AAA": {"normal": 7.0, "large": 4.5},
+        }.get(level.upper(), {"normal": 4.5, "large": 3.0})
         return {
             "ratio": round(ratio, 2),
             "aa_normal": ratio >= thresholds["normal"],
             "aa_large": ratio >= thresholds["large"],
-            "aaa_normal": ratio >= thresholds.get("normal", 4.5) * 7.0/4.5,
-            "aaa_large": ratio >= thresholds.get("large", 3.0) * 4.5/3.0,
-            "compliant": ratio >= thresholds["normal"]
+            "compliant": ratio >= thresholds["normal"],
         }
 
     @classmethod
     def simulate_colorblindness(cls, color: str, type_: str = "deuteranopia") -> str:
-        """Simulate how a color appears to people with different types of colorblindness."""
-        # Remove # if present
-        color = color.lstrip('#')
-        r, g, b = tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-
-        # Color blindness simulation matrices (simplified)
         matrices = {
             "protanopia": [
                 [0.567, 0.433, 0.000],
                 [0.558, 0.442, 0.000],
-                [0.000, 0.242, 0.758]
+                [0.000, 0.242, 0.758],
             ],
             "deuteranopia": [
                 [0.625, 0.375, 0.000],
                 [0.700, 0.300, 0.000],
-                [0.000, 0.300, 0.700]
+                [0.000, 0.300, 0.700],
             ],
             "tritanopia": [
                 [0.950, 0.050, 0.000],
                 [0.000, 0.433, 0.567],
-                [0.000, 0.475, 0.525]
-            ]
+                [0.000, 0.475, 0.525],
+            ],
         }
-
-        if type_ not in matrices:
-            type_ = "deuteranopia"
-
-        matrix = matrices[type_]
-
-        # Apply transformation
+        color = (color or "").lstrip("#")
+        if len(color) != 6:
+            return "#7f7f7f"
+        r, g, b = (int(color[i:i + 2], 16) for i in (0, 2, 4))
+        matrix = matrices.get(type_, matrices["deuteranopia"])
         new_r = int(r * matrix[0][0] + g * matrix[0][1] + b * matrix[0][2])
         new_g = int(r * matrix[1][0] + g * matrix[1][1] + b * matrix[1][2])
         new_b = int(r * matrix[2][0] + g * matrix[2][1] + b * matrix[2][2])
-
-        # Ensure values are in range
         new_r = max(0, min(255, new_r))
         new_g = max(0, min(255, new_g))
         new_b = max(0, min(255, new_b))
-
         return f"#{new_r:02x}{new_g:02x}{new_b:02x}"
 
     @classmethod
-    def validate_theme_accessibility(cls) -> dict:
-        """Validate the current theme for accessibility compliance."""
-        checks = {
-            "text_contrast": cls.check_wcag_compliance(Colors.TEXT_PRIMARY, Colors.SURFACE),
-            "secondary_text_contrast": cls.check_wcag_compliance(Colors.TEXT_SECONDARY, Colors.SURFACE),
-            "button_contrast": cls.check_wcag_compliance(Colors.TEXT_PRIMARY, Colors.BUTTON_PRIMARY_BG),
-            "focus_indicator_visible": len(Colors.BORDER) > 0,
-            "error_color_distinct": cls.validate_contrast_ratio(Colors.STATE_ERROR, Colors.SURFACE) > 3.0,
-            "success_color_distinct": cls.validate_contrast_ratio(Colors.STATE_SUCCESS, Colors.SURFACE) > 3.0,
-        }
-
-        overall_compliance = all(
-            check.get("compliant", True) if isinstance(check, dict) else check
-            for check in checks.values()
-        )
-
-        return {
-            "overall_compliant": overall_compliance,
-            "checks": checks,
-            "recommendations": cls._get_accessibility_recommendations(checks)
-        }
-
-    @classmethod
-    def _get_accessibility_recommendations(cls, checks: dict) -> list:
-        """Get accessibility improvement recommendations."""
-        recommendations = []
-
-        if not checks.get("text_contrast", {}).get("compliant", True):
-            recommendations.append("Increase contrast between primary text and background")
-
-        if not checks.get("secondary_text_contrast", {}).get("compliant", True):
-            recommendations.append("Increase contrast between secondary text and background")
-
-        if not checks.get("button_contrast", {}).get("compliant", True):
-            recommendations.append("Increase contrast between button text and background")
-
-        if not checks.get("error_color_distinct", True):
-            recommendations.append("Make error state color more distinct from background")
-
-        if not checks.get("success_color_distinct", True):
-            recommendations.append("Make success state color more distinct from background")
-
-        if not checks.get("focus_indicator_visible", True):
-            recommendations.append("Add visible focus indicators for keyboard navigation")
-
-        return recommendations
-
-    @classmethod
-    def auto_adjust_contrast(cls) -> dict:
-        """Automatically adjust colors to improve contrast while maintaining visual appeal."""
-        adjustments = {}
-
-        # Check and adjust primary text contrast
-        text_contrast = cls.validate_contrast_ratio(Colors.TEXT_PRIMARY, Colors.SURFACE)
-        if text_contrast < 4.5:  # WCAG AA standard
-            # Adjust text color for better contrast
-            if _is_dark_color(Colors.SURFACE):
-                # Dark background - make text lighter
-                current_rgb = tuple(int(Colors.TEXT_PRIMARY.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-                # Gradually increase brightness
-                new_r = min(255, int(current_rgb[0] * 1.2))
-                new_g = min(255, int(current_rgb[1] * 1.2))
-                new_b = min(255, int(current_rgb[2] * 1.2))
-                adjustments["TEXT_PRIMARY"] = f"#{new_r:02x}{new_g:02x}{new_b:02x}"
-            else:
-                # Light background - make text darker
-                current_rgb = tuple(int(Colors.TEXT_PRIMARY.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-                new_r = max(0, int(current_rgb[0] * 0.8))
-                new_g = max(0, int(current_rgb[1] * 0.8))
-                new_b = max(0, int(current_rgb[2] * 0.8))
-                adjustments["TEXT_PRIMARY"] = f"#{new_r:02x}{new_g:02x}{new_b:02x}"
-
-        return adjustments
-
-    @classmethod
     def get_accessibility_summary(cls) -> dict:
-        """Get a comprehensive accessibility summary for the current theme."""
-        validation = cls.validate_theme_accessibility()
-        mode_info = cls.get_mode_info()
-
+        text_contrast = cls.check_wcag_compliance(Colors.TEXT_PRIMARY, Colors.SURFACE)
+        button_contrast = cls.check_wcag_compliance(Colors.SURFACE, Colors.BUTTON_PRIMARY_BG)
         return {
-            "current_mode": mode_info,
-            "validation": validation,
-            "compliance_score": sum(1 for check in validation["checks"].values()
-                                  if (check.get("compliant", True) if isinstance(check, dict) else check)) /
-                              len(validation["checks"]) * 100,
-            "improvements_applied": len(cls.auto_adjust_contrast()) > 0
+            "mode": cls._current_mode,
+            "text_contrast": text_contrast,
+            "button_contrast": button_contrast,
         }
 
-    @classmethod
-    def refresh_styles(cls):
-        """Refresh ttk styles after theme change for immediate visual update."""
-        if cls._initialized:
-            style = ttk.Style()
-            # Update button styles
-            for style_name in ["Locomm.Primary.TButton", "Locomm.Secondary.TButton", "Locomm.Ghost.TButton", "Locomm.Danger.TButton", "Locomm.Success.TButton"]:
-                try:
-                    style.configure(style_name,
-                                  background=getattr(Colors, "BUTTON_PRIMARY_BG", Palette.VSCODE_BLUE),
-                                  foreground=Colors.SURFACE)
-                except tk.TclError:
-                    pass  # Style may not exist yet
 
-            # Update nav styles
-            try:
-                style.configure("Locomm.Nav.TButton",
-                              background=Colors.SURFACE,
-                              foreground=Colors.TEXT_SECONDARY)
-            except tk.TclError:
-                pass
-
-            try:
-                style.configure("Locomm.NavActive.TButton",
-                              background=Colors.SURFACE_SELECTED,
-                              foreground=Colors.TEXT_PRIMARY)
-            except tk.TclError:
-                pass
-
-            # Update entry styles
-            try:
-                style.configure("Locomm.Input.TEntry",
-                              fieldbackground=Colors.SURFACE_RAISED,
-                              foreground=Colors.TEXT_PRIMARY,
-                              bordercolor=Colors.BORDER)
-            except tk.TclError:
-                pass
-
-            try:
-                style.configure("Locomm.PinEntry.TEntry",
-                              fieldbackground=Colors.SURFACE_ALT,
-                              foreground=Colors.TEXT_PRIMARY,
-                              bordercolor=Colors.SURFACE_SELECTED)
-            except tk.TclError:
-                pass
-
-
-def _update_theme_colors(theme: Dict[str, str]):
-    """Update theme colors without reinitializing styles (optimized for theme switching)."""
-    for key, value in theme.items():
-        if hasattr(Colors, key):
-            setattr(Colors, key, value)
-    _update_status_colors()
-
-
-def _apply_theme_definition(theme: Dict[str, str]):
-    """Full theme application including style initialization."""
-    _update_theme_colors(theme)
-    ThemeManager._initialized = False
-    # Don't call ensure() here to avoid recursion - this is called from ensure() itself
-    # ThemeManager._register_button_styles() will be called from ensure()
-
-
-def _update_status_colors():
-    """Update derived status colors."""
-    Colors.STATUS_CONNECTED = Colors.STATE_SUCCESS
-    Colors.STATUS_DISCONNECTED = Colors.STATE_ERROR
-    Colors.STATUS_CONNECTING = Colors.STATE_INFO
-    Colors.STATUS_PAIRING = Colors.STATE_INFO
-    Colors.STATUS_READY = Colors.STATE_READY
-    Colors.STATUS_TRANSPORT_ERROR = Colors.STATE_TRANSPORT_ERROR
-
-
-def _notify_theme_change():
-    """Notify components of theme change for smooth updates."""
-    # This would be used to trigger theme change events in a more sophisticated system
-    pass
-
-
-def _is_dark_color(hex_color: str) -> bool:
-    """Determine if a color is dark or light."""
-    hex_color = hex_color.lstrip('#')
-    r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-
-    # Calculate luminance
-    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-
-    return luminance < 0.5
-
-
-def ensure_styles_initialized():
+def ensure_styles_initialized() -> None:
     ThemeManager.ensure()

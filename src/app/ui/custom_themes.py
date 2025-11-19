@@ -7,8 +7,12 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from ui.theme_manager import _THEME_DEFINITIONS
-# ThemeManager is imported lazily inside functions to avoid circular imports
+from ui.theme_manager import (
+    ThemeManager,
+    get_theme_definition,
+    register_custom_theme_definition,
+    unregister_custom_theme_definition,
+)
 from ui.theme_tokens import Colors, Palette
 from utils.app_logger import get_logger
 
@@ -88,11 +92,7 @@ class CustomThemeManager:
         self._theme_registry[theme.name] = file_path
         
         # Add to theme definitions for runtime use
-        if theme.name not in _THEME_DEFINITIONS:
-            _THEME_DEFINITIONS[theme.name] = theme.colors
-            
-        # Update available modes in ThemeManager (import lazily to avoid circular import)
-        from ui.theme_manager import ThemeManager
+        register_custom_theme_definition(theme.name, theme.colors)
         if theme.name not in ThemeManager._available_modes:
             ThemeManager._available_modes.append(theme.name)
     
@@ -103,10 +103,9 @@ class CustomThemeManager:
             color_overrides = {}
         
         # Get base theme
-        if base_theme not in _THEME_DEFINITIONS:
+        base_colors = get_theme_definition(base_theme)
+        if base_colors is None:
             raise ValueError(f"Base theme '{base_theme}' not found")
-        
-        base_colors = _THEME_DEFINITIONS[base_theme].copy()
         base_colors.update(color_overrides)
         
         # Create theme
@@ -152,12 +151,7 @@ class CustomThemeManager:
             # Remove from registry
             del self._custom_themes[theme_name]
             
-            # Remove from theme definitions
-            if theme_name in _THEME_DEFINITIONS:
-                del _THEME_DEFINITIONS[theme_name]
-            
-            # Remove from available modes (import lazily to avoid circular import)
-            from ui.theme_manager import ThemeManager
+            unregister_custom_theme_definition(theme_name)
             if theme_name in ThemeManager._available_modes:
                 ThemeManager._available_modes.remove(theme_name)
             
@@ -244,10 +238,9 @@ def get_custom_theme_manager() -> CustomThemeManager:
 # Utility functions for theme creation
 def create_mono_theme(base_theme: str = "dark", mono_color: str = "#808080") -> Dict[str, str]:
     """Create a monochromatic theme with a single color."""
-    if base_theme not in _THEME_DEFINITIONS:
+    base = get_theme_definition(base_theme)
+    if base is None:
         raise ValueError(f"Base theme '{base_theme}' not found")
-    
-    base = _THEME_DEFINITIONS[base_theme].copy()
     
     # Create monochromatic palette
     mono_light = mono_color
@@ -269,10 +262,9 @@ def create_mono_theme(base_theme: str = "dark", mono_color: str = "#808080") -> 
 
 def create_warm_theme(base_theme: str = "dark") -> Dict[str, str]:
     """Create a warm-toned theme."""
-    if base_theme not in _THEME_DEFINITIONS:
+    base = get_theme_definition(base_theme)
+    if base is None:
         raise ValueError(f"Base theme '{base_theme}' not found")
-    
-    base = _THEME_DEFINITIONS[base_theme].copy()
     
     return {
         **base,
@@ -288,10 +280,9 @@ def create_warm_theme(base_theme: str = "dark") -> Dict[str, str]:
 
 def create_cool_theme(base_theme: str = "dark") -> Dict[str, str]:
     """Create a cool-toned theme."""
-    if base_theme not in _THEME_DEFINITIONS:
+    base = get_theme_definition(base_theme)
+    if base is None:
         raise ValueError(f"Base theme '{base_theme}' not found")
-    
-    base = _THEME_DEFINITIONS[base_theme].copy()
     
     return {
         **base,
