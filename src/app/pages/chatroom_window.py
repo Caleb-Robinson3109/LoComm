@@ -9,6 +9,12 @@ from utils.pin_authentication import generate_chatroom_code
 from utils.chatroom_registry import set_active_chatroom, add_member, get_active_members
 from utils.state.status_manager import get_status_manager
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../api')))
+
+from LoCommAPI import *
 
 class ChatroomWindow(tk.Frame):
     """Tabbed join/create chatroom view."""
@@ -227,6 +233,9 @@ class ChatroomWindow(tk.Frame):
             return
         self._set_waiting(True)
         get_status_manager().update_status("Connecting…")
+
+        enter_pairing_key(code)
+
         self.after(300, lambda: self._complete_success(code))
 
     def _complete_success(self, code: str):

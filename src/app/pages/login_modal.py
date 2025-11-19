@@ -11,6 +11,12 @@ from typing import Callable, Optional
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
 from ui.helpers import create_form_row
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../api')))
+
+from LoCommAPI import *
 
 class LoginModal:
     """Login interface rendered inside the main Tk window."""
@@ -165,6 +171,7 @@ class LoginModal:
 
         # Initially disabled until password validated
         self.device_name_entry.configure(state="disabled")
+        
 
         # Login button
         self.login_btn = DesignUtils.button(
@@ -245,6 +252,11 @@ class LoginModal:
             return
 
         self.validate_btn.configure(state="disabled", text="Validating...")
+
+        okay: bool = enter_password(password)
+        if not okay:
+            self._show_validation_error("password failed on device")
+            return 
 
         if self.modal_window:
             self.modal_window.after(300, self._on_validation_complete)

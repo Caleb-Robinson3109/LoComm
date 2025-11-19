@@ -17,6 +17,13 @@ from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManag
 from utils.window_sizing import calculate_initial_window_size
 from ui.helpers import create_centered_modal, ModalScaffold
 
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../api')))
+
+from LoCommAPI import *
+
 MAX_UI_PENDING_MESSAGES = 500
 
 
@@ -52,6 +59,11 @@ class App(tk.Tk):
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
+
+        #connect to device
+        connect_to_device()
+
+
         # Initialize UI with login modal
         self.show_login_modal()
 
@@ -150,6 +162,13 @@ class App(tk.Tk):
     # Login modal callbacks
     def _handle_login_success(self, device_name: str, password: str):
         """Handle successful login from modal."""
+
+        #enter name on device
+        if store_name_on_device(device_name):
+            print("enter pairing code okay")
+        else:
+            print("enter pairing code fail")
+
         # Set local device name for the session
         session = self.app_controller.session
         session.local_device_name = device_name
