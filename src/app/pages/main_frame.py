@@ -116,6 +116,8 @@ class MainFrame(ttk.Frame):
 
         body = tk.Frame(main_container, bg=Colors.BG_MAIN)
         body.pack(fill=tk.BOTH, expand=True)
+        body.grid_rowconfigure(0, weight=1)
+        body.grid_columnconfigure(1, weight=1)
 
         # Left sidebar
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
@@ -126,16 +128,16 @@ class MainFrame(ttk.Frame):
             on_theme_toggle=self.on_theme_toggle,
             on_back=self.go_back,
         )
-        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
-        self.sidebar.pack_propagate(False)
+        self.sidebar.grid(row=0, column=0, sticky="ns")
+        self.sidebar.grid_propagate(False)
 
         # Right content area
         self.content_frame = tk.Frame(body, bg=Colors.BG_MAIN)
         content_pad = int(Spacing.PAGE_PADDING / 2)
-        self.content_frame.pack(
-            side=tk.RIGHT,
-            fill=tk.BOTH,
-            expand=True,
+        self.content_frame.grid(
+            row=0,
+            column=1,
+            sticky="nsew",
             padx=(content_pad, 0),
             pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING),
         )

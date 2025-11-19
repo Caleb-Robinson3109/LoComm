@@ -72,13 +72,14 @@ class ChatroomWindow(tk.Frame):
         strip = tk.Frame(parent, bg=Colors.SURFACE, pady=Spacing.SM)
         strip.pack(fill=tk.X)
 
+        tab_width = 18
         for key, label in (("join", "Join"), ("create", "Create")):
             btn = DesignUtils.button(
                 strip,
                 text=label,
                 variant="ghost",
                 command=lambda k=key: self._switch_mode(k),
-                width=16,
+                width=tab_width,
             )
             btn.pack(side=tk.LEFT, padx=(0, Spacing.SM))
             self._tab_buttons[key] = btn
@@ -112,15 +113,6 @@ class ChatroomWindow(tk.Frame):
         actions = tk.Frame(frame, bg=Colors.SURFACE)
         actions.pack(fill=tk.X, pady=(Spacing.SM, 0))
 
-        self.clear_btn = DesignUtils.button(
-            actions,
-            text="Clear",
-            variant="secondary",
-            width=12,
-            command=self._clear_entry,
-        )
-        self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
-        
         self.enter_btn = DesignUtils.button(
             actions,
             text="Enter",
@@ -129,6 +121,15 @@ class ChatroomWindow(tk.Frame):
             command=self._on_submit_chatroom_code,
         )
         self.enter_btn.pack(side=tk.RIGHT)
+
+        self.clear_btn = DesignUtils.button(
+            actions,
+            text="Clear",
+            variant="secondary",
+            width=12,
+            command=self._clear_entry,
+        )
+        self.clear_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
         self.enter_btn.configure(state="disabled")
         
         disconnect_actions = tk.Frame(frame, bg=Colors.SURFACE)
