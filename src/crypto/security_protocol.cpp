@@ -77,13 +77,28 @@ static bool _sec_hash_password(const char* password, const uint8_t* salt, uint8_
 }
 
 static bool _sec_derive_key(const char* password, const uint8_t* salt, uint8_t* outputKey) {
-    mbedtls_md_context_t sha_ctx;
-    mbedtls_md_init(&sha_ctx);
+
+    // 1. Get the info structure for SHA-256
     const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    if (mbedtls_md_setup(&sha_ctx, info, 1) != 0) { mbedtls_md_free(&sha_ctx); return false; }
-    int ret = mbedtls_pkcs5_pbkdf2_hmac(&sha_ctx, (const unsigned char*)password, strlen(password), salt, 16, 10000, 32, outputKey);
-    mbedtls_md_free(&sha_ctx);
+    if (info == NULL) {
+        return false; // Should never happen on ESP32 unless config is broken
+    }
+
+    // 2. Call the function directly with 'info' (No context setup needed)
+    // PBKDF2-HMAC-SHA256
+    int ret = mbedtls_pkcs5_pbkdf2_hmac(
+        info,                           // ARGUMENT CHANGED: Pass info, not ctx
+        (const unsigned char*)password,
+        strlen(password),
+        salt,
+        16,
+        10000,                          // Iterations
+        32,                             // Key length (256-bit)
+        outputKey
+    );
+
     return ret == 0;
+
 }
 
 // ** NEW HELPER **
