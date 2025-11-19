@@ -4,6 +4,8 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Optional, Callable
 
+from tkinter import messagebox
+
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils, Space
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import (
@@ -13,6 +15,7 @@ from ui.helpers import (
     AutoWrapLabel,
 )
 from .base_page import BasePage, PageContext
+from .chat_page import ChatWindow
 
 
 from .manual_pairing_modal import ManualPairingModal
@@ -152,18 +155,49 @@ class PeersPage(BasePage):
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
         ).pack(anchor="w")
 
-        # Connect button (if not already connected - logic simplified for now)
-        DesignUtils.button(
-            row,
-            text="Connect",
-            command=lambda d=device: self._connect_to_device(d),
-            variant="secondary",
-            width=8
-        ).pack(side=tk.RIGHT)
+        button_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
+        button_frame.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 
-    def _connect_to_device(self, device):
-        if self.controller:
-            self.controller.start_session(device["id"], device["name"])
+        DesignUtils.button(
+            button_frame,
+            text="Chat",
+            command=lambda d=device: self._chat_with_device(d),
+            variant="ghost",
+            width=8,
+        ).pack(anchor="e", pady=(0, Spacing.XXS))
+
+        DesignUtils.button(
+            button_frame,
+            text="Connect",
+            command=lambda d=device: self._connect_and_chat(d),
+            variant="secondary",
+            width=8,
+        ).pack(anchor="e")
+
+    def _connect_and_chat(self, device: dict):
+        if not self.controller:
+            self._open_chat_window(device)
+            return
+
+        def _callback(success: bool, error: Optional[str] = None):
+            if success:
+                self._open_chat_window(device)
+            elif error:
+                messagebox.showerror("Connection Failed", error, parent=self.winfo_toplevel())
+
+        self.controller.start_session(device["id"], device["name"], callback=_callback)
+
+    def _chat_with_device(self, device: dict):
+        session_device = getattr(self.session, "device_id", None) if self.session else None
+        if session_device == device["id"]:
+            self._open_chat_window(device)
+        else:
+            self._connect_and_chat(device)
+
+    def _open_chat_window(self, device: dict):
+        master = self.winfo_toplevel()
+        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        ChatWindow(master, peer_name=device["name"], local_device_name=local_name)
 
     # ------------------------------------------------------------------ #
     # Scan / device-stage logic (UI-only, no mock data)
