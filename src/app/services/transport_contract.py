@@ -1,7 +1,7 @@
 """
 Transport contract definitions shared by all backends.
 Provides dataclasses for pairing, messages, and status updates
-so every backend—mock, demo, or production—speaks the same language.
+so every backend speaks the same language.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class PairingContext:
 
     device_id: str
     device_name: str
-    mode: Literal["pin", "demo", "mock", "hardware"] = "pin"
+    mode: Literal["pin", "demo", "hardware"] = "pin"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -67,4 +67,3 @@ class TransportStatus:
     text: str
     level: TransportStatusLevel = TransportStatusLevel.INFO
     detail: Optional[str] = None
-

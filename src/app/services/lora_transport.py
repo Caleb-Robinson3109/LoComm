@@ -1,6 +1,5 @@
 """
 LoRa transport adapter for GUI communication.
-Provides unified interface for real and mock implementations.
 """
 from __future__ import annotations
 
@@ -34,7 +33,6 @@ class LoCommTransport:
         self._backend = backend_bundle.backend
         self._backend_label = backend_bundle.label
         self._profile_key = backend_bundle.profile
-        self._is_mock = backend_bundle.is_mock
         self._backend_error = backend_bundle.error
 
     @property
@@ -44,10 +42,6 @@ class LoCommTransport:
     @property
     def profile_label(self) -> str:
         return self._backend_label
-
-    @property
-    def is_mock(self) -> bool:
-        return self._is_mock
 
     @property
     def backend_error(self) -> Optional[str]:

@@ -17,7 +17,6 @@ from utils.state.connection_manager import get_connection_manager
 from utils.state.status_manager import get_status_manager
 from utils.app_logger import get_logger
 from utils.runtime_settings import get_runtime_settings
-from mock.mock_config import get_mock_config, set_mock_scenario
 from utils.diagnostics import log_transport_event
 MessageCallback = Callable[[str, str, float], None]
 ResultCallback = Optional[Callable[[bool, Optional[str]], None]]
@@ -50,7 +49,6 @@ class SessionStore:
             "local_device_name": local_name,
             "paired_at": session.paired_at,
             "transport_profile": getattr(session, "transport_profile", "auto"),
-            "mock_scenario": getattr(session, "mock_scenario", "default"),
         }
         try:
             with self.path.open("w", encoding="utf-8") as handle:
@@ -76,7 +74,6 @@ class AppController:
         # CRITICAL FIX: Initialize local device name for proper message attribution
         self.session.local_device_name = "Orion"
         self.settings = get_runtime_settings()
-        self.mock_config = get_mock_config()
         self.transport = LoCommTransport(ui_root, profile=self.settings.transport_profile)
         self.connection_manager = get_connection_manager()
         self.status_manager = get_status_manager()
@@ -87,8 +84,7 @@ class AppController:
 
         # Log resolved transport profile for diagnostics
         resolved_profile = f"{self.transport.profile_label} ({self.transport.profile})"
-        resolved_mode = "mock" if self.transport.is_mock else "hardware"
-        self.logger.info("Transport profile: %s [%s]", resolved_profile, resolved_mode)
+        self.logger.info("Transport profile: %s", resolved_profile)
         if self.transport.backend_error:
             self.logger.warning("Transport fallback reason: %s", self.transport.backend_error)
         log_transport_event(
@@ -96,9 +92,7 @@ class AppController:
             {
                 "profile": self.transport.profile,
                 "label": resolved_profile,
-                "is_mock": self.transport.is_mock,
                 "fallback_reason": self.transport.backend_error,
-                "mock_scenario": self.mock_config.scenario,
             }
         )
 
@@ -123,7 +117,6 @@ class AppController:
         self.session.local_device_name = local_name
         self.session.paired_at = cached.get("paired_at", 0.0)
         self.session.transport_profile = cached.get("transport_profile", "auto")
-        self.session.mock_scenario = cached.get("mock_scenario", "default")
 
     def _persist_session(self) -> None:
         if self.session.device_id and self.session.device_name:
@@ -162,7 +155,6 @@ class AppController:
                     self.session.device_name = device_name
                     self.session.paired_at = time.time()
                     self.session.transport_profile = self.transport.profile
-                    self.session.mock_scenario = self.mock_config.scenario
                     # CRITICAL FIX: Queue connection updates on main thread to prevent Tk violations
                     self.root.after(0, lambda: self._safe_connect_device(device_id, device_name))
                     self._persist_session()
@@ -170,21 +162,8 @@ class AppController:
                         "device_id": device_id,
                         "device_name": device_name,
                         "profile": self.transport.profile,
-                        "scenario": self.mock_config.scenario,
                         "mode": mode,
                     })
-                    if self.transport.is_mock:
-                        from pages.chat_window import ChatWindow
-
-                        local_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
-                        self.root.after(
-                            0,
-                            lambda: ChatWindow(
-                                self.root,
-                                peer_name=local_name,
-                                on_disconnect=lambda: self.root.after(0, self.stop_session)
-                            )
-                        )
                 else:
                     # CRITICAL FIX: Stop transport first to prevent resource leaks
                     self.transport.stop()
@@ -196,7 +175,6 @@ class AppController:
                         "device_id": device_id,
                         "device_name": device_name,
                         "profile": self.transport.profile,
-                        "scenario": self.mock_config.scenario,
                         "error": error,
                     })
 
@@ -224,7 +202,6 @@ class AppController:
                     metadata={
                         "requested_profile": self.settings.transport_profile,
                         "active_profile": self.transport.profile,
-                        "scenario": self.mock_config.scenario,
                     }
                 )
                 self._emit_status(f"Connecting to {device_name} ({device_id})…")
@@ -234,7 +211,6 @@ class AppController:
                     "mode": mode,
                     "profile": self.transport.profile,
                     "requested_profile": self.settings.transport_profile,
-                    "scenario": self.mock_config.scenario,
                 })
                 self.logger.info("Connecting to %s (%s) via %s mode", device_name, device_id, mode)
                 success = self.transport.start(pairing_context)
@@ -265,52 +241,6 @@ class AppController:
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def start_mock_session(self, device_id: str, device_name: str) -> bool:
-        """Immediate connect path for mock devices to avoid extra threads."""
-        pairing_context = PairingContext(
-            mode="mock",
-            device_id=device_id,
-            device_name=device_name,
-            metadata={
-                "requested_profile": self.settings.transport_profile,
-                "active_profile": self.transport.profile,
-                "scenario": self.mock_config.scenario,
-            }
-        )
-        try:
-            success = self.transport.start(pairing_context)
-        except Exception as exc:  # noqa: BLE001
-            self.logger.exception("Mock transport start failed: %s", exc)
-            success = False
-
-        self.logger.info("Mock session connection result: success=%s", success)
-        if success:
-            self.session.device_id = device_id
-            self.session.device_name = device_name
-            self.session.paired_at = time.time()
-            self.session.transport_profile = self.transport.profile
-            self.session.mock_scenario = self.mock_config.scenario
-            self._safe_connect_device(device_id, device_name)
-            self._persist_session()
-            log_transport_event("connect_success", {
-                "device_id": device_id,
-                "device_name": device_name,
-                "profile": self.transport.profile,
-                "scenario": self.mock_config.scenario,
-                "mode": "mock",
-            })
-            return True
-
-        self.transport.stop()
-        log_transport_event("connect_failed", {
-            "device_id": device_id,
-            "device_name": device_name,
-            "profile": self.transport.profile,
-            "scenario": self.mock_config.scenario,
-            "mode": "mock",
-        })
-        return False
-
     def _safe_connect_device(self, device_id: str, device_name: str):
         """Thread-safe device connection."""
         try:
@@ -336,18 +266,11 @@ class AppController:
             log_transport_event("disconnect", {"reason": "user"})
             self._emit_status("Disconnected")
 
-    def set_mock_scenario(self, scenario: str) -> None:
-        """Allow UI to change active mock scenario without restart."""
-        self.mock_config = set_mock_scenario(scenario)
-        self.session.mock_scenario = self.mock_config.scenario
-        log_transport_event("scenario_change", {"scenario": self.mock_config.scenario})
-
     def send_message(self, message: str) -> None:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
         sender = getattr(self.session, 'local_device_name', None) or "Orion"
         metadata = {
             "profile": self.session.transport_profile or self.transport.profile,
-            "scenario": self.session.mock_scenario or self.mock_config.scenario,
         }
         log_transport_event("tx", {"sender": sender, "message": message, "metadata": metadata})
         self.transport.send(sender, message, metadata=metadata)

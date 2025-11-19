@@ -1,7 +1,6 @@
 """
 Runtime registry for transport backends.
-Provides hot-swappable profiles so the UI can toggle between mock and real
-implementations without code changes.
+Provides a registry so transports can be resolved dynamically.
 """
 from __future__ import annotations
 
@@ -36,7 +35,6 @@ class BackendBundle:
     backend: TransportBackend
     profile: str
     label: str
-    is_mock: bool
     error: Optional[str] = None
 
 
@@ -45,7 +43,6 @@ class TransportProfile:
     key: str
     label: str
     factory: Callable[[], TransportBackend]
-    is_mock: bool = False
     description: str = ""
 
 
@@ -114,27 +111,17 @@ def get_default_profile() -> str:
 
 def resolve_backend(profile: Optional[str] = None) -> BackendBundle:
     """
-    Resolve a backend profile. Supports "auto" which attempts the real backend
-    before falling back to mock.
+    Resolve a backend profile. "auto" simply maps to the production backend.
     """
     desired = (profile or get_default_profile()).lower()
     if desired == "auto":
-        bundle, err = _try_profile("locomm")
-        if bundle:
-            return bundle
-        mock_bundle, mock_err = _try_profile("mock")
-        if mock_bundle:
-            mock_bundle.error = err
-            return mock_bundle
-        reason = err or mock_err or "Unknown error"
-        raise RuntimeError(f"No transport profiles available: {reason}")
+        desired = "locomm"
 
     bundle, err = _try_profile(desired)
     if bundle:
         return bundle
-    if err:
-        raise RuntimeError(f"Transport profile '{desired}' failed: {err}")
-    raise RuntimeError(f"Unknown transport profile '{desired}'")
+    reason = err or f"Unknown transport profile '{desired}'"
+    raise RuntimeError(f"No transport profiles available: {reason}")
 
 
 def _try_profile(profile_key: str) -> Tuple[Optional[BackendBundle], Optional[str]]:
@@ -147,27 +134,12 @@ def _try_profile(profile_key: str) -> Tuple[Optional[BackendBundle], Optional[st
             backend=backend,
             profile=profile.key,
             label=profile.label,
-            is_mock=profile.is_mock,
         ), None
     except Exception as exc:  # noqa: BLE001
         return None, str(exc)
 
 
 def _register_builtin_profiles() -> None:
-    def _load_mock() -> TransportBackend:
-        from mock.backend import MockLoCommBackend
-        return MockLoCommBackend()
-
-    register_profile(
-        TransportProfile(
-            key="mock",
-            label="MockLoCommBackend",
-            factory=_load_mock,
-            is_mock=True,
-            description="In-memory transport used for UI development and tests.",
-        )
-    )
-
     def _load_real() -> TransportBackend:
         api_path = Path(__file__).resolve().parent.parent / "api"
         if str(api_path) not in sys.path:
@@ -180,7 +152,6 @@ def _register_builtin_profiles() -> None:
             key="locomm",
             label="LoCommAPI",
             factory=_load_real,
-            is_mock=False,
             description="Production transport provided by the hardware/network team.",
         )
     )

@@ -10,7 +10,6 @@ class Session:
     local_device_name: str = "Orion"  # Local device name for proper message attribution
     paired_at: float = 0.0
     transport_profile: str = "auto"
-    mock_scenario: str = "default"
 
     def clear(self):
         self.device_name = ""
@@ -18,4 +17,3 @@ class Session:
         self.local_device_name = ""
         self.paired_at = 0.0
         self.transport_profile = "auto"
-        self.mock_scenario = "default"
