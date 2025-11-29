@@ -16,11 +16,11 @@ const char* logLevelEnumToChar(LOG_LEVEL level) {
 }
 
 void dumpArray16ToSerial(const uint16_t* src, const uint16_t size) {
-  Serial.printf("Dumping Array to Serial: \n");
+  Serial1.printf("Dumping Array to Serial: \n");
   for (int i = 0; i < size; i++) {
-    Serial.printf("%d ", src[i]);
+    Serial1.printf("%d ", src[i]);
   }
-  Serial.printf("\n");
+  Serial1.printf("\n");
 }
 
 void runTests() { //TODO write unit tests for the arrays types
@@ -38,7 +38,7 @@ void runTests() { //TODO write unit tests for the arrays types
     LError("Failed to malloc a single buffer of size 100");
     HALT();
   }
-  Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+  Serial1.printf("numAllocations: %d\n", testBuffer.numAllocations);
   LLog("allocationStartPositions:");
   dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
   LLog("allocationSizes:");
@@ -54,7 +54,7 @@ void runTests() { //TODO write unit tests for the arrays types
     HALT();
   }
 
-  Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+  Serial1.printf("numAllocations: %d\n", testBuffer.numAllocations);
   LLog("allocationStartPositions:");
   dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
   LLog("allocationSizes:");
@@ -70,7 +70,7 @@ void runTests() { //TODO write unit tests for the arrays types
     HALT();
   }
 
-  Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+  Serial1.printf("numAllocations: %d\n", testBuffer.numAllocations);
   LLog("allocationStartPositions:");
   dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
   LLog("allocationSizes:");
@@ -85,7 +85,7 @@ void runTests() { //TODO write unit tests for the arrays types
     HALT();
   }
 
-  Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+  Serial1.printf("numAllocations: %d\n", testBuffer.numAllocations);
   LLog("allocationStartPositions:");
   dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
   LLog("allocationSizes:");
@@ -99,7 +99,7 @@ void runTests() { //TODO write unit tests for the arrays types
     HALT();
   }
 
-  Serial.printf("numAllocations: %d\n", testBuffer.numAllocations);
+  Serial1.printf("numAllocations: %d\n", testBuffer.numAllocations);
   LLog("allocationStartPositions:");
   dumpArray16ToSerial(&(testBuffer.allocationStartPositions[0]), testBuffer.numAllocations);
   LLog("allocationSizes:");

@@ -8,8 +8,8 @@
 
 extern Preferences storage;
 
-uint8_t deviceID = 255; //TODO This should eventually be stored on the EEPROM
-uint8_t deviceIDList[32]; //TODO this should eventually be stored on the EEPROM
+uint8_t deviceID = 255; 
+uint8_t deviceIDList[32]; 
 bool deviceIDDataChanged = false;
 
 uint8_t lastDeviceMode = IDLE_MODE;
@@ -112,12 +112,13 @@ void setup() {
 
   //Initialize Serial Connection to Computer
   Serial.begin(115200);
+  Serial1.begin(115200); //TODO set pins for serial1
 
   //Initialize OLED Screen
   delay(1000);
   Wire.begin(OLED_SDA, OLED_SCL);
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C, true, false)) { 
-    Serial.println(F("SSD1306 allocation failed"));
+    Serial1.println(F("SSD1306 allocation failed"));
     while(1); // Don't proceed, loop forever
   }
   display.clearDisplay();
@@ -128,7 +129,7 @@ void setup() {
   SPI.begin(SCK_LORA, MISO_LORA, MOSI_LORA, SS_LORA);
   LoRa.setPins(SS_LORA, RST_LORA, DIO0_LORA);
   if (!LoRa.begin(BAND)) {
-    Serial.println("Starting LoRa failed!");
+    Serial1.println("Starting LoRa failed!");
     display.clearDisplay();
     display.print("Failed to init LoRa");
     display.display();
@@ -141,7 +142,7 @@ void setup() {
   LoRa.onReceive(onReceive);
 
   //Set idle mode
-  Debug(Serial.println("Setup Finished"));
+  Debug(Serial1.println("Setup Finished"));
   enterReceiveMode();
   display.clearDisplay();
   display.printf("Device ID: %d\n", deviceID);
@@ -173,7 +174,7 @@ void loop() {
 
   //Debug: If a device mode change was detected log it to serial if we are in debug mode
   if (lastDeviceMode != tempDeviceMode) {
-    Debug(Serial.printf("Device Mode change detected! New device mode is %d\n", lastDeviceMode));
+    Debug(Serial1.printf("Device Mode change detected! New device mode is %d\n", lastDeviceMode));
     tempDeviceMode = lastDeviceMode;
   }
 
@@ -244,7 +245,7 @@ void loop() {
       if (!startedDeviceIDAcquire) {
         LDebug("Device ID is set to 255, trying to acquire a device ID");
         startedDeviceIDAcquire = true;
-        receivedDeviceIDTable = false; //TODO this logic is fucked, need to fix
+        receivedDeviceIDTable = false; 
       }
       sendDeviceIDQueryMessages();
       if (receivedDeviceIDTable) {
@@ -302,8 +303,8 @@ void loop() {
     //try to add data the received data to our rxBuffer for later processing
     if (rxBuffer.pushBack(tempBuf, size)) {
       LDebug("Added data to LoRa rx buffer");
-      Debug(Serial.printf("First Byte of Data: %d\n", tempBuf[0]));
-      Debug(Serial.printf("Second Byte of Data: %d\n", tempBuf[1]));
+      Debug(Serial1.printf("First Byte of Data: %d\n", tempBuf[0]));
+      Debug(Serial1.printf("Second Byte of Data: %d\n", tempBuf[1]));
       //Data was successfully added, so set the shouldScanRxBuffer condition
       shouldScanRxBuffer = true;
     } else {
@@ -452,7 +453,7 @@ void loop() {
             }
             if (currentTime > timestamp && currentTime - timestamp > 20) {
               LWarn("received RX Message is very old, possible replay attack attempt");
-              Debug(Serial.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
+              Debug(Serial1.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
               //TODO logic to log replay attack attempt
               break; //the message was valid, so lets break out
             }
@@ -896,7 +897,7 @@ void loop() {
         LDebug("Message being processed has reached send time again");
         Debug(dumpArrayToSerial(&(txMessageArray.get(i)[0]), 9));
         LDebug("adding a message to the readytosend buffer");
-        Debug(Serial.printf("Diff = %d, 1 = %d, 2 = %d\n", diff(millis() % 65536, lastSendTime, 65536), millis() % 65536, lastSendTime));
+        Debug(Serial1.printf("Diff = %d, 1 = %d, 2 = %d\n", diff(millis() % 65536, lastSendTime, 65536), millis() % 65536, lastSendTime));
         lastSendTime = millis() % 65536; //TODO - the time for CAD to occur is not accounted for in the resend functionality, which is a problem
         //To fix this easily, we can maintatin an average CAD send time (maybe average over 10 previous sends) and add that to our resend delay
         txMessageArray.get(i)[6] = lastSendTime >> 8;
@@ -1256,8 +1257,14 @@ void enterChannelActivityDetectionMode() {
 }
 
 bool sendDeviceIDTableRequestFunc(uint8_t targetDeviceID) {
-  //TODO consider adding a rate limit here
   LDebug("Request to send device id table request");
+  static uint32_t lastSendTime = 0;
+  if(millis() - lastSendTime < 8000) {
+    LDebug("Ignoring send device id table request, one has already been dispatched in the last 8 seconds");
+    return false;
+  }
+  lastSendTime = millis();
+
   //plaintext data
   uint8_t pBuf[5 + AES_GCM_OVERHEAD];
   pBuf[0] = targetDeviceID;
@@ -1389,16 +1396,16 @@ void onReceive(int size) {
 
 void Log(LOG_LEVEL level, const char* text) {
   if (level <= CURRENT_LOG_LEVEL) {
-    Serial.printf("[%s]: %s\n", logLevelEnumToChar(level), text);
+    Serial1.printf("[%s]: %s\n", logLevelEnumToChar(level), text);
   }
 }
 
 void dumpArrayToSerial(const uint8_t* src, const uint16_t size) {
-  Serial.printf("Dumping Array to Serial: \n");
+  Serial1.printf("Dumping Array to Serial: \n");
   for (int i = 0; i < size; i++) {
-    Serial.printf("%d ", src[i]);
+    Serial1.printf("%d ", src[i]);
   }
-  Serial.printf("\n");
+  Serial1.printf("\n");
 }
 
 void chooseOpenDeviceID() {
