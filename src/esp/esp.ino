@@ -195,7 +195,7 @@ void loop() {
   static bool initializedDeviceRouting = false;
   //Some debug information for logging in 
   static uint32_t lastDebugPrintTime = millis();
-  static uint8_t printTimeCount = 0
+  static uint8_t printTimeCount = 0;
   if (millis() - lastDebugPrintTime > 5000) {
     lastDebugPrintTime = millis();
     Debug(Serial1.printf("\nPaired Status: %d\nLogged In Status: %d\n", sec_isPaired(), sec_isLoggedIn()));
@@ -206,11 +206,11 @@ void loop() {
     printTimeCount++;
     if (printTimeCount > 6) {
       LDebug("Dumping Device ID Table contents:");
-      
+
     }
   } 
 
-  enableLora = sec_isPaired() && sec_isLoggedIn();
+  enableLora = sec_isPaired() && sec_isLoggedIn() && epochAtBoot != 0;
   static bool lastLoraEnableStatus = !enableLora;
   if (lastLoraEnableStatus != enableLora) {
     LDebug("Lora Enable status has changed!");
@@ -253,7 +253,7 @@ void loop() {
 
   static uint32_t deviceIDAcquireStartTime = millis();
   //if we have logged in, then pull the device ID and table from memory. if they arent stored, then just put 255 in for the device ID and a blank table in
-  if (sec_isLoggedIn() && sec_isPaired()) {
+  if (sec_isLoggedIn() && sec_isPaired() && epochAtBoot != 0) {
     //If we have not initialized the device routing yet, then initialize it
     if (!initializedDeviceRouting) {
       LDebug("Logged in and paired! initializing device routing variables");
