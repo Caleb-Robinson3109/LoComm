@@ -264,7 +264,7 @@ void sec_logout() {
     g_is_logged_in = false;
 }
 
-bool sec_isLoggedIn() { return g_is_logged_in; }
+bool sec_isLoggedIn() { return 1 || g_is_logged_in; } //TODO TEMP - this now always returns 1
 
 
 // --- Manual Key Provisioning ---
@@ -310,7 +310,7 @@ bool sec_display_key(char* outputBase85Buffer, size_t bufferSize) {
     return true;
 }
 
-bool sec_isPaired() { return g_is_paired; }
+bool sec_isPaired() { return 1 || g_is_paired; } //TODO TEMP bypass the is-paired field
 
 void sec_resetPairing() {
     storage.remove(NVM_KEY_D2D_KEY);

@@ -112,7 +112,11 @@ void setup() {
 
   //Initialize Serial Connection to Computer
   Serial.begin(115200);
+  Serial1.setPins(26, 25);
   Serial1.begin(115200); //TODO set pins for serial1
+
+  while (!Serial);
+  while (!Serial1);
 
   //Initialize OLED Screen
   delay(1000);
@@ -166,6 +170,9 @@ void setup() {
 
   //init the password and keys
   init_password();
+
+  //TODO TEMP - we will reset the pairing to set the private key to a known value 
+  sec_resetPairing(); 
 }
 
 void loop() {
@@ -184,6 +191,24 @@ void loop() {
     lastDeviceMode = RX_MODE;
     LError("CAD detected a signal! trying again later");
   }
+  static bool startedDeviceIDAcquire = false;
+  static bool initializedDeviceRouting = false;
+  //Some debug information for logging in 
+  static uint32_t lastDebugPrintTime = millis();
+  static uint8_t printTimeCount = 0
+  if (millis() - lastDebugPrintTime > 5000) {
+    lastDebugPrintTime = millis();
+    Debug(Serial1.printf("\nPaired Status: %d\nLogged In Status: %d\n", sec_isPaired(), sec_isLoggedIn()));
+    Debug(Serial1.printf("Current Device ID: %d\n", deviceID));
+    Debug(Serial1.printf("initializedDeviceRouting: %d\n", initializedDeviceRouting));
+    Debug(Serial1.printf("startedDeviceIDAcquire: %d\n", startedDeviceIDAcquire));
+    Debug(Serial1.printf("receivedDeviceIDTable: %d\n", receivedDeviceIDTable));
+    printTimeCount++;
+    if (printTimeCount > 6) {
+      LDebug("Dumping Device ID Table contents:");
+      
+    }
+  } 
 
   enableLora = sec_isPaired() && sec_isLoggedIn();
   static bool lastLoraEnableStatus = !enableLora;
@@ -215,6 +240,7 @@ void loop() {
       break;
       case false: //actually true since we are checking the opposite case
         LDebug("Lora has been enabled");
+        rxBuffer.clearBuffer();
         LoRa.receive();
         lastDeviceMode = RX_MODE;
     }
@@ -223,8 +249,9 @@ void loop() {
 
 
   //-------------------------------------------------------Device ID management ----------------------------------------------------
-  static bool initializedDeviceRouting = false;
-  static bool startedDeviceIDAcquire = false;
+  
+
+  static uint32_t deviceIDAcquireStartTime = millis();
   //if we have logged in, then pull the device ID and table from memory. if they arent stored, then just put 255 in for the device ID and a blank table in
   if (sec_isLoggedIn() && sec_isPaired()) {
     //If we have not initialized the device routing yet, then initialize it
@@ -246,10 +273,11 @@ void loop() {
         LDebug("Device ID is set to 255, trying to acquire a device ID");
         startedDeviceIDAcquire = true;
         receivedDeviceIDTable = false; 
+        deviceIDAcquireStartTime = millis();
       }
       sendDeviceIDQueryMessages();
-      if (receivedDeviceIDTable) {
-        LDebug("Device ID table has been received, attempting to acquire a device ID");
+      if (receivedDeviceIDTable || millis() - deviceIDAcquireStartTime > 10000) {
+        LDebug("Device ID table has been received, or we've hit the 10 second timeout, attempting to acquire a device ID");
         chooseOpenDeviceID();
         LDebug("Acquired Device ID!");
         //now that an id has been chosen, send out ID
@@ -260,10 +288,13 @@ void loop() {
     }
 
     //Every 60 or so seconds, send out an additional device ID request
-    if ((millis() / 1000) % 60) {
-      LDebug("Sending additional random device ID request");
+    static uint32_t lastRandomDeviceIDRequestSendTime = millis();
+    if (millis() - lastRandomDeviceIDRequestSendTime > 60000) {
+      LDebug("60 seconds elapsed: sending additional random device ID request");
       sendDeviceIDRequestFunc();
-    }
+      lastRandomDeviceIDRequestSendTime = millis();
+    } 
+
 
   } else if (sec_isLoggedIn()) {
     //logged in, but unpaired, so clear the device routing completely
@@ -449,13 +480,13 @@ void loop() {
             const uint32_t currentTime = (millis() / 1000) + epochAtBoot;
             if (currentTime + 5 < timestamp) { //5 is added for a bit of leeway
               LWarn("Received RX Message is from the future! someone likely has invalid time configuration");
-              break;
+              //break; //TODO TEMP dont break so we can continue running with invalid times
             }
             if (currentTime > timestamp && currentTime - timestamp > 20) {
               LWarn("received RX Message is very old, possible replay attack attempt");
               Debug(Serial1.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
               //TODO logic to log replay attack attempt
-              break; //the message was valid, so lets break out
+              //break; //the message was valid, so lets break out TODO TEMP dont break out so wee can continue running 
             }
             
             //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is
@@ -977,7 +1008,7 @@ void loop() {
 
 void resetDeviceRouting() {
   deviceID = 255;
-  memset(&(deviceIDList), 0, 256);
+  memset(&(deviceIDList), 0, 32);
   storage.remove("DeviceIDs");
   storeDeviceIDData(true);
 }
@@ -1018,6 +1049,7 @@ void storeDeviceIDData(bool forceUpdate) {
 void initializeDeviceRouting() {
   //we just logged in, so pull device ID and related data from EEPROM
   if (storage.isKey("DeviceIDs")) {
+    LDebug("Found device ID table key, attempting to pull from there");
     //check that the key is the right size
     if (storage.getBytesLength("DeviceIDs") != 1 + 32 + AES_GCM_OVERHEAD) {
       LError("Unexpected device id eeprom data size, resetting device id list");
@@ -1031,20 +1063,25 @@ void initializeDeviceRouting() {
     uint8_t pBuf[1 + 32];
     size_t plaintextLen;
     if (!decryptD2DMessage(&(tempBuf[0]), 1 + 32 + AES_GCM_OVERHEAD, (&pBuf[0]), 1 + 32, &plaintextLen)) {
-      LError("Decryption Failed, Resetting the device id and table");
+      LError("Decryption of device id and id table failed, Resetting the device id and table");
       resetDeviceRouting();
       return;
     }
 
     //assert decryption is the correct size
     if (plaintextLen != 1 + 32) {
-      LError("Unexpected decryption size!");
+      LError("Unexpected decryption size on device id and id table!");
       HALT();
     }
 
     //now that we have the data, place it.
+    LDebug("Successfully pulled device ID and ID Table");
     deviceID = pBuf[0];
     memcpy(&(deviceIDList[0]), &(pBuf[1]), 32);
+  } else { //if the device ID table doesnt exist, then just set it to defaults
+    LDebug("Failed to find device ID table key, setting default values for the device ID and the device ID List");
+    deviceID = 255;
+    memset(&(deviceIDList[0]), 0, 32);
   }
 }
 
@@ -1358,8 +1395,8 @@ bool sendDeviceIDRequestFunc() {
 
   //calculate the crc
   uint32_t newCrc = (~esp_rom_crc32_le((uint32_t)~(0xffffffff), (const uint8_t*)(&(deviceIDRequestBuffer[1])), 6 + AES_GCM_OVERHEAD))^0xffffffff;
-  deviceIDTableResponseBuffer[7 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
-  deviceIDTableResponseBuffer[8 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
+  deviceIDRequestBuffer[7 + AES_GCM_OVERHEAD] = (newCrc & 0x0000FF00) >> 8;
+  deviceIDRequestBuffer[8 + AES_GCM_OVERHEAD] = newCrc & 0x000000FF;
 
   //set the send flag to true
   sendDeviceIDRequest = true;
@@ -1425,13 +1462,13 @@ void chooseOpenDeviceID() {
 //Every 5 seconds, it will send out a device ID request along with a device ID Table request if a device has been found
 //After it detects that at least one device list has been received, it will choose a random ID from those not available before setting it and then sending it out
 void sendDeviceIDQueryMessages() {
-  static uint32_t lastCallTime = millis();
+  static uint32_t lastCallTime = millis()/1000;
   if (millis()/1000 - lastCallTime < 5) {
     LDebug("Not Sending device ID query messages: last one sent too recently");
     return;
   } 
   LDebug("Starting device ID query messages");
-  lastCallTime = millis();
+  lastCallTime = millis()/1000;
   sendDeviceIDRequestFunc();
   for (int b = 0; b < 32; b++) {
     for (int bit = 0; bit < 8; bit++) {
