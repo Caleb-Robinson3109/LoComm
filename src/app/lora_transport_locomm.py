@@ -5,7 +5,7 @@ import time
 import tkinter as tk
 from typing import Callable, Optional
 
-DEBUG = False  # Set True to see debug prints
+DEBUG = True  # Set True to see debug prints
 
 
 # ---------------- Attempt to import real LoCommAPI ----------------- #
@@ -59,7 +59,7 @@ except Exception as e:
                 print(f"[MockLoCommAPI] reset_passoword -> True")
             return True
 
-        def send_message(self, name: str, message: str) -> bool:
+        def send_message(self, name: str, receiverID: int, message: str) -> bool:
             # pretend send succeeded
             if DEBUG:
                 print(f"[MockLoCommAPI] send_message('{name}', '{message[:30]}...') -> True")
@@ -183,12 +183,13 @@ class LoCommTransport:
             return
         try:
             if hasattr(LoCommAPI, "send_message"):
-                success = LoCommAPI.send_message(name, text)
+                success = LoCommAPI.send_message(name, 255, text)
             else:
                 success = False
         except Exception as e:
             if DEBUG:
                 print("[LoCommTransport] send raised:", repr(e))
+                print(f"[LoCommTransport] name: {name}, text: {text}")
             success = False
 
         if not success:
