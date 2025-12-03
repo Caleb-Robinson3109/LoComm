@@ -105,9 +105,7 @@ def reset_passoword(password: str) -> bool:
         dm_password = password
         return True
 
-    #return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn)
-    #not implemented so just resturns false
-    return False
+    return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
 def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:

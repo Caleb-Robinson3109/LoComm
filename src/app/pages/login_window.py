@@ -4,6 +4,7 @@ Login window for entering password and device name.
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import messagebox
 from typing import Callable, Optional
 
 from utils.design_system import Colors, Typography, Spacing, DesignUtils
@@ -25,18 +26,17 @@ class LoginWindow:
         self,
         parent: tk.Tk,
         on_login: Callable[[str, str], None],
-        on_register: Optional[Callable] = None,
-        on_forgot_password: Optional[Callable] = None,
     ):
         self.parent = parent
         self.on_login = on_login
-        self.on_register = on_register
-        self.on_forgot_password = on_forgot_password
 
         self.window: Optional[tk.Frame] = None
         self.device_name_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self._is_password_validated = False
+        self.register_window: Optional[tk.Toplevel] = None
+        self._register_password_var = tk.StringVar()
+        self._register_confirm_var = tk.StringVar()
 
         self.password_entry: Optional[tk.Widget] = None
         self.device_name_entry: Optional[tk.Widget] = None
@@ -169,19 +169,6 @@ class LoginWindow:
         self.register_label.bind("<Enter>", lambda e: self.register_label.configure(fg=Colors.LINK_HOVER))
         self.register_label.bind("<Leave>", lambda e: self.register_label.configure(fg=Colors.LINK_PRIMARY))
 
-        self.forgot_label = tk.Label(
-            links_frame,
-            text="Forgot Password",
-            bg=Colors.SURFACE,
-            fg=Colors.LINK_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
-            cursor="hand2",
-        )
-        self.forgot_label.pack(side=tk.LEFT)
-        self.forgot_label.bind("<Button-1>", lambda e: self._on_forgot_password_click())
-        self.forgot_label.bind("<Enter>", lambda e: self.forgot_label.configure(fg=Colors.LINK_HOVER))
-        self.forgot_label.bind("<Leave>", lambda e: self.forgot_label.configure(fg=Colors.LINK_PRIMARY))
-
         self.error_container = tk.Frame(main_container, bg=Colors.SURFACE)
         self.error_container.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
@@ -190,6 +177,7 @@ class LoginWindow:
         self.password_entry.bind("<Return>", self._handle_enter_key)
         self.device_name_entry.bind("<Return>", self._handle_enter_key)
         self.window.bind("<Escape>", lambda e: self._on_close())
+
     def _set_initial_focus(self):
         if self.password_entry and self.password_entry.winfo_exists():
             self.password_entry.focus_set()
@@ -261,12 +249,7 @@ class LoginWindow:
             self.window.after(1000, lambda: self.login_btn.configure(state="normal", text="Login"))
 
     def _on_register_click(self):
-        if self.on_register:
-            self.on_register()
-
-    def _on_forgot_password_click(self):
-        if self.on_forgot_password:
-            self.on_forgot_password()
+        self._open_register_modal()
 
     def _handle_validation_failure(self, message: str):
         self._is_password_validated = False
@@ -318,3 +301,154 @@ class LoginWindow:
             self.window.destroy()
 
     # (Remaining methods identical to previous LoginModal implementation…)
+
+    # ------------------------------------------------------------------ #
+    # Registration helpers
+
+    def _open_register_modal(self):
+        if self.register_window and self.register_window.winfo_exists():
+            self.register_window.lift()
+            return
+
+        self._register_password_var.set("")
+        self._register_confirm_var.set("")
+
+        self.register_window = tk.Toplevel(self.parent)
+        self.register_window.title("Register")
+        self.register_window.configure(bg=Colors.SURFACE)
+        self.register_window.transient(self.parent)
+        self.register_window.grab_set()
+        self.register_window.resizable(False, False)
+        self.register_window.protocol("WM_DELETE_WINDOW", self._close_register_modal)
+
+        container = tk.Frame(self.register_window, bg=Colors.SURFACE, padx=Spacing.MD, pady=Spacing.MD)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            container,
+            text="Create a password for this device",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            anchor="w",
+            justify="left",
+        ).pack(fill=tk.X, pady=(0, Spacing.XXS))
+        tk.Label(
+            container,
+            text="Choose a password and confirm it to finish registration.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
+            anchor="w",
+            justify="left",
+        ).pack(fill=tk.X, pady=(0, Spacing.SM))
+
+        form_frame = tk.Frame(container, bg=Colors.SURFACE)
+        form_frame.pack(fill=tk.X)
+
+        _, _ = create_form_row(
+            form_frame,
+            label="Password",
+            widget_factory=lambda parent: DesignUtils.create_chat_entry(
+                parent,
+                textvariable=self._register_password_var,
+                show="•",
+                width=18,
+                font=(Typography.FONT_UI, Typography.SIZE_12),
+            ),
+            help_text=None,
+        )
+
+        _, _ = create_form_row(
+            form_frame,
+            label="Confirm Password",
+            widget_factory=lambda parent: DesignUtils.create_chat_entry(
+                parent,
+                textvariable=self._register_confirm_var,
+                show="•",
+                width=18,
+                font=(Typography.FONT_UI, Typography.SIZE_12),
+            ),
+            help_text=None,
+        )
+
+        self.register_status = tk.Label(
+            container,
+            text="",
+            bg=Colors.SURFACE,
+            fg=Colors.STATE_ERROR,
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
+            anchor="w",
+            justify="left",
+        )
+        self.register_status.pack(fill=tk.X, pady=(Spacing.XXS, 0))
+
+        btn_frame = tk.Frame(container, bg=Colors.SURFACE)
+        btn_frame.pack(fill=tk.X, pady=(Spacing.SM, 0))
+
+        submit_btn = DesignUtils.button(
+            btn_frame,
+            text="Set Password",
+            command=self._submit_registration,
+            variant="primary",
+            width=12,
+        )
+        submit_btn.pack(fill=tk.X, pady=(0, Spacing.XXS))
+
+        cancel_btn = DesignUtils.button(
+            btn_frame,
+            text="Cancel",
+            command=self._close_register_modal,
+            variant="secondary",
+            width=12,
+        )
+        cancel_btn.pack(fill=tk.X)
+
+        self.register_window.bind("<Return>", lambda e: self._submit_registration())
+
+    def _close_register_modal(self):
+        if self.register_window and self.register_window.winfo_exists():
+            self.register_window.grab_release()
+            self.register_window.destroy()
+        self.register_window = None
+
+    def _submit_registration(self):
+        password = self._register_password_var.get().strip()
+        confirm = self._register_confirm_var.get().strip()
+        self._update_register_status("")
+
+        if not password or not confirm:
+            self._update_register_status("Please enter and confirm your password.")
+            return
+        if len(password) < 3:
+            self._update_register_status("Password must be at least 3 characters.")
+            return
+        if len(password) > 32:
+            self._update_register_status("Password must be 32 characters or less.")
+            return
+        if password != confirm:
+            self._update_register_status("Passwords do not match.")
+            return
+
+        try:
+            ok = reset_passoword(password)
+        except Exception:
+            messagebox.showerror("Registration Failed", "Unable to set password. Please try again.")
+            return
+
+        if not ok:
+            messagebox.showerror(
+                "Registration Failed",
+                "Could not set the password on the device. Please try again.",
+            )
+            return
+
+        self.password_var.set(password)
+        self._is_password_validated = False
+        self._close_register_modal()
+        messagebox.showinfo("Registration Complete", "Password set. Validate to continue.")
+        self._on_validate_click()
+
+    def _update_register_status(self, message: str):
+        if hasattr(self, "register_status") and self.register_status and self.register_status.winfo_exists():
+            self.register_status.configure(text=message)

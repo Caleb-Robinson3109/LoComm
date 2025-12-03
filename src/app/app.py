@@ -131,8 +131,6 @@ class App(tk.Tk):
             self.login_modal = LoginWindow(
                 self,
                 on_login=self._handle_login_success,
-                on_register=self._handle_register_click,
-                on_forgot_password=self._handle_forgot_password_click,
             )
 
     # ------------------------------------------------------------------ #
@@ -234,14 +232,6 @@ class App(tk.Tk):
         """Handle successful chatroom code entry."""
         self._close_chatroom_modal()
         self.show_main(route_id="pair")
-
-    def _handle_register_click(self):
-        """Handle register link click."""
-        messagebox.showinfo("Register", "Registration feature will be implemented in the future.")
-
-    def _handle_forgot_password_click(self):
-        """Handle forgot password link click."""
-        messagebox.showinfo("Forgot Password", "Password recovery feature will be implemented in the future.")
 
     def _handle_logout(self):
         """Handle user logout with proper cleanup."""
