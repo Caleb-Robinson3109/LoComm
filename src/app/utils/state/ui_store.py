@@ -105,6 +105,10 @@ class UIStore:
         if not lowered:
             return DeviceStage.READY
 
+        # Ignore chat/chatroom-only status updates to avoid flipping device badge
+        if "chatroom" in lowered or lowered.startswith("chat "):
+            return self._device_status.stage
+
         explicit_stage = self._status_text_stage_map.get(lowered)
         if explicit_stage:
             return explicit_stage

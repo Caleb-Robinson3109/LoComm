@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+from typing import Callable
 import time
 
 # Mock bridge removed
@@ -21,6 +22,7 @@ class ChatWindow(tk.Toplevel):
     """Modern chat window with beautiful UI design."""
 
     _open_windows: dict[str, 'ChatWindow'] = {}
+    _listeners: list[Callable[[bool], None]] = []
 
     def __init__(self, master: tk.Misc, peer_name: str | None = None, local_device_name: str | None = None, on_close_callback: Callable[[], None] | None = None):
         # Check if window already open for this peer
@@ -54,6 +56,7 @@ class ChatWindow(tk.Toplevel):
 
         ChatWindow._open_windows[self.peer_name] = self
         self._has_history = False
+        self._notify_global_listeners()
 
     def _apply_default_geometry(self):
         size = get_chat_window_size()
@@ -305,6 +308,7 @@ class ChatWindow(tk.Toplevel):
         # self._bridge.unregister_peer_callback(self._handle_incoming)
         if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
             del self._open_windows[self.peer_name]
+        self._notify_global_listeners()
         self.destroy()
 
     def set_peer_name(self, name: str | None):
@@ -316,6 +320,26 @@ class ChatWindow(tk.Toplevel):
     def set_status(self, text: str, *, color: str = "#1f7a4f"):
         if hasattr(self, "connection_badge"):
             self.connection_badge.configure(text=f"● {text}", fg=color)
+
+    # Global tracking helpers ------------------------------------------------
+    @classmethod
+    def register_window_listener(cls, callback: Callable[[bool], None]):
+        if callback not in cls._listeners:
+            cls._listeners.append(callback)
+            callback(bool(cls._open_windows))
+
+    @classmethod
+    def unregister_window_listener(cls, callback: Callable[[bool], None]):
+        if callback in cls._listeners:
+            cls._listeners.remove(callback)
+
+    def _notify_global_listeners(self):
+        open_state = bool(self._open_windows)
+        for cb in list(self._listeners):
+            try:
+                cb(open_state)
+            except Exception:
+                pass
 
     def _widgets_alive(self) -> bool:
         try:

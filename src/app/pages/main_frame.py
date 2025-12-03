@@ -13,6 +13,7 @@ from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
 from .chatroom_window import ChatroomWindow
+from .chat_page import ChatWindow
 from .sidebar_page import SidebarPage
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -221,8 +222,35 @@ class MainFrame(ttk.Frame):
         )
         self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
 
+        center_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
+        center_wrap.grid(row=0, column=1, sticky="ew", padx=Space.SM)
+        center_wrap.grid_columnconfigure(0, weight=1)
+
+        badge_pad = {"padx": (0, Space.XXS), "pady": (0, 0)}
+        self.chatroom_badge = tk.Label(
+            center_wrap,
+            text="Chatroom: None",
+            bg=Colors.STATE_ERROR,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_BOLD),
+            padx=Spacing.SM,
+            pady=int(Spacing.XS / 2),
+        )
+        self.chatroom_badge.grid(row=0, column=0, sticky="w", **badge_pad)
+
+        self.chat_badge = tk.Label(
+            center_wrap,
+            text="Chat: Idle",
+            bg=Colors.TEXT_MUTED,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_BOLD),
+            padx=Spacing.SM,
+            pady=int(Spacing.XS / 2),
+        )
+        self.chat_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, 0))
+
         self.chatroom_label = tk.Label(
-            bar,
+            center_wrap,
             text="No Chatrooms Connected",
             bg=Colors.BG_ELEVATED,
             fg=Colors.TEXT_MUTED,
@@ -230,7 +258,7 @@ class MainFrame(ttk.Frame):
             anchor="center",
             justify="center",
         )
-        self.chatroom_label.grid(row=0, column=1, sticky="ew", padx=Space.SM)
+        self.chatroom_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(Space.XXS, 0))
 
         brand_label = tk.Label(
             bar,
@@ -243,6 +271,8 @@ class MainFrame(ttk.Frame):
 
         self._chatroom_listener = lambda code: self._update_chatroom_label(code)
         register_chatroom_listener(self._chatroom_listener)
+        self._chat_listener = lambda has_chat: self._update_chat_status(has_chat)
+        ChatWindow.register_window_listener(self._chat_listener)
         return bar
 
     # ------------------------------------------------------------------ #
@@ -318,6 +348,8 @@ class MainFrame(ttk.Frame):
     def destroy(self):
         if self._chatroom_listener:
             unregister_chatroom_listener(self._chatroom_listener)
+        if hasattr(self, "_chat_listener") and self._chat_listener:
+            ChatWindow.unregister_window_listener(self._chat_listener)
         try:
             self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
         except Exception:
@@ -330,8 +362,13 @@ class MainFrame(ttk.Frame):
         if code:
             formatted = format_chatroom_code(code)
             self.chatroom_label.configure(text=formatted, fg=Colors.TEXT_PRIMARY)
+            self.chatroom_badge.configure(text="Chatroom: Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
             self.chatroom_label.configure(text="----- ----- ----- -----", fg=Colors.TEXT_MUTED)
+            self.chatroom_badge.configure(text="Chatroom: None", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+        # Disable peers when no chatroom
+        if hasattr(self.sidebar, "_update_peer_access"):
+            self.sidebar._update_peer_access(bool(code))
 
     def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
         if not snapshot:
@@ -341,6 +378,14 @@ class MainFrame(ttk.Frame):
 
         local_name = getattr(self.session, "local_device_name", None) or self._default_local_device_name
         self.local_device_label.configure(text=local_name)
+
+    def _update_chat_status(self, has_chat: bool):
+        if not hasattr(self, "chat_badge"):
+            return
+        if has_chat:
+            self.chat_badge.configure(text="Chat: Active", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
+        else:
+            self.chat_badge.configure(text="Chat: Idle", bg=Colors.TEXT_MUTED, fg=Colors.SURFACE)
 
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
