@@ -280,7 +280,8 @@ void loop() {
         LDebug("Device ID table has been received, or we've hit the 10 second timeout, attempting to acquire a device ID");
         chooseOpenDeviceID();
         LDebug("Acquired Device ID!");
-        //now that an id has been chosen, send out ID
+        //now that an id has been chosen, send out ID, and force update our table
+        storeDeviceIDData(true);
         sendDeviceIDResponseFunc();
       }
     } else {
@@ -1041,6 +1042,7 @@ void storeDeviceIDData(bool forceUpdate) {
     HALT();
   }
 
+  LDebug("Placed device id and table into EEPROM");
   //now that its been successfully encrypted, store the data the eeprom
   storage.putBytes("DeviceIDs", &(eBuf[0]), 1 + 32 + AES_GCM_OVERHEAD);
   return;
@@ -1474,7 +1476,7 @@ void sendDeviceIDQueryMessages() {
     for (int bit = 0; bit < 8; bit++) {
       if (deviceIDList[b] >> (7 - bit) == 1) {
         //device id set, so send a table request
-        LDebug("Found a device ID to send a table response to"); //TODO dont just send to the first ID
+        LDebug("Found a device ID to send a table request to"); //TODO dont just send to the first ID
         sendDeviceIDTableRequestFunc(b * 8 + bit);
         return;
       }
