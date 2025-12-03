@@ -99,3 +99,6 @@ void handle_message_from_device();
 
 //this function handles an incomming SNOD packet. the name of the  device will be stored in the device name var
 void handle_SNOD_packet();
+
+//this fucntion handles an icomming pairing key
+void handle_EPAR_packet();

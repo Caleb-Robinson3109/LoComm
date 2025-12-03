@@ -64,6 +64,9 @@ def serial_read():
                     LoCommGlobals.context.packet = packet
                     LoCommGlobals.context.SNAK_flag = True
 
+                elif message_type == b"EPAK":
+                    LoCommGlobals.context.packet = packet
+                    LoCommGlobals.context.EPAK_flag = True
 
                 else:
                     print("ERROR - NOT RECOGNIZED PACKET TYPE")

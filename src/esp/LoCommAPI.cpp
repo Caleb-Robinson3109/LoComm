@@ -1,6 +1,7 @@
 #include "LoCommAPI.h"
 #include "functions.h"
 #include "globals.h"
+#include "security_protocol.h"
 
 uint8_t computer_in_packet[MAX_COMPUTER_PACKET_SIZE];
 uint8_t computer_out_packet[MAX_COMPUTER_PACKET_SIZE];
@@ -46,6 +47,7 @@ uint8_t password_hash[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
 
 void recive_packet_from_computer(){
+    blinky2();
     size_t serial_index = 0;
     //delay(1000);
     if(Serial.available() == 0){
@@ -67,6 +69,7 @@ void handle_message_from_computer(){
     if(!(computer_in_packet[0] == 0x12 && computer_in_packet[1] == 0x34)){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        blinky(2);
         return;
     }
 
@@ -75,6 +78,7 @@ void handle_message_from_computer(){
     if(packet_size != computer_in_size){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        blinky(2);
         return;
     }
 
@@ -87,6 +91,7 @@ void handle_message_from_computer(){
     if(crc_high != computer_in_packet[packet_size - 4] || crc_low  != computer_in_packet[packet_size - 3]){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        blinky(2);
         return;
     }
 
@@ -94,6 +99,7 @@ void handle_message_from_computer(){
     if(computer_in_packet[packet_size - 2] != 0x56 && computer_in_packet[packet_size - 1] != 0x78){
         message_from_computer_flag = false;
         computer_in_size = 0;
+        blinky(2);
         return;
     }
 
@@ -105,6 +111,7 @@ void handle_message_from_computer(){
 
     //the build_TYPE_packet will build in the device_out_packet[]
     if(message_type_match(message_type, "CONN", MESSAGE_TYPE_SIZE)){
+        blinky(3);
         handle_CONN_packet();
     }
 
@@ -126,7 +133,9 @@ void handle_message_from_computer(){
     else if(message_type_match(message_type, "SNOD", MESSAGE_TYPE_SIZE)){
         handle_SNOD_packet();
     }
-
+    else if(message_type_match(message_type, "EPAR", MESSAGE_TYPE_SIZE)){
+        handle_EPAR_packet();
+    }
     else{
         Serial.write("FAIL");
     }
@@ -151,42 +160,53 @@ void handle_PASS_packet(){
     //get the lenght of the password
     uint16_t password_size = ((uint16_t)computer_in_packet[2] << 8) | computer_in_packet[3];
     password_size -= 16;
-    uint8_t input_password_hash[32];
+    char* input_password = new char[password_size + 1];
+    
+    //uint8_t input_password_hash[32];
 
     //get the new password in the packet
-    uint8_t input_password [32];
+    //uint8_t input_password [32];
 
     for(int i = 0; i < password_size; i++){
         input_password[i] = computer_in_packet[i + 12];
     }
+    input_password[password_size] = '\0';
 
     //fill in with 0x00 with any extra space
-    for(int i = password_size; i < 32; i++){
-        input_password[i] = 0x00;
-    }
+    //for(int i = password_size; i < 32; i++){
+    //   input_password[i] = 0x00;
+    //}
 
     //get the password hash stored in storage and check it aginst the enterne password.
     //if the password is corrext store it and set the passowrd flag
-    mbedtls_sha256(input_password, 32, input_password_hash, 0);
-    if(memcmp(input_password_hash, password_hash, 32) == 0){
-        memcpy(password_ascii, input_password, 32);
+    //mbedtls_sha256(input_password, 32, input_password_hash, 0);
+    //if(memcmp(input_password_hash, password_hash, 32) == 0){
+    //    memcpy(password_ascii, input_password, 32);
+    //    password_entered_flag = true;
+    //}
+    //else{
+    //    password_entered_flag = false;
+    //}
+    bool password_okay = sec_login(input_password);
+    if(password_okay){
         password_entered_flag = true;
     }
     else{
         password_entered_flag = false;
     }
-
     build_PWAK_packet();
     message_to_computer_flag = true;
     message_from_computer_flag = false;
+    delete[] input_password;
 }
 
 void handle_DCON_packet(){
     // overwrites the password and the password hash with 0x00
-    for(int i = 0; i < PASSWORD_SIZE; i++){
-        password_ascii[i] = 0x00;
-        password_hash[i] = 0x00;
-    }
+    //for(int i = 0; i < PASSWORD_SIZE; i++){
+    //    password_ascii[i] = 0x00;
+    //    password_hash[i] = 0x00;
+    //}
+    sec_logout();
     set_password_flag = false;
     password_entered_flag = false;
     //TODO eventuall the key with 0x00 
@@ -197,59 +217,77 @@ void handle_DCON_packet(){
 }
 
 void handle_STPW_packet(){
-    uint8_t old_password[32];
+    //uint8_t old_password[32];
     uint8_t old_size = computer_in_packet[12];
+    char* old_password = new char[old_size + 1];
 
     //get the old password and set the blank bytes to 0x00
     for(int i = 0; i < old_size; i++){
         old_password[i] = computer_in_packet[14 + i];
     }
-    for(int i = old_size; i < 32; i++){
-        old_password[i] = 0x00;
-    }
+    old_password[old_size] = '\0';
+    //for(int i = old_size; i < 32; i++){
+    //    old_password[i] = 0x00;
+    //}
 
     //checks aginst the curr password and returns if it is not the same
-    if(memcmp(old_password, password_ascii, 32) == -1){
+    //if(memcmp(old_password, password_ascii, 32) == -1){
         //not the same
-        set_password_flag = false;
+    //    set_password_flag = false;
 
-        build_SPAK_packet();
-        message_to_computer_flag = true;
-        message_from_computer_flag = false;
+    //    build_SPAK_packet();
+    //    message_to_computer_flag = true;
+    //    message_from_computer_flag = false;
 
-        return;
-    }
+    //    return;
+    //}
 
     //get the new password
-    uint8_t new_password[32];
-    uint8_t new_password_hash[32];
+    //uint8_t new_password[32];
+    //uint8_t new_password_hash[32];
     uint8_t new_size = computer_in_packet[13];
     uint8_t new_start_index = 14 + old_size;
+    char* new_password = new char[new_size + 1];
+
 
     for(int i = 0; i < new_size; i++){
         new_password[i] = computer_in_packet[new_start_index + i];
     }
-    for(int i = new_size; i < 32; i++){
-        new_password[i] = 0x00;
-    }
+    new_password[new_size] = '\0';
+    //for(int i = new_size; i < 32; i++){
+    //    new_password[i] = 0x00;
+    //}
 
     //sets the new passowrd in storage hash and ascii
-    memcpy(password_ascii, new_password, 32);
-    mbedtls_sha256(new_password, 32, new_password_hash, 0);
-    memcpy(password_hash, new_password_hash, 32);
-    storage.putBytes("password", password_hash, 32);
-    set_password_flag = true;
+    //memcpy(password_ascii, new_password, 32);
+    //mbedtls_sha256(new_password, 32, new_password_hash, 0);
+    //memcpy(password_hash, new_password_hash, 32);
+    //storage.putBytes("password", password_hash, 32);
+    //set_password_flag = true;
 
-    build_SPAK_packet();
+    //build_SPAK_packet();
+    //message_to_computer_flag = true;
+    //message_from_computer_flag = false;
+    bool set_password_okay = sec_changePassword(old_password, new_password);
+    if(set_password_okay){
+        set_password_flag = true;
+    }
+    else{
+        set_password_flag = false;
+    }
+    build_SACK_packet();
     message_to_computer_flag = true;
     message_from_computer_flag = false;
+
+    delete [] old_password;
+    delete [] new_password;
 }
 
 void handle_CONN_packet(){
     //TODO bring out the encripted keys
     
     //gets the password hash from sorage
-    storage.getBytes("password", password_hash, 32);
+    //storage.getBytes("password", password_hash, 32);
 
     //sets the epoch time
     uint32_t epoch = ((uint32_t)computer_in_packet[12] << 24) |
@@ -259,9 +297,10 @@ void handle_CONN_packet(){
 
     epochAtBoot = epoch - (millis() / 1000);
 
-    display.setCursor(0,0);
-    display.printf("----%d----", epoch);
-    display.display();
+    //display.setCursor(0,0);
+    //display.printf("----%d----", epoch);
+    //display.display();
+
 
     build_CACK_packet();
     message_to_computer_flag = true;
@@ -292,9 +331,9 @@ void handle_SEND_packet(){
     //delay(1000);
     //lcd.clear();
     //lcd.setCursor(0,0);
-    for(int i = 0; i < 16; i++){
+    //for(int i = 0; i < 16; i++){
         //lcd.write(device_out_packet[i]);
-    }
+    //}
     //delay(1000);
 
     //set the other flags to handle the sack to computer message
@@ -403,9 +442,23 @@ void handle_message_from_device(){
 void handle_SNOD_packet(){
     memcpy(device_name, &computer_in_packet[12], 32);
 
-    displayName();
+    //displayName();
 
     build_SNAK_packet();
     message_to_computer_flag = true;
     message_from_computer_flag = false;
+}
+
+void handle_EPAR_packet(){
+    char key[21];
+    for(int i = 0; i < 20; i++){
+        key[i] = computer_in_packet[12 + i];
+    }
+    key[20] = '\0';
+
+    sec_log_key(key);
+
+    build_EPAK_packet();
+    message_to_computer_flag = true;
+    message_from_device_flag = false;
 }

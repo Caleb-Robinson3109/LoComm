@@ -11,6 +11,7 @@ from api_funcs.LoCommContext import LoCommContext
 from api_funcs.LoCommSerailRead import serial_read
 import api_funcs.LoCommGlobals as LoCommGlobals
 from api_funcs.LoCommAPIStoreNameOnDevice import locomm_store_name_on_devide
+from api_funcs.LoCommAPIEnterPairingKey import locomm_api_enter_pairing_key
 
 import threading
 import time
@@ -104,7 +105,9 @@ def reset_passoword(password: str) -> bool:
         dm_password = password
         return True
 
-    return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn)
+    #return locomm_api_reset_passoword(password, LoCommGlobals.serial_conn)
+    #not implemented so just resturns false
+    return False
 
 #this function sends a message to the ESP to be broadcasted. Returns true if successful, false otherwise
 def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
@@ -182,9 +185,19 @@ def generate_pairing_key() -> bool:
 #enter a key
 def enter_pairing_key(key: str) -> bool:
     global deviceless_mode
+    
+    if len(key) != 20:
+        return False
+
+    #confirm base85
+    base85 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#'
+    for char in key:
+        if char not in base85:
+            return False
+    
     if deviceless_mode:
         return True
-    return True
+    return locomm_api_enter_pairing_key(key)
 
 #delete pairing key from the device
 def delete_pairing_key() -> bool:

@@ -5,6 +5,7 @@
 
 //api functions
 #include "apiCode.h"
+#include "security_protocol.h"
 
 extern Preferences storage;
 
@@ -71,7 +72,8 @@ StackType_t apiStack[API_CODE_STACK_SIZE];
 StaticTask_t apiStackBuffer;
 
 void setup() {
-
+  pinMode(2, OUTPUT);
+  blinky1();
 
   //initialize variables
   rxBuffer = CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE>();
@@ -151,6 +153,10 @@ void setup() {
   display.clearDisplay();
   display.printf("Device ID: %d\n", deviceID);
   display.display();
+
+  //init security
+  sec_init();
+  sec_setInitialPassword("password");
 
   //initialize api task
   delay(1000);
