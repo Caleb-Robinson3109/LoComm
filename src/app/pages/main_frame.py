@@ -232,7 +232,7 @@ class MainFrame(ttk.Frame):
             text="Chatroom: None",
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_BOLD),
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
@@ -243,7 +243,7 @@ class MainFrame(ttk.Frame):
             text="Chat: Idle",
             bg=Colors.TEXT_MUTED,
             fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_11, Typography.WEIGHT_BOLD),
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
