@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Callable
+from typing import Callable, Optional
 import time
 
 # Mock bridge removed
@@ -24,7 +24,14 @@ class ChatWindow(tk.Toplevel):
     _open_windows: dict[str, 'ChatWindow'] = {}
     _listeners: list[Callable[[bool], None]] = []
 
-    def __init__(self, master: tk.Misc, peer_name: str | None = None, local_device_name: str | None = None, on_close_callback: Callable[[], None] | None = None):
+    def __init__(
+        self,
+        master: tk.Misc,
+        peer_name: str | None = None,
+        local_device_name: str | None = None,
+        on_close_callback: Callable[[], None] | None = None,
+        on_send_callback: Optional[Callable[[str], Optional[bool]]] = None,
+    ):
         # Check if window already open for this peer
         if peer_name and peer_name in self._open_windows:
             existing = self._open_windows[peer_name]
@@ -41,6 +48,7 @@ class ChatWindow(tk.Toplevel):
         self.peer_name = peer_name or "Peer"
         self.local_device_name = local_device_name or "Orion"
         self._on_close_callback = on_close_callback
+        self._on_send_callback = on_send_callback
         self.title("Chat")
         self._apply_default_geometry()
         self.resizable(True, True)
@@ -281,8 +289,15 @@ class ChatWindow(tk.Toplevel):
         text = self.msg_var.get().strip()
         if not text:
             return
-        # Mock send removed
-        # self._bridge.send_from_peer(text)
+        if self._on_send_callback:
+            try:
+                result = self._on_send_callback(text)
+                if result is False:
+                    return
+            except Exception:
+                messagebox.showerror("Send Failed", "Unable to send message.", parent=self)
+                return
+
         self._has_history = True
         self._add_message(text, sender=self.local_device_name, is_self=True)
         self.msg_var.set("")
