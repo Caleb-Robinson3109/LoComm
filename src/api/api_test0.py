@@ -19,6 +19,7 @@ while(not connect_to_device()):
 enter_password("password")
 store_name_on_device("Bob")
 enter_pairing_key('aaaabbbbccccddddeeee')
+print(f"{scan_for_devices()}")
 
 t =threading.Thread(target=recv_thread)
 t.start()

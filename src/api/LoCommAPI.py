@@ -210,5 +210,6 @@ def scan_for_devices() -> list[tuple[str, int]]:
     global deviceless_mode
     if deviceless_mode:
         return [("Alice", 128), ("Bob", 82)]
-    return scan_for_devices() 
+    return locomm_api_scan() 
+
 

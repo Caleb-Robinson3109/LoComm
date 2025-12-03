@@ -61,10 +61,10 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
     
     return "no error", True 
 
-def locomm_api_scan(key: str) -> list:
+def locomm_api_scan() -> list:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
-        packet = build_SCAN_packet(tag, key)
+        packet = build_SCAN_packet(tag)
         print_packet_debug(packet, True)        
         LoCommGlobals.serial_conn.write(packet)
         LoCommGlobals.serial_conn.flush()
