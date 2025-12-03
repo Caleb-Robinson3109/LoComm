@@ -290,6 +290,18 @@ class ChatroomWindow(tk.Frame):
         self._set_waiting(True)
         get_status_manager().update_status("Connecting…")
         code = ''.join(ch for ch in self._current_chatroom_code if ch.isalnum())
+
+        # Send the generated code to the device just like the join flow
+        ok = False
+        try:
+            ok = enter_pairing_key(code)
+        except Exception:
+            ok = False
+
+        if not ok:
+            self._show_error("Unable to send chatroom code to device. Please try again.")
+            return
+
         self.after(300, lambda: self._complete_success(code))
 
     def _format_code(self, code: str) -> str:
