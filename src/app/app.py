@@ -62,9 +62,12 @@ class App(tk.Tk):
         self.app_controller.register_message_callback(self._handle_business_message)
 
         #connect to device
-        run_deviceless_mode()
+        counter = 0
         while not connect_to_device():
-            pass
+            counter += 1
+            if counter >= 10:
+                run_deviceless_mode()
+                print("Failed to connect to device, entering deviceless mode")
 
 
         # Initialize UI with login modal
