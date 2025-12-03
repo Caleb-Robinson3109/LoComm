@@ -323,7 +323,7 @@ void sec_resetPairing() {
 // --- Encryption/Decryption ---
 
 bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen) {
-    if (!g_is_logged_in || !g_is_paired) return false;
+    //if (!g_is_logged_in || !g_is_paired) return false; TODO TEMP bypass check that disables this function when not logged in and paired
     // CHANGED: Overhead reduced from 28 to 20 (12 IV + 8 Tag)
     if (bufferSize < plaintextLen + 20) return false;
 
@@ -351,7 +351,7 @@ bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_
 }
 
 bool sec_decryptD2DMessage(const uint8_t* ciphertext, size_t ciphertextLen, uint8_t* plaintextBuffer, size_t bufferSize, size_t* plaintextLen) {
-    if (!g_is_logged_in || !g_is_paired) return false;
+    //if (!g_is_logged_in || !g_is_paired) return false; TODO TEMP bypass check that disables this function when not logged in and paired
     
     if (ciphertextLen < 20) return false; 
 

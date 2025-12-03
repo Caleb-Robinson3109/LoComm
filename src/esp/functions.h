@@ -35,7 +35,7 @@
 #define START_BYTE 0xc1
 #define END_BYTE 0x8c
 
-#define AES_GCM_OVERHEAD 26
+#define AES_GCM_OVERHEAD 20
 
 #define RUN_UNIT_TESTS false
 

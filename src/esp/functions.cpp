@@ -114,19 +114,21 @@ void runTests() { //TODO write unit tests for the arrays types
 
 //This is a temporary implementation. All this will do is assert the buffer is big enough, copy over the plain text, and then add random data as the cipher overhead
 bool encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen) {
+  return sec_encryptD2DMessage(plaintext, plaintextLen, ciphertextBuffer, bufferSize, ciphertextLen);
   //the outputsize will just be the plaintext size plus the overhead
-  if (bufferSize < plaintextLen + AES_GCM_OVERHEAD) return false;
-  memcpy(ciphertextBuffer, plaintext, plaintextLen);
-  esp_fill_random(ciphertextBuffer + plaintextLen, AES_GCM_OVERHEAD);
-  *ciphertextLen = plaintextLen + AES_GCM_OVERHEAD;
-  return true;
+  //if (bufferSize < plaintextLen + AES_GCM_OVERHEAD) return false;
+  //memcpy(ciphertextBuffer, plaintext, plaintextLen);
+  //esp_fill_random(ciphertextBuffer + plaintextLen, AES_GCM_OVERHEAD);
+  //*ciphertextLen = plaintextLen + AES_GCM_OVERHEAD;
+  //return true;
 }
 
 //This is a temporary implementation. All this will do is assert the buffer is big enough and copy over the plain text excluding the overhead
 bool decryptD2DMessage(const uint8_t* ciphertext, size_t ciphertextLen, uint8_t* plaintextBuffer, size_t bufferSize, size_t* plaintextLen) {
-  if (ciphertextLen - AES_GCM_OVERHEAD < 1) return false;
-  if (ciphertextLen - AES_GCM_OVERHEAD > bufferSize) return false;
-  memcpy(plaintextBuffer, ciphertext, ciphertextLen - AES_GCM_OVERHEAD);
-  *plaintextLen = ciphertextLen - AES_GCM_OVERHEAD;
-  return true;
+  return sec_decryptD2DMessage(ciphertext, ciphertextLen, plaintextBuffer, bufferSize, plaintextLen);
+  //if (ciphertextLen - AES_GCM_OVERHEAD < 1) return false;
+  //if (ciphertextLen - AES_GCM_OVERHEAD > bufferSize) return false;
+  //memcpy(plaintextBuffer, ciphertext, ciphertextLen - AES_GCM_OVERHEAD);
+  //*plaintextLen = ciphertextLen - AES_GCM_OVERHEAD;
+  //return true;
 }
