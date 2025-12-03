@@ -31,7 +31,7 @@ class HelpPage(BasePage):
         create_page_header(
             body,
             title="Help and Support",
-            subtitle="Quick tips and guidance for using Locomm on your desktop.",
+            subtitle="Quick guidance for logging in, registering a password, and staying connected with your LoRa device.",
         )
 
         # Getting started section
@@ -46,9 +46,10 @@ class HelpPage(BasePage):
         AutoWrapLabel(
             getting_started,
             text=(
-                "1. Log in with your device name. This is how you will appear to peers.\n"
-                "2. Use the Peers section to connect to other devices.\n"
-                "3. Once connected, you can start secure LoRa chats."
+                "1) Open the app and click Register to set/confirm the device password (3–32 chars).\n"
+                "2) Validate the password; the Preferred Name field unlocks.\n"
+                "3) Enter your display name and Login. The app sends the name to the device and loads the main shell.\n"
+                "4) Use Peers/Pair to manage pairing codes; the chat UI is currently disabled but transport remains active."
             ),
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
@@ -70,9 +71,8 @@ class HelpPage(BasePage):
         AutoWrapLabel(
             troubleshooting,
             text=(
-                "If you cannot see peers after refreshing, verify radios are powered "
-                "and configured correctly. Check that you are on the same LoRa "
-                "frequency and channel as your peers."
+                "Password not accepted: confirm length 3–32 and retry Validate. If still blocked, open Register to reset the password on-device "
+                "and validate again."
             ),
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
@@ -85,8 +85,8 @@ class HelpPage(BasePage):
         AutoWrapLabel(
             troubleshooting,
             text=(
-                "If issues persist, restart the application and re pair your device. "
-                "Future releases will include more detailed diagnostics."
+                "Device not detected or pairing stalls: reconnect hardware, then restart the app to re-init transport. Keep the Register modal closed "
+                "if the UI appears locked—modals hold focus until dismissed."
             ),
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_SECONDARY,

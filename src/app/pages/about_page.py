@@ -31,7 +31,7 @@ class AboutPage(BasePage):
         create_page_header(
             body,
             title="About Locomm",
-            subtitle="Locomm is a desktop client for secure LoRa powered messaging.",
+            subtitle="Locomm Desktop v2.3.0 is a control surface for your LoRa device—login, register, pair, and monitor in one place.",
         )
 
         # Main about section
@@ -46,9 +46,8 @@ class AboutPage(BasePage):
         AutoWrapLabel(
             content,
             text=(
-                "Locomm is designed for low bandwidth, long range communication using "
-                "LoRa radios. The desktop client focuses on a clean, modern interface "
-                "while keeping configuration and status easy to understand."
+                "Locomm pairs a desktop shell with the underlying device API to simplify secure, low-bandwidth LoRa communication. "
+                "The app handles authentication (register + validate), device naming, and session control while keeping the UI lean and responsive."
             ),
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
@@ -61,8 +60,22 @@ class AboutPage(BasePage):
         AutoWrapLabel(
             content,
             text=(
-                "This application is still evolving. Future releases will add richer "
-                "peer management, diagnostics, and multi device support."
+                "Highlights in 2.3.0: refreshed auth flow with in-place registration, simplified pairing modal, theme toggle with live re-render, "
+                "and improved status handling across the transport controller."
+            ),
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
+            justify="left",
+            padding_x=Spacing.SM * 2,
+            min_wrap=260,
+        ).pack(fill=tk.X, expand=True, pady=(Spacing.SM, 0))
+
+        AutoWrapLabel(
+            content,
+            text=(
+                "The desktop client intentionally omits in-app chat for now; it focuses on connecting, naming, and monitoring your device. "
+                "Chat transport is still wired through the controller for future UI re-enablement."
             ),
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_SECONDARY,

@@ -65,7 +65,7 @@ class SidebarPage(tk.Frame):
         self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
 
     def _build_footer(self):
-        sidebar_footer(self, "v2.1 Desktop")
+        sidebar_footer(self, "v2.3.0 Desktop")
 
     # ------------------------------------------------------------------ #
     def _update_active_button(self, active_view: str):
