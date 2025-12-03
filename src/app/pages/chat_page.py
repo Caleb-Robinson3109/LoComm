@@ -295,11 +295,8 @@ class ChatWindow(tk.Toplevel):
             if not result:
                 return
 
-        get_status_manager().update_status(AppConfig.STATUS_DISCONNECTED)
-        try:
-            get_connection_manager().disconnect_device()
-        except Exception:
-            pass
+        # Closing a chat should not disconnect the device; just update status
+        get_status_manager().update_status("Chat closed")
         if self._on_close_callback:
             try:
                 self._on_close_callback()

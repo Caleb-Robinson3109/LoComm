@@ -266,7 +266,7 @@ class ChatroomWindow(tk.Frame):
         # Clear any current chatroom connection
         from utils.chatroom_registry import set_active_chatroom, get_active_members
         set_active_chatroom("", get_active_members())
-        get_status_manager().update_status("Disconnected")
+        get_status_manager().update_status("Chatroom disconnected")
         # Reset UI state
         self._current_chatroom_code = None
         self._create_var.set("")
