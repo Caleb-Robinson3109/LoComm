@@ -144,6 +144,8 @@ class MainFrame(ttk.Frame):
         )
 
         self._setup_view_containers()
+        self._register_top_listeners()
+        self._register_top_listeners()
 
     def _setup_view_containers(self):
         """Create placeholder containers for each view."""
@@ -270,9 +272,7 @@ class MainFrame(ttk.Frame):
         brand_label.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
 
         self._chatroom_listener = lambda code: self._update_chatroom_label(code)
-        register_chatroom_listener(self._chatroom_listener)
         self._chat_listener = lambda has_chat: self._update_chat_status(has_chat)
-        ChatWindow.register_window_listener(self._chat_listener)
         return bar
 
     # ------------------------------------------------------------------ #
@@ -386,6 +386,13 @@ class MainFrame(ttk.Frame):
             self.chat_badge.configure(text="Chat: Active", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
             self.chat_badge.configure(text="Chat: Idle", bg=Colors.TEXT_MUTED, fg=Colors.SURFACE)
+
+    def _register_top_listeners(self):
+        """Register chat/chatroom listeners after layout creation."""
+        if self._chatroom_listener:
+            register_chatroom_listener(self._chatroom_listener)
+        if hasattr(self, "_chat_listener") and self._chat_listener:
+            ChatWindow.register_window_listener(self._chat_listener)
 
     @staticmethod
     def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
