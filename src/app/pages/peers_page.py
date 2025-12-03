@@ -293,12 +293,11 @@ class PeersPage(BasePage):
         )
 
     def _handle_chat_closed(self, raw_id: Optional[str] = None):
-        # Do not stop the global session when a chat window closes; keep transport alive
+        # Keep transport alive and retain device entry; mark as available
         if raw_id:
             normalized = self._normalize_device_identifier(raw_id)
             if normalized in self.devices:
-                del self.devices[normalized]
-                self._render_device_list()
+                self._update_device_status(normalized, "Available")
 
     # ------------------------------------------------------------------ #
     # Scan / device-stage logic (UI-only, no mock data)
