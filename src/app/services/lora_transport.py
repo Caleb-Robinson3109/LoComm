@@ -66,7 +66,11 @@ class LoCommTransport:
                 raw_mode = pairing_context.get("mode")
 
             normalized_context = self._normalize_pairing_context(pairing_context)
-            success = self._backend.connect(normalized_context)
+            # If already running, skip redundant connect and reuse session
+            if self.running:
+                success = True
+            else:
+                success = self._backend.connect(normalized_context)
             if not success:
                 if self.on_status:
                     # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
@@ -74,8 +78,9 @@ class LoCommTransport:
                     self.root.after(0, lambda: self._safe_status_callback(status_msg))
                 return False
 
-            self.running = True
-            self._start_rx_thread()
+            if not self.running:
+                self.running = True
+                self._start_rx_thread()
 
             status_text = "Connected"
             if raw_mode == "demo":

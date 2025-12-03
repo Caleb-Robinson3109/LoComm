@@ -53,15 +53,22 @@ class RealLoCommBackend:
 
     def __init__(self, api_module):
         self.api = api_module
+        self._connected = False
 
     def connect(self, pairing_context: Optional[PairingContext] = None) -> bool:
+        # Avoid redundant reconnects if already connected
+        if self._connected:
+            return True
         connect_fn = getattr(self.api, "connect_to_device", None)
         if not connect_fn:
             return False
-        return bool(connect_fn())
+        ok = bool(connect_fn())
+        self._connected = ok
+        return ok
 
     def disconnect(self) -> bool:
         disconnect_fn = getattr(self.api, "disconnect_from_device", None)
+        self._connected = False
         if disconnect_fn:
             return bool(disconnect_fn())
         return False

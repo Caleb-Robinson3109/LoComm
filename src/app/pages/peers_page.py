@@ -267,7 +267,12 @@ class PeersPage(BasePage):
             else:
                 self._update_device_status(device["raw_id"], "Available")
 
-        self.controller.start_session(device["id"], device["name"], callback=_callback)
+        # Avoid tearing down an existing transport; reuse if already connected
+        try:
+            self.controller.start_session(device["id"], device["name"], callback=_callback)
+        except Exception:
+            self._update_device_status(device["raw_id"], "Available")
+
 
     def _chat_with_device(self, device: dict):
         session_device = getattr(self.session, "device_id", None) if self.session else None
@@ -288,8 +293,7 @@ class PeersPage(BasePage):
         )
 
     def _handle_chat_closed(self, raw_id: Optional[str] = None):
-        if self.controller:
-            self.controller.stop_session()
+        # Do not stop the global session when a chat window closes; keep transport alive
         if raw_id:
             normalized = self._normalize_device_identifier(raw_id)
             if normalized in self.devices:

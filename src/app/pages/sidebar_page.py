@@ -8,6 +8,7 @@ from typing import Callable, Optional
 from utils.design_system import Colors, ThemeManager, Typography, Spacing
 from ui.components import DesignUtils
 from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
+from utils.chatroom_registry import get_active_code, register_chatroom_listener, unregister_chatroom_listener
 
 
 class SidebarPage(tk.Frame):
@@ -28,8 +29,10 @@ class SidebarPage(tk.Frame):
         self.on_back = on_back
         self.nav_items = nav_items
         self.current_view = nav_items[0][0] if nav_items else "home"
+        self._peers_enabled = bool(get_active_code())
 
         self._buttons: dict[str, ttk.Button] = {}
+        self._chatroom_listener = lambda code: self._update_peer_access(bool(code))
 
         self.container = sidebar_container(self)
         tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
@@ -37,6 +40,7 @@ class SidebarPage(tk.Frame):
         self._build_nav_sections()
         self._build_footer()
         self._update_active_button(self.current_view)
+        register_chatroom_listener(self._chatroom_listener)
 
     def _build_nav_sections(self):
         # Back button at the very top
@@ -68,15 +72,26 @@ class SidebarPage(tk.Frame):
         sidebar_footer(self, "v2.3.0 Desktop")
 
     # ------------------------------------------------------------------ #
+    def _update_peer_access(self, enabled: bool):
+        self._peers_enabled = enabled
+        peer_btn = self._buttons.get("pair")
+        if peer_btn:
+            peer_btn.configure(state="normal" if enabled else "disabled")
+
     def _update_active_button(self, active_view: str):
         for key, button in self._buttons.items():
             style = "Locomm.NavActive.TButton" if key == active_view else "Locomm.Nav.TButton"
             button.configure(style=style)
+        # Keep peers disabled when no active chatroom
+        if not self._peers_enabled:
+            self._update_peer_access(False)
 
     def _register_nav_button(self, key: str, button: ttk.Button):
         self._buttons[key] = button
 
     def _handle_nav_click(self, route_id: str):
+        if route_id == "pair" and not self._peers_enabled:
+            return
         self.set_active_view(route_id)
         if self.on_nav_select:
             self.on_nav_select(route_id)
@@ -104,4 +119,5 @@ class SidebarPage(tk.Frame):
         self._handle_nav_click("settings")
 
     def destroy(self):
+        unregister_chatroom_listener(self._chatroom_listener)
         super().destroy()
