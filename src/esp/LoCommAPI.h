@@ -102,3 +102,5 @@ void handle_SNOD_packet();
 
 //this fucntion handles an icomming pairing key
 void handle_EPAR_packet();
+
+void handle_SCAN_packet();

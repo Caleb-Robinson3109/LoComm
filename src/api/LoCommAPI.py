@@ -12,6 +12,7 @@ from api_funcs.LoCommSerailRead import serial_read
 import api_funcs.LoCommGlobals as LoCommGlobals
 from api_funcs.LoCommAPIStoreNameOnDevice import locomm_store_name_on_devide
 from api_funcs.LoCommAPIEnterPairingKey import locomm_api_enter_pairing_key
+from api_funcs.LoCommAPIScanForDevices import locomm_api_scan
 
 import threading
 import time
@@ -211,4 +212,4 @@ def scan_for_devices() -> list[tuple[str, int]]:
     global deviceless_mode
     if deviceless_mode:
         return [("Alice", 128), ("Bob", 82)]
-    return 
+    return scan_for_devices() 

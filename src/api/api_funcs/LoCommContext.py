@@ -10,6 +10,7 @@ class LoCommContext:
         self.DCAK_flag: bool = False
         self.SNAK_flag: bool = False
         self.EPAK_flag: bool = False
+        self.SCAK_flag: bool = False
         self.packet: bytes
 
         self.SEND_flag: bool = False

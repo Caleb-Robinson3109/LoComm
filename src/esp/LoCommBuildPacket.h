@@ -7,6 +7,7 @@ This file contianes the functions that build the packets like SACK, SEND, PACK, 
 
 #include "LoCommAPI.h"
 #include "LoCommLib.h"
+#include "globals.h"
 
 #include <stdint.h> //uint8_t, uint32_t, ...
 #include <stddef.h> //size_t
@@ -18,6 +19,7 @@ This file contianes the functions that build the packets like SACK, SEND, PACK, 
 #define SACK_SIZE 18
 #define SNAK_SIZE 16
 #define EPAK_SIZE 16
+#define SCAK_SIZE 48
 
 //builds the CACK (send ack) packet
 void build_CACK_packet();
@@ -37,5 +39,7 @@ void build_SACK_packet();
 void build_SNAK_packet();
 
 void build_EPAK_packet();
+
+void build_SCAK_packet();
 
 #endif

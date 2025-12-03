@@ -10,7 +10,7 @@
 extern Preferences storage;
 
 uint8_t deviceID = 255; 
-uint8_t deviceIDList[32]; 
+//uint8_t deviceIDList[32]; 
 bool deviceIDDataChanged = false;
 
 uint8_t lastDeviceMode = IDLE_MODE;

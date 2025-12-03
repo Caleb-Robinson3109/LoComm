@@ -136,6 +136,9 @@ void handle_message_from_computer(){
     else if(message_type_match(message_type, "EPAR", MESSAGE_TYPE_SIZE)){
         handle_EPAR_packet();
     }
+    else if(message_type_match(message_type, "SCAN", MESSAGE_TYPE_SIZE)){
+        handle_SCAN_packet();
+    }
     else{
         Serial.write("FAIL");
     }
@@ -461,5 +464,11 @@ void handle_EPAR_packet(){
 
     build_EPAK_packet();
     message_to_computer_flag = true;
-    message_from_device_flag = false;
+    message_from_computer_flag = false;
+}
+
+void handle_SCAN_packet(){
+    build_SCAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
 }
