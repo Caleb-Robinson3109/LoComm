@@ -10,7 +10,7 @@ def build_EPAR_packet(tag: int, key: str) -> bytes:
     start_bytes: int = 0x1234
     packet_size: int = 36
     message_type: bytes = b"EPAR"
-    message: bytes = struct.pack(">20s",key)
+    message: bytes = struct.pack(">20s",key.encode('ascii'))
 
     #computer the payload for the checksum
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag) + message 
@@ -36,7 +36,7 @@ def check_EPAK_packet(packet: bytes, tag: int) -> bool:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sIHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, crc, end_bytes = struct.unpack(">HH4sIHH", packet)
 
     if start_bytes != 0x1234:
         return f"start bytes error 0x1234, {start_bytes}", False
@@ -51,7 +51,7 @@ def check_EPAK_packet(packet: bytes, tag: int) -> bool:
         return f"tag mismatch {tag}, {ret_tag}", False
     
     
-    payload: bytes = struct.pack(">H4sIH", packet_size, message_type, tag, message)
+    payload: bytes = struct.pack(">HH4sI", start_bytes, packet_size, message_type, tag)
     crc_check: int = binascii.crc_hqx(payload, 0)
 
     if crc_check != crc:
@@ -84,7 +84,7 @@ def locomm_api_enter_pairing_key(key: str) -> bool:
         check_EPAK_packet(LoCommGlobals.context.packet, tag)
 
     except Exception as e:
-        print(f"password set error: {e}")
+        print(f"pairing key set error: {e}")
         LoCommGlobals.context.EPAK_flag = False
         return False
     

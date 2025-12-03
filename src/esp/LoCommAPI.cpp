@@ -353,6 +353,7 @@ void handle_message_to_device(){
       message_to_device_flag = false; // Completed transfer to Ethans code
       device_out_size = 0;
     }
+      //TODO add an else condition here that disgards the message if the attempt to add it to the tx array failed
         //TODO work with Ethan to intergrate his code in this to handle this message needing to go to the other device
     //}
 }

@@ -176,9 +176,6 @@ void setup() {
 
   //init the password and keys
   init_password();
-
-  //TODO TEMP - we will reset the pairing to set the private key to a known value 
-  sec_resetPairing(); 
 }
 
 void loop() {
