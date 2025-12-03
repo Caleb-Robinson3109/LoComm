@@ -81,7 +81,12 @@ class RealLoCommBackend:
     def send(self, message: TransportMessage) -> bool:
         send_fn = getattr(self.api, "send_message", None)
         if send_fn:
-            return bool(send_fn(message.sender, message.payload))
+            # LoCommAPI expects sender_name, receiver_id, message
+            try:
+                return bool(send_fn(message.sender, 0, message.payload))
+            except TypeError:
+                # Fallback in case signature differs
+                return bool(send_fn(message.sender, message.payload))
         return False
 
     def receive(self) -> Optional[TransportMessage]:

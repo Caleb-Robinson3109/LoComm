@@ -228,6 +228,12 @@ class PeersPage(BasePage):
         self._render_device_list()
 
     def _refresh_from_session(self):
+        # Only repopulate peers when a chatroom is active
+        if not get_active_code():
+            self.devices.clear()
+            self._render_device_list()
+            return
+
         if self.session and getattr(self.session, "device_id", None) and getattr(self.session, "device_name", None):
             self._upsert_device(
                 self.session.device_name,
