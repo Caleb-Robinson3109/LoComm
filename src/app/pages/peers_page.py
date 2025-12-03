@@ -19,6 +19,7 @@ from .chat_page import ChatWindow
 
 
 from .manual_pairing_window import ManualPairingWindow
+from utils.chatroom_registry import get_active_code, register_chatroom_listener, unregister_chatroom_listener
 
 class PeersPage(BasePage):
     """Devices page with chat-style clean, simple design."""
@@ -36,6 +37,7 @@ class PeersPage(BasePage):
         self.is_scanning = False
         self._scan_timer_id: Optional[str] = None
         self._manual_pairing_window: Optional[ManualPairingWindow] = None
+        self._chatroom_listener: Optional[Callable[[str | None], None]] = None
         
         self.devices: dict[str, dict] = {}  # Map of normalized id -> metadata
         self.device_list_container: Optional[tk.Frame] = None
@@ -54,6 +56,7 @@ class PeersPage(BasePage):
 
         # Reflect whatever the store currently knows about the connection state
         self._apply_snapshot(self.ui_store.get_device_status())
+        self._register_chatroom_listener()
 
     # ------------------------------------------------------------------ #
     # Navigation helpers
@@ -255,6 +258,10 @@ class PeersPage(BasePage):
             self._open_chat_window(device)
             return
 
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before pairing with peers.")
+            return
+
         self._update_device_status(device["raw_id"], "Connecting")
 
         def _callback(success: bool, error: Optional[str] = None):
@@ -304,6 +311,9 @@ class PeersPage(BasePage):
     # ------------------------------------------------------------------ #
 
     def _show_manual_pairing_modal(self):
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before pairing with peers.")
+            return
         if self._manual_pairing_window:
             scaffold = getattr(self._manual_pairing_window, "window_scaffold", None)
             if scaffold and getattr(scaffold, "toplevel", None) and scaffold.toplevel.winfo_exists():
@@ -321,6 +331,8 @@ class PeersPage(BasePage):
         )
 
     def _handle_manual_pair(self, name: str, device_id: str):
+        if not get_active_code():
+            return
         entry = self._upsert_device(name, device_id, status="Available", source="manual")
         if entry:
             self._connect_and_chat(entry)
@@ -388,6 +400,19 @@ class PeersPage(BasePage):
         self.ui_store.unsubscribe_device_status(self._device_subscription)
         self._device_subscription = None
 
+    def _register_chatroom_listener(self):
+        if self._chatroom_listener is not None:
+            return
+
+        def _listener(code: str | None):
+            if not code:
+                # Clear peers when no chatroom is active
+                self.devices.clear()
+                self._render_device_list()
+
+        self._chatroom_listener = _listener
+        register_chatroom_listener(self._chatroom_listener)
+
     def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
         """Right now we just keep the top-bar status aligned; no local list."""
         if not snapshot:
@@ -398,6 +423,8 @@ class PeersPage(BasePage):
     def destroy(self):
         self._cancel_scan_timer()
         self._unsubscribe_from_store()
+        if self._chatroom_listener:
+            unregister_chatroom_listener(self._chatroom_listener)
         return super().destroy()
 
     def _cancel_scan_timer(self):
