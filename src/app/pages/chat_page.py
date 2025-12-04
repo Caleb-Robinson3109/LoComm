@@ -6,6 +6,16 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, Optional
+import threading
+import sys
+import os
+
+# Ensure API path is available for receive_message
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../api")))
+try:
+    from LoCommAPI import receive_message
+except Exception:
+    receive_message = None
 import time
 
 # Mock bridge removed
@@ -49,6 +59,8 @@ class ChatWindow(tk.Toplevel):
         self.local_device_name = local_device_name or "Orion"
         self._on_close_callback = on_close_callback
         self._on_send_callback = on_send_callback
+        self._stop_event = threading.Event()
+        self._chat_thread = threading.Thread(target=self._chat_loop, daemon=True)
         self.title("Chat")
         self._apply_default_geometry()
         self.resizable(True, True)
@@ -64,6 +76,7 @@ class ChatWindow(tk.Toplevel):
 
         ChatWindow._open_windows[self.peer_name] = self
         self._has_history = False
+        self._chat_thread.start()
         self._notify_global_listeners()
 
     def _apply_default_geometry(self):
@@ -315,6 +328,9 @@ class ChatWindow(tk.Toplevel):
 
         # Closing a chat should not disconnect the device; just update status
         get_status_manager().update_status("Chat closed")
+        self._stop_event.set()
+        if self._chat_thread and self._chat_thread.is_alive():
+            self._chat_thread.join(timeout=0.5)
         if self._on_close_callback:
             try:
                 self._on_close_callback()
@@ -355,6 +371,24 @@ class ChatWindow(tk.Toplevel):
                 cb(open_state)
             except Exception:
                 pass
+
+    def _chat_loop(self):
+        """Lightweight thread tied to this chat window; polls for inbound messages."""
+        while not self._stop_event.is_set():
+            if receive_message is None:
+                self._stop_event.wait(timeout=1.0)
+                continue
+            try:
+                sender, payload = receive_message()
+                if self._stop_event.is_set():
+                    break
+                if sender and payload:
+                    self._add_message(payload, sender=sender, is_self=False)
+            except Exception:
+                self._stop_event.wait(timeout=1.0)
+            else:
+                # Avoid tight loop when no data
+                self._stop_event.wait(timeout=0.2)
 
     def _widgets_alive(self) -> bool:
         try:
