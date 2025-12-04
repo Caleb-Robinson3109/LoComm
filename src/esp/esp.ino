@@ -256,6 +256,7 @@ void loop() {
   static uint32_t lastPrintedDeviceIDTime = millis();
   if (millis() - lastPrintedDeviceIDTime > 5000) {
     lastPrintedDeviceIDTime = millis();
+    display.setCursor(0,0);
     display.clearDisplay();
     display.printf("Device ID: %d\n", deviceID);
     display.display();
