@@ -83,7 +83,7 @@ class RealLoCommBackend:
         if send_fn:
             # LoCommAPI expects sender_name, receiver_id, message
             try:
-                return bool(send_fn(message.sender, 0, message.payload))
+                return bool(send_fn(message.sender, 255, message.payload))
             except TypeError:
                 # Fallback in case signature differs
                 return bool(send_fn(message.sender, message.payload))

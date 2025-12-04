@@ -379,6 +379,7 @@ class ChatWindow(tk.Toplevel):
                 self._stop_event.wait(timeout=1.0)
                 continue
             try:
+                self._add_message("checking for received data", sender="Debug", is_self=False)
                 sender, payload = receive_message()
                 if self._stop_event.is_set():
                     break
@@ -388,6 +389,7 @@ class ChatWindow(tk.Toplevel):
                 self._stop_event.wait(timeout=1.0)
             else:
                 # Avoid tight loop when no data
+                
                 self._stop_event.wait(timeout=0.2)
 
     def _widgets_alive(self) -> bool:
