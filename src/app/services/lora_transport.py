@@ -171,6 +171,7 @@ class LoCommTransport:
             logger.debug("[LoRaTransport] _rx_loop started on thread %s", rx_thread_id)
 
         while not self._stop_event.is_set():
+            continue
             try:
                 message = self._backend.receive()
                 if message and self.on_receive:

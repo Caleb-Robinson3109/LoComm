@@ -379,11 +379,15 @@ class ChatWindow(tk.Toplevel):
                 self._stop_event.wait(timeout=1.0)
                 continue
             try:
-                self._add_message("checking for received data", sender="Debug", is_self=False)
+                #self._add_message("checking for received data", sender="Debug", is_self=False)
+                print("starting receive_message call")
                 sender, payload = receive_message()
+                print(f"Finished receive_message call with payload={payload} and sender={sender}")
                 if self._stop_event.is_set():
+                    print("stop event is set, exiting chat loop")
                     break
                 if sender and payload:
+                    print("adding message to chat")
                     self._add_message(payload, sender=sender, is_self=False)
             except Exception:
                 self._stop_event.wait(timeout=1.0)
