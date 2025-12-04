@@ -252,6 +252,14 @@ void loop() {
 
 
   //-------------------------------------------------------Device ID management ----------------------------------------------------
+
+  static uint32_t lastPrintedDeviceIDTime = millis();
+  if (millis() - lastPrintedDeviceIDTime > 5000) {
+    lastPrintedDeviceIDTime = millis();
+    display.clearDisplay();
+    display.printf("Device ID: %d\n", deviceID);
+    display.display();
+  }
   
 
   static uint32_t deviceIDAcquireStartTime = millis();
