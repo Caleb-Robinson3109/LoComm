@@ -38,6 +38,7 @@ class PeersPage(BasePage):
         self._scan_timer_id: Optional[str] = None
         self._manual_pairing_window: Optional[ManualPairingWindow] = None
         self._chatroom_listener: Optional[Callable[[str | None], None]] = None
+        self._chatroom_code: Optional[str] = get_active_code()
         
         self.devices: dict[str, dict] = {}  # Map of normalized id -> metadata
         self.device_list_container: Optional[tk.Frame] = None
@@ -423,10 +424,19 @@ class PeersPage(BasePage):
             return
 
         def _listener(code: str | None):
-            if not code:
-                # Clear peers when no chatroom is active
+            # Clear peers whenever chatroom is cleared or changed
+            normalized_new = (code or "").strip()
+            if normalized_new != (self._chatroom_code or ""):
+                self._chatroom_code = normalized_new or None
                 self.devices.clear()
                 self._render_device_list()
+                # Also close any open manual pairing window when chatroom changes
+                if self._manual_pairing_window:
+                    try:
+                        self._manual_pairing_window.close()
+                    except Exception:
+                        pass
+                    self._manual_pairing_window = None
 
         self._chatroom_listener = _listener
         register_chatroom_listener(self._chatroom_listener)
