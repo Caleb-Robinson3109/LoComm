@@ -29,32 +29,16 @@ class SessionStore:
         self.base_dir = Path.home() / ".locomm"
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.path = self.base_dir / "session.json"
+        # Do not persist sessions across app restarts; clear any previous cache
+        self.clear()
 
     def load(self) -> Optional[dict]:
-        if not self.path.exists():
-            return None
-        try:
-            with self.path.open("r", encoding="utf-8") as handle:
-                return json.load(handle)
-        except (OSError, json.JSONDecodeError):
-            return None
+        # Persistence disabled by design
+        return None
 
     def save(self, session: Session) -> None:
-        local_name = getattr(session, "local_device_name", "Orion") or "Orion"
-        if local_name == "This Device":
-            local_name = "Orion"
-        data = {
-            "device_id": session.device_id,
-            "device_name": session.device_name,
-            "local_device_name": local_name,
-            "paired_at": session.paired_at,
-            "transport_profile": getattr(session, "transport_profile", "auto"),
-        }
-        try:
-            with self.path.open("w", encoding="utf-8") as handle:
-                json.dump(data, handle)
-        except OSError:
-            pass
+        # Persistence disabled by design
+        self.clear()
 
     def clear(self) -> None:
         try:
@@ -106,17 +90,8 @@ class AppController:
     # ------------------------------------------------------------------ #
     # Persistence helpers
     def _hydrate_session_from_store(self) -> None:
-        cached = self.store.load()
-        if not cached:
-            return
-        self.session.device_id = cached.get("device_id", "")
-        self.session.device_name = cached.get("device_name", "")
-        local_name = cached.get("local_device_name") or "Orion"
-        if local_name == "This Device":
-            local_name = "Orion"
-        self.session.local_device_name = local_name
-        self.session.paired_at = cached.get("paired_at", 0.0)
-        self.session.transport_profile = cached.get("transport_profile", "auto")
+        # Persistence disabled; nothing to hydrate
+        return
 
     def _persist_session(self) -> None:
         if self.session.device_id and self.session.device_name:
