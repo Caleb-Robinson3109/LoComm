@@ -270,17 +270,22 @@ class AppController:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
         sender = getattr(self.session, 'local_device_name', None) or "Orion"
         resolved_receiver: Optional[int] = None
-        if receiver_id is not None:
+
+        target_id = receiver_id if receiver_id is not None else getattr(self.session, "device_id", None)
+        if target_id is not None:
             try:
-                resolved_receiver = int(str(receiver_id).strip())
+                resolved_receiver = int(str(target_id).strip())
             except (TypeError, ValueError):
-                self.logger.warning("Invalid receiver_id provided: %s", receiver_id)
+                self.logger.warning("Invalid receiver_id provided: %s", target_id)
                 resolved_receiver = None
+
+        if resolved_receiver is None:
+            raise ValueError("Receiver ID required to send messages when tuned to a device")
 
         metadata = {
             "profile": self.session.transport_profile or self.transport.profile,
         }
-        log_transport_event("tx", {"sender": sender, "message": message, "metadata": metadata})
+        log_transport_event("tx", {"sender": sender, "message": message, "metadata": metadata, "receiver": resolved_receiver})
         self.transport.send(sender, message, receiver_id=resolved_receiver, metadata=metadata)
 
     # ------------------------------------------------------------------ #

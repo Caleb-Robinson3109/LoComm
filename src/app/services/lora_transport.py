@@ -138,6 +138,11 @@ class LoCommTransport:
                 self.on_status("Not connected")
             return
 
+        if receiver_id is None:
+            if self.on_status:
+                self.on_status("Receiver ID required")
+            return
+
         message = TransportMessage(
             sender=name,
             payload=text,
@@ -176,7 +181,6 @@ class LoCommTransport:
             logger.debug("[LoRaTransport] _rx_loop started on thread %s", rx_thread_id)
 
         while not self._stop_event.is_set():
-            continue
             try:
                 message = self._backend.receive()
                 if message and self.on_receive:

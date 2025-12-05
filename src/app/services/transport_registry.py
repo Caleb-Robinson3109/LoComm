@@ -84,9 +84,12 @@ class RealLoCommBackend:
             # LoCommAPI expects sender_name, receiver_id, message
             receiver = message.receiver_id
             try:
-                receiver = int(receiver) if receiver is not None else 255
+                receiver = int(receiver) if receiver is not None else None
             except (TypeError, ValueError):
-                receiver = 255
+                receiver = None
+
+            if receiver is None:
+                return False
 
             try:
                 return bool(send_fn(message.sender, receiver, message.payload))
