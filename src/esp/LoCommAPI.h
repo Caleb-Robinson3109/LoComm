@@ -104,3 +104,5 @@ void handle_SNOD_packet();
 void handle_EPAR_packet();
 
 void handle_SCAN_packet();
+
+void handle_GPKY_packet();

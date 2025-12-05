@@ -13,6 +13,7 @@ import api_funcs.LoCommGlobals as LoCommGlobals
 from api_funcs.LoCommAPIStoreNameOnDevice import locomm_store_name_on_devide
 from api_funcs.LoCommAPIEnterPairingKey import locomm_api_enter_pairing_key
 from api_funcs.LoCommAPIScanForDevices import locomm_api_scan
+from api_funcs.LoCommAPIGetPairingKey import locomm_api_get_pairing_key
 
 import threading
 import time
@@ -212,4 +213,10 @@ def scan_for_devices() -> list[tuple[str, int]]:
         return [("Alice", 128), ("Bob", 82)]
     return locomm_api_scan() 
 
+#wil return the pairing key if one exists if not then returns non
+def get_pairing_key() -> str | None:
+    global deviceless_mode
+    if deviceless_mode:
+        return None
+    return locomm_api_get_pairing_key()
 

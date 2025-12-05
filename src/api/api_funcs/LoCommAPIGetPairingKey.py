@@ -6,7 +6,7 @@ from api_funcs.LoCommContext import LoCommContext
 import api_funcs.LoCommGlobals as LoCommGlobals
 from api_funcs.LoCommDebugPacket import print_packet_debug
 
-def build_SCAN_packet(tag: int) -> bytes:
+def build_GPKY_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
     packet_size: int = 16
     message_type: bytes = b"SCAN"
@@ -26,7 +26,7 @@ def build_SCAN_packet(tag: int) -> bytes:
                                 end_bytes)
     return packet
 
-def check_SCAK_packet(packet: bytes, tag: int) -> bool:
+def check_GPAK_packet(packet: bytes, tag: int) -> bool:
     start_bytes: int
     packet_size: int
     message_type: bytes
@@ -35,7 +35,7 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s32sIHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s21sIHH", packet)
 
     if start_bytes != 0x1234:
         return f"start bytes error 0x1234, {start_bytes}", False
@@ -43,14 +43,14 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
     if packet_size != packet_size:
         return f"packet size error 14, {packet_size}", False
     
-    if message_type != b"SCAK":
-        return f"message type error SCAN, {message_type}", False
+    if message_type != b"GPAK":
+        return f"message type error GPAK, {message_type}", False
     
     if ret_tag != tag:
         return f"tag mismatch {tag}, {ret_tag}", False
     
     
-    payload: bytes = struct.pack(">HH4sI32s", start_bytes, packet_size, message_type, tag, message)
+    payload: bytes = struct.pack(">HH4sI21s", start_bytes, packet_size, message_type, tag, message)
     crc_check: int = binascii.crc_hqx(payload, 0)
 
     if crc_check != crc:
@@ -61,45 +61,41 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
     
     return "no error", True 
 
-def locomm_api_scan() -> list:
+def locomm_api_get_pairing_key() -> list:
     try:
         tag: int = random.randint(0, 0xFFFFFFFF)
-        packet = build_SCAN_packet(tag)
+        packet = build_GPKY_packet(tag)
         print_packet_debug(packet, True)        
         LoCommGlobals.serial_conn.write(packet)
         LoCommGlobals.serial_conn.flush()
 
         #wait for responce from LCC
-        while(not LoCommGlobals.context.SCAK_flag):
+        while(not LoCommGlobals.context.GPAK_flag):
             pass
 
         print_packet_debug(LoCommGlobals.context.packet, False)
-        check_SCAK_packet(LoCommGlobals.context.packet, tag)
+        check_GPAK_packet(LoCommGlobals.context.packet, tag)
 
     except Exception as e:
         print(f"scan error: {e}")
-        LoCommGlobals.context.SCAK_flag = False
-        return []
+        LoCommGlobals.context.GPAK_flag = False
+        return None
     
     start_bytes: int
     packet_size: int
     message_type: bytes
     ret_tag: int
-    message: bytes
+    key_exists: bytes
+    pairing_key: bytes
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s32sIHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, key_exists, pairing_key, crc, end_bytes = struct.unpack(">HH4s1s20sIHH", packet)
 
-    devices = []
-
-    for byte_index, byte in enumerate(message):
-        for bit_index in range(8):
-            bit = (byte >> (7 - bit_index)) & 1
-            if bit == 1:
-                index = byte_index * 8 + bit_index
-                devices.append((f"Device{index}", index))
-
+    if(key_exists == 0x00):
+        LoCommGlobals.context.GPAK_flag = False
+        return None
      
-    LoCommGlobals.context.SCAK_flag = False
-    return devices
+    LoCommGlobals.context.GPAK_flag = False
+    key = pairing_key.decode('ascii')
+    return key
