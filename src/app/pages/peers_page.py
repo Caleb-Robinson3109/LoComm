@@ -299,12 +299,13 @@ class PeersPage(BasePage):
     def _open_chat_window(self, device: dict):
         master = self.winfo_toplevel()
         local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        receiver_id = device.get("raw_id")
         ChatWindow(
             master,
             peer_name=device["name"],
             local_device_name=local_name,
             on_close_callback=lambda raw=device["raw_id"]: self._handle_chat_closed(raw),
-            on_send_callback=self._send_chat_message,
+            on_send_callback=lambda text, rid=receiver_id: self._send_chat_message(text, rid),
         )
 
     def _handle_chat_closed(self, raw_id: Optional[str] = None):
@@ -314,11 +315,11 @@ class PeersPage(BasePage):
             if normalized in self.devices:
                 self._update_device_status(normalized, "Available")
 
-    def _send_chat_message(self, text: str) -> bool:
+    def _send_chat_message(self, text: str, receiver_id: str | None = None) -> bool:
         """Relay chat message through controller transport."""
         if self.controller:
             try:
-                self.controller.send_message(text)
+                self.controller.send_message(text, receiver_id)
                 return True
             except Exception:
                 messagebox.showerror("Send Failed", "Unable to send message to device.", parent=self.winfo_toplevel())

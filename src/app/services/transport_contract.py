@@ -39,6 +39,7 @@ class TransportMessage:
 
     sender: str
     payload: str
+    receiver_id: Optional[int] = None
     timestamp: float = field(default_factory=lambda: time.time())
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -47,6 +48,7 @@ class TransportMessage:
             "sender": self.sender,
             "payload": self.payload,
             "timestamp": self.timestamp,
+            "receiver_id": self.receiver_id,
             "metadata": self.metadata,
         }
 
@@ -55,6 +57,7 @@ class TransportMessage:
         return cls(
             sender=data.get("sender", ""),
             payload=data.get("payload", ""),
+            receiver_id=data.get("receiver_id"),
             timestamp=float(data.get("timestamp", time.time())),
             metadata=data.get("metadata") or {},
         )

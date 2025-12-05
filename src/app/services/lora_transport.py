@@ -131,14 +131,19 @@ class LoCommTransport:
             # CRITICAL FIX: Queue status callbacks on main thread to prevent Tk violations
             self.root.after(0, lambda: self._safe_status_callback("Disconnected"))
 
-    def send(self, name: str, text: str, metadata: Optional[dict] = None) -> None:
+    def send(self, name: str, text: str, *, receiver_id: Optional[int] = None, metadata: Optional[dict] = None) -> None:
         """Send message to connected device."""
         if not self.running:
             if self.on_status:
                 self.on_status("Not connected")
             return
 
-        message = TransportMessage(sender=name, payload=text, metadata=metadata or {})
+        message = TransportMessage(
+            sender=name,
+            payload=text,
+            receiver_id=receiver_id,
+            metadata=metadata or {},
+        )
         try:
             success = self._backend.send(message)
             if not success and self.on_status:

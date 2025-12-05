@@ -266,14 +266,22 @@ class AppController:
             log_transport_event("disconnect", {"reason": "user"})
             self._emit_status("Disconnected")
 
-    def send_message(self, message: str) -> None:
+    def send_message(self, message: str, receiver_id: Optional[int | str] = None) -> None:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
         sender = getattr(self.session, 'local_device_name', None) or "Orion"
+        resolved_receiver: Optional[int] = None
+        if receiver_id is not None:
+            try:
+                resolved_receiver = int(str(receiver_id).strip())
+            except (TypeError, ValueError):
+                self.logger.warning("Invalid receiver_id provided: %s", receiver_id)
+                resolved_receiver = None
+
         metadata = {
             "profile": self.session.transport_profile or self.transport.profile,
         }
         log_transport_event("tx", {"sender": sender, "message": message, "metadata": metadata})
-        self.transport.send(sender, message, metadata=metadata)
+        self.transport.send(sender, message, receiver_id=resolved_receiver, metadata=metadata)
 
     # ------------------------------------------------------------------ #
     # Transport callbacks

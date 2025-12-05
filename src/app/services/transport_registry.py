@@ -82,8 +82,14 @@ class RealLoCommBackend:
         send_fn = getattr(self.api, "send_message", None)
         if send_fn:
             # LoCommAPI expects sender_name, receiver_id, message
+            receiver = message.receiver_id
             try:
-                return bool(send_fn(message.sender, 255, message.payload))
+                receiver = int(receiver) if receiver is not None else 255
+            except (TypeError, ValueError):
+                receiver = 255
+
+            try:
+                return bool(send_fn(message.sender, receiver, message.payload))
             except TypeError:
                 # Fallback in case signature differs
                 return bool(send_fn(message.sender, message.payload))
