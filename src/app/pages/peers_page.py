@@ -5,6 +5,9 @@ import tkinter as tk
 from typing import Optional, Callable
 
 from tkinter import messagebox
+import threading
+import sys
+import os
 
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils
 from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
@@ -20,6 +23,13 @@ from .chat_page import ChatWindow
 
 from .manual_pairing_window import ManualPairingWindow
 from utils.chatroom_registry import get_active_code, register_chatroom_listener, unregister_chatroom_listener
+
+# Ensure API module path is available
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../api")))
+try:
+    from LoCommAPI import scan_for_devices
+except Exception:
+    scan_for_devices = None
 
 class PeersPage(BasePage):
     """Devices page with chat-style clean, simple design."""
@@ -362,6 +372,14 @@ class PeersPage(BasePage):
         if self.is_scanning:
             return
 
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before scanning for peers.")
+            return
+
+        if scan_for_devices is None:
+            messagebox.showerror("Scan Unavailable", "Device scan API is not available.", parent=self.winfo_toplevel())
+            return
+
         self.is_scanning = True
 
         if self.controller:
@@ -369,15 +387,26 @@ class PeersPage(BasePage):
 
         self._set_stage(DeviceStage.SCANNING)
 
-        # In a real app, kick off an async transport scan here and
-        # call _finish_scan from that callback. For now, just simulate
-        # scan completion with no fake devices.
-        self._cancel_scan_timer()
-        self._scan_timer_id = self.after(2000, self._finish_scan)
+        def _worker():
+            try:
+                devices = scan_for_devices() or []
+            except Exception:
+                devices = []
+            self.after(0, lambda: self._finish_scan(devices))
 
-    def _finish_scan(self):
-        """Complete scan without adding any mock devices."""
-        # In production, you would refresh from real device data here.
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _finish_scan(self, devices: list[tuple[str, int]] | None = None):
+        """Complete scan and populate device list."""
+        devices = devices or []
+
+        # Replace device list with scan results
+        self.devices.clear()
+        for name, device_id in devices:
+            self._upsert_device(name, str(device_id), status="Available", source="scan", render=False)
+
+        self._render_device_list()
+
         self._set_stage(DeviceStage.READY)
         self.is_scanning = False
 
