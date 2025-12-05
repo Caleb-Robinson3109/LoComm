@@ -325,10 +325,11 @@ void build_GPAK_packet(){
     computer_out_packet[11]  = computer_in_packet[11];
 
     if(sec_isPaired()){
-        computer_out_packet[12] = 0xFF;
+       
         char key_buf[21];
         bool okay = sec_display_key(&key_buf[0], 21);
-        if(okay){
+        if(okay){} 
+            computer_out_packet[12] = 0xFF;
             for(int i = 0; i < 20; i++){
                 computer_out_packet[12 + i] = key_buf[i];
             }
