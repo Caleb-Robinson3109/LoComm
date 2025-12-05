@@ -472,3 +472,9 @@ void handle_SCAN_packet(){
     message_to_computer_flag = true;
     message_from_computer_flag = false;
 }
+
+void handle_GPKY_packet(){
+    build_GPAK_packet();
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
+}

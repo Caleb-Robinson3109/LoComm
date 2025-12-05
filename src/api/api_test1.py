@@ -18,7 +18,7 @@ while(not connect_to_device()):
 
 enter_password("password")
 store_name_on_device("Alice")
-print(f"{scan_for_devices()}")
+#print(f"{scan_for_devices()}")
 
 t =threading.Thread(target=recv_thread)
 t.start()
@@ -31,6 +31,6 @@ while True:
         disconnect_from_device()
         break
     else:
-        send_message("Alice", 0 , cmd)
+        send_message("Alice", 255 , cmd)
 
 t.join()

@@ -302,3 +302,53 @@ void build_SCAK_packet(){
     computer_out_size = SCAK_SIZE;
    
 }
+
+void build_GPAK_packet(){
+     //start bytes
+    computer_out_packet[0] = 0x12;
+    computer_out_packet[1] = 0x34;
+
+    //packet size
+    computer_out_packet[2] = (SCAK_SIZE >> 8) & 0xFF; 
+    computer_out_packet[3] = SCAK_SIZE & 0xFF;
+
+    //SCAK
+    computer_out_packet[4] = 'G';
+    computer_out_packet[5] = 'P';
+    computer_out_packet[6] = 'A';
+    computer_out_packet[7] = 'K';
+
+    //tag 4 bytes, big-endian
+    computer_out_packet[8]  = computer_in_packet[8];
+    computer_out_packet[9]  = computer_in_packet[9];
+    computer_out_packet[10]  = computer_in_packet[10];
+    computer_out_packet[11]  = computer_in_packet[11];
+
+    if(sec_isPaired()){
+        computer_out_packet[12] = 0xFF;
+        char key_buf[21];
+        bool okay = sec_display_key(&key_buf[0], 21);
+        if(okay){
+            for(int i = 0; i < 20; i++){
+                computer_out_packet[12 + i] = key_buf[i];
+            }
+        }
+        else{
+            computer_out_packet[12] = 0x00;
+        } 
+    }
+    else{
+        computer_out_packet[12] = 0x00;
+    }
+
+    //compute CRC of Message packet size + Type + Tag (10 bytes total)
+    //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
+    uint16_t crc = crc_16(&computer_out_packet[2], 31);
+    computer_out_packet[33] = (crc >> 8) & 0xFF;
+    computer_out_packet[34] = crc & 0xFF;
+
+    //end bytes
+    computer_out_packet[35] = 0x56;
+    computer_out_packet[36] = 0x78;
+    computer_out_size = GPAK_SIZE;  
+}
