@@ -1351,7 +1351,7 @@ bool sendDeviceIDTableRequestFunc(uint8_t targetDeviceID) {
 bool sendDeviceIDResponseFunc() {
   //fill plaintext buffer
   uint8_t pBuf[5]; 
-  uint32_t t = millis();
+  uint32_t t = millis() / 1000;
   pBuf[0] = deviceID;
   pBuf[1] = t >> 24;
   pBuf[2] = (t >> 16) & 0xFF;
