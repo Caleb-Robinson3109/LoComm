@@ -232,7 +232,7 @@ class Spacing:
     MESSAGE_GROUP_GAP = Space.XXS
     MESSAGE_MARGIN = (Space.SM, Space.XXS)
     CHAT_AREA_PADDING = Space.MD
-    SIDEBAR_WIDTH = int(260 * 0.85 * 0.9 * 0.92 * 0.9)
+    SIDEBAR_WIDTH = 0
     HEADER_HEIGHT = 64
     XXS = Space.XXS
     XS = Space.XXS
@@ -268,7 +268,7 @@ class AppConfig:
     STATUS_READY = "Ready"
     STATUS_TRANSPORT_ERROR = "Transport error"
 
-    WINDOW_WIDTH = int(875)
+    WINDOW_WIDTH = int(787)  # restored main frame width
     WINDOW_HEIGHT = int(650)
     MIN_WINDOW_WIDTH = WINDOW_WIDTH
     MIN_WINDOW_HEIGHT = WINDOW_HEIGHT
@@ -285,3 +285,6 @@ class AppConfig:
     NOTIFICATION_MESSAGE_PATTERN = "Message from {sender}"
     WINDOW_WIDTH_RATIO = 0.595502
     WINDOW_HEIGHT_RATIO = 0.736144
+
+
+Spacing.SIDEBAR_WIDTH = 170

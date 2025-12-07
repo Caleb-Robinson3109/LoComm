@@ -3,8 +3,7 @@ from tkinter import ttk
 from dataclasses import dataclass
 from typing import Callable, List
 
-from utils.design_system import AppConfig, Colors, Spacing, Space, Typography, DesignUtils, Palette
-from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
+from utils.design_system import AppConfig, Colors, Spacing, Space, Typography
 from utils.chatroom_registry import format_chatroom_code, register_chatroom_listener, unregister_chatroom_listener
 
 from .settings_page import SettingsPage
@@ -12,9 +11,9 @@ from .home_page import HomePage
 from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
-from .chatroom_window import ChatroomWindow
+from .chatroom_page import ChatroomPage
 from .chat_page import ChatWindow
-from .sidebar_page import SidebarPage
+from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
 
@@ -58,13 +57,15 @@ class MainFrame(ttk.Frame):
         self._current_route: str | None = None
 
         self._view_manager.set_protected_views({"home"})
-        self.ui_store = get_ui_store()
         self.routes: List[RouteConfig] = self._build_routes()
         self._register_view_factories()
 
         # Layout and device status subscription
+        self._sidebar_default_width = Spacing.SIDEBAR_WIDTH
+        self._sidebar_min_width = max(int(self._sidebar_default_width * 0.5), 174)
+        self._sidebar_max_width = int(self._sidebar_default_width * 2.2)
+        self._sidebar_current_width = self._sidebar_default_width
         self._create_layout()
-        self.ui_store.subscribe_device_status(self._handle_device_snapshot)
 
         # Start with home view without pushing history
         self._show_home_view()
@@ -84,7 +85,7 @@ class MainFrame(ttk.Frame):
             RouteConfig(
                 "chatroom",
                 "Chatroom",
-                lambda parent, ctx=ctx: ChatroomWindow(parent, self._handle_chatroom_success),
+                lambda parent, ctx=ctx: ChatroomPage(parent, self._handle_chatroom_success),
             ),
             RouteConfig(
                 "pair",
@@ -118,26 +119,37 @@ class MainFrame(ttk.Frame):
         body = tk.Frame(main_container, bg=Colors.BG_MAIN)
         body.pack(fill=tk.BOTH, expand=True)
         body.grid_rowconfigure(0, weight=1)
-        body.grid_columnconfigure(1, weight=1)
+        body.grid_columnconfigure(0, weight=0, minsize=self._sidebar_current_width)
+        body.grid_columnconfigure(1, weight=0)
+        body.grid_columnconfigure(2, weight=1)
+        self._body_container = body
 
         # Left sidebar
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
-        self.sidebar = SidebarPage(
+        self.sidebar = Sidebar(
             body,
             nav_items=nav_items,
             on_nav_select=self.navigate_to,
             on_theme_toggle=self.on_theme_toggle,
             on_back=self.go_back,
+            width=Spacing.SIDEBAR_WIDTH,
         )
         self.sidebar.grid(row=0, column=0, sticky="ns")
         self.sidebar.grid_propagate(False)
+        self.sidebar.configure(width=self._sidebar_current_width)
+
+        self.sidebar_handle = tk.Frame(body, width=10, bg=Colors.BG_ELEVATED, cursor="sb_h_double_arrow")
+        self.sidebar_handle.grid(row=0, column=1, sticky="ns")
+        self.sidebar_handle.bind("<ButtonPress-1>", self._start_sidebar_resize)
+        self.sidebar_handle.bind("<B1-Motion>", self._resize_sidebar)
+        self.sidebar_handle.bind("<ButtonRelease-1>", self._stop_sidebar_resize)
 
         # Right content area
         self.content_frame = tk.Frame(body, bg=Colors.BG_MAIN)
         content_pad = int(Spacing.PAGE_PADDING / 2)
         self.content_frame.grid(
             row=0,
-            column=1,
+            column=2,
             sticky="nsew",
             padx=(content_pad, 0),
             pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING),
@@ -193,7 +205,7 @@ class MainFrame(ttk.Frame):
         )
         bar.pack(fill=tk.X, side=tk.TOP)
 
-        bar.grid_columnconfigure(0, weight=1)
+        bar.grid_columnconfigure(0, weight=0)
         bar.grid_columnconfigure(1, weight=1)
         bar.grid_columnconfigure(2, weight=0)
 
@@ -210,46 +222,24 @@ class MainFrame(ttk.Frame):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         )
-        self.local_device_label.pack(side=tk.LEFT, padx=(Space.BASE * 5, Space.XS))
+        self.local_device_label.grid(row=0, column=0, sticky="w", padx=(Space.BASE * 5, Space.XS))
 
         self._chatroom_listener = None
-        self.status_badge = tk.Label(
+
+        self.chatroom_status_badge = tk.Label(
             info_wrap,
-            text="Disconnected",
+            text="None",
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
-        self.status_badge.pack(side=tk.LEFT, padx=(0, Space.SM))
+        self.chatroom_status_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, Space.SM))
 
         center_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
-        center_wrap.grid(row=0, column=1, sticky="ew", padx=Space.SM)
+        center_wrap.grid(row=0, column=1, sticky="nsew")
         center_wrap.grid_columnconfigure(0, weight=1)
-
-        badge_pad = {"padx": (0, Space.XXS), "pady": (0, 0)}
-        self.chatroom_badge = tk.Label(
-            center_wrap,
-            text="Chatroom: None",
-            bg=Colors.STATE_ERROR,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
-            padx=Spacing.SM,
-            pady=int(Spacing.XS / 2),
-        )
-        self.chatroom_badge.grid(row=0, column=0, sticky="w", **badge_pad)
-
-        self.chat_badge = tk.Label(
-            center_wrap,
-            text="Chat: Idle",
-            bg=Colors.TEXT_MUTED,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
-            padx=Spacing.SM,
-            pady=int(Spacing.XS / 2),
-        )
-        self.chat_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, 0))
 
         self.chatroom_label = tk.Label(
             center_wrap,
@@ -260,16 +250,27 @@ class MainFrame(ttk.Frame):
             anchor="center",
             justify="center",
         )
-        self.chatroom_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(Space.XXS, 0))
+        self.chatroom_label.grid(row=0, column=0, sticky="ew", pady=(Space.XXS, 0))
 
-        brand_label = tk.Label(
-            bar,
-            text="Locomm",
-            bg=Colors.BG_ELEVATED,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
+        status_column = tk.Frame(bar, bg=Colors.BG_ELEVATED)
+        status_column.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
+        status_column.grid_columnconfigure(0, weight=1)
+
+        badge_scale = 0.9
+        badge_font_size = max(1, int(Typography.SIZE_10 * badge_scale))
+        badge_padx = max(0, int(Spacing.SM * badge_scale))
+        badge_pady = max(0, int((Spacing.XS / 2) * badge_scale))
+
+        self.chat_badge = tk.Label(
+            status_column,
+            text="Chat: Idle",
+            bg=Colors.TEXT_MUTED,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, badge_font_size, Typography.WEIGHT_BOLD),
+            padx=badge_padx,
+            pady=badge_pady,
         )
-        brand_label.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
+        self.chat_badge.grid(row=0, column=0, sticky="e")
 
         self._chatroom_listener = lambda code: self._update_chatroom_label(code)
         self._chat_listener = lambda has_chat: self._update_chat_status(has_chat)
@@ -299,14 +300,11 @@ class MainFrame(ttk.Frame):
 
     def navigate_to(self, route_id: str):
         """Public navigation API used by sidebar and pages."""
-        if route_id == "chatroom":
-            # Special handling: open chatroom modal like homepage button
-            if self.app and hasattr(self.app, "show_chatroom_modal"):
-                self.app.show_chatroom_modal()
-            return
-
         if route_id not in self._view_factories:
             return
+
+        if route_id == "chatroom" and hasattr(self, "controller") and self.controller:
+            self.controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
 
         self._set_current_route(route_id, track_history=True)
 
@@ -350,10 +348,6 @@ class MainFrame(ttk.Frame):
             unregister_chatroom_listener(self._chatroom_listener)
         if hasattr(self, "_chat_listener") and self._chat_listener:
             ChatWindow.unregister_window_listener(self._chat_listener)
-        try:
-            self.ui_store.unsubscribe_device_status(self._handle_device_snapshot)
-        except Exception:
-            pass
         return super().destroy()
 
     def _update_chatroom_label(self, code: str | None):
@@ -362,22 +356,13 @@ class MainFrame(ttk.Frame):
         if code:
             formatted = format_chatroom_code(code)
             self.chatroom_label.configure(text=formatted, fg=Colors.TEXT_PRIMARY)
-            self.chatroom_badge.configure(text="Chatroom: Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
+            self.chatroom_status_badge.configure(text="Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
             self.chatroom_label.configure(text="----- ----- ----- -----", fg=Colors.TEXT_MUTED)
-            self.chatroom_badge.configure(text="Chatroom: None", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+            self.chatroom_status_badge.configure(text="None", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
         # Disable peers when no chatroom
         if hasattr(self.sidebar, "_update_peer_access"):
             self.sidebar._update_peer_access(bool(code))
-
-    def _handle_device_snapshot(self, snapshot: DeviceStatusSnapshot):
-        if not snapshot:
-            return
-        badge_text, badge_color = self._badge_style_for_stage(snapshot.stage)
-        self.status_badge.configure(text=badge_text, bg=badge_color, fg=Colors.SURFACE)
-
-        local_name = getattr(self.session, "local_device_name", None) or self._default_local_device_name
-        self.local_device_label.configure(text=local_name)
 
     def _update_chat_status(self, has_chat: bool):
         if not hasattr(self, "chat_badge"):
@@ -394,21 +379,30 @@ class MainFrame(ttk.Frame):
         if hasattr(self, "_chat_listener") and self._chat_listener:
             ChatWindow.register_window_listener(self._chat_listener)
 
-    @staticmethod
-    def _badge_style_for_stage(stage: DeviceStage) -> tuple[str, str]:
-        mapping = {
-            DeviceStage.READY: ("Ready", Colors.STATE_READY),
-            DeviceStage.SCANNING: ("Scanning", Colors.STATE_INFO),
-            DeviceStage.AWAITING_PIN: ("Awaiting PIN", Colors.STATE_WARNING),
-            DeviceStage.AWAITING_PEER: ("Awaiting Peer", Colors.STATE_INFO),
-            DeviceStage.CONNECTING: ("Connecting", Colors.STATE_INFO),
-            DeviceStage.CONNECTED: ("Connected", Colors.STATE_SUCCESS),
-            DeviceStage.DISCONNECTED: ("Disconnected", Colors.STATE_ERROR),
-            DeviceStage.INVALID_PIN: ("Invalid PIN", Colors.STATE_ERROR),
-            DeviceStage.TRANSPORT_ERROR: ("Transport Error", Colors.STATE_ERROR),
-            DeviceStage.CONNECTION_FAILED: ("Connection Failed", Colors.STATE_ERROR),
-        }
-        return mapping.get(stage, ("Status", Colors.STATE_ERROR))
+    def _start_sidebar_resize(self, event):
+        self._resizing_sidebar = True
+        self._sidebar_drag_start_x = event.x_root
+        self._sidebar_width_before_drag = self._sidebar_current_width
+        self.sidebar_handle.configure(bg=Colors.SURFACE_ALT)
+
+    def _resize_sidebar(self, event):
+        if not getattr(self, "_resizing_sidebar", False):
+            return
+        delta = event.x_root - self._sidebar_drag_start_x
+        new_width = self._sidebar_width_before_drag + delta
+        new_width = max(self._sidebar_min_width, min(self._sidebar_max_width, new_width))
+        self._sidebar_current_width = new_width
+        self.sidebar.configure(width=new_width)
+        self.sidebar.grid_propagate(False)
+        if getattr(self, "_body_container", None):
+            self._body_container.grid_columnconfigure(0, minsize=new_width)
+
+    def _stop_sidebar_resize(self, event):
+        if not getattr(self, "_resizing_sidebar", False):
+            return
+        self._resizing_sidebar = False
+        self.sidebar_handle.configure(bg=Colors.BG_ELEVATED)
+
 
     # ------------------------------------------------------------------ #
     # Other handlers
@@ -447,7 +441,9 @@ class MainFrame(ttk.Frame):
 
     def _handle_chatroom_success(self, code: str):
         """Handle successful chatroom connection."""
-        self.navigate_to("home")
+        if self.controller and getattr(self.controller, "status_manager", None):
+            self.controller.status_manager.update_status(AppConfig.STATUS_READY)
+        self.navigate_to("pair")
 
     def _handle_device_pairing(self, device_id: str, device_name: str):
         """Handle device pairing notifications from PeersPage."""
