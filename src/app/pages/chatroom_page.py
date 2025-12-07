@@ -58,10 +58,10 @@ class ChatroomPage(tk.Frame):
         self._update_disconnect_button_style()
 
         body = tk.Frame(layout, bg=Colors.SURFACE)
-        body.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=Spacing.LG)
+        body.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=(Spacing.SM, Spacing.LG))
 
         entry_row = tk.Frame(body, bg=Colors.SURFACE)
-        entry_row.pack(fill=tk.X, pady=(Spacing.MD, Spacing.XS))
+        entry_row.pack(fill=tk.X, pady=(Spacing.MD, Spacing.SM))
 
         self.entry_widget = DesignUtils.create_chat_entry(
             entry_row,
@@ -76,7 +76,7 @@ class ChatroomPage(tk.Frame):
         self.entry_widget.focus_set()
 
         button_row = tk.Frame(body, bg=Colors.SURFACE)
-        button_row.pack(fill=tk.X, pady=(Spacing.SM, Spacing.XS))
+        button_row.pack(fill=tk.X, pady=(Spacing.SM, Spacing.SM))
         for idx in range(2):
             button_row.columnconfigure(idx, weight=1)
 
@@ -84,7 +84,7 @@ class ChatroomPage(tk.Frame):
             button_row,
             text="Generate",
             variant="secondary",
-            width=14,
+            width=12,
             command=self._create_chatroom_code,
         )
         self.generate_btn.grid(row=0, column=0, sticky="ew", padx=(0, Spacing.SM))
@@ -93,7 +93,7 @@ class ChatroomPage(tk.Frame):
             button_row,
             text="Enter",
             variant="primary",
-            width=14,
+            width=12,
             command=self._on_submit_chatroom_code,
         )
         self.enter_btn.grid(row=0, column=1, sticky="ew")

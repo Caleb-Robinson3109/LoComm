@@ -48,14 +48,11 @@ class Sidebar(tk.Frame):
     def _build_nav_sections(self):
         # Top navigation row with back/next arrows
         top_nav = tk.Frame(self.container, bg=Colors.BG_ELEVATED)
-        top_nav.pack(fill=tk.X, pady=(0, Spacing.MD))
+        top_nav.pack(fill=tk.X, pady=(0, Spacing.SM))
 
         if self.on_back:
             back_btn = DesignUtils.button(top_nav, text="←", variant="ghost", width=2, command=self.on_back)
             back_btn.pack(side=tk.LEFT, padx=(0, Spacing.XXS))
-        if hasattr(self, "on_next") and callable(getattr(self, "on_next")):
-            next_btn = DesignUtils.button(top_nav, text="→", variant="ghost", width=2, command=self.on_next)
-            next_btn.pack(side=tk.LEFT, padx=(Spacing.XXS, 0))
 
         top_items = []
         bottom_items = []
