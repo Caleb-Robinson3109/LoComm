@@ -10,7 +10,6 @@ import sys
 import os
 
 from utils.design_system import AppConfig, Colors, Typography, Spacing, DesignUtils
-from utils.state.ui_store import DeviceStage, DeviceStatusSnapshot, get_ui_store
 from ui.helpers import (
     create_scroll_container,
     create_page_header,
@@ -42,8 +41,6 @@ class PeersPage(BasePage):
         self.navigator = context.navigator if context else None
         self.on_device_paired = on_device_paired
 
-        self.ui_store = get_ui_store()
-        self._device_subscription: Optional[Callable[[DeviceStatusSnapshot], None]] = None
         self.is_scanning = False
         self._scan_timer_id: Optional[str] = None
         self._manual_pairing_window: Optional[ManualPairingWindow] = None
@@ -65,8 +62,6 @@ class PeersPage(BasePage):
         self._build_devices_section(body)
         self._refresh_from_session()
 
-        # Reflect whatever the store currently knows about the connection state
-        self._apply_snapshot(self.ui_store.get_device_status())
         self._register_chatroom_listener()
 
     # ------------------------------------------------------------------ #
@@ -245,27 +240,32 @@ class PeersPage(BasePage):
             self._render_device_list()
             return
 
-        if self.session and getattr(self.session, "device_id", None) and getattr(self.session, "device_name", None):
+        session_device_id = getattr(self.session, "device_id", None) if self.session else None
+        session_device_name = getattr(self.session, "device_name", None) if self.session else None
+        if session_device_id and session_device_name:
             self._upsert_device(
-                self.session.device_name,
-                self.session.device_id,
+                session_device_name,
+                session_device_id,
                 status="Connected",
                 source="session",
                 render=False,
             )
+            info = None
+        else:
+            controller = getattr(self, "controller", None)
+            connection_manager = getattr(controller, "connection_manager", None) if controller else None
+            info = None
+            if connection_manager:
+                info = connection_manager.get_connected_device_info()
 
-        controller = getattr(self, "controller", None)
-        connection_manager = getattr(controller, "connection_manager", None) if controller else None
-        if connection_manager:
-            info = connection_manager.get_connected_device_info()
-            if info and info.get("id") and info.get("name"):
-                self._upsert_device(
-                    info["name"],
-                    info["id"],
-                    status="Connected" if info.get("is_connected") else "Available",
-                    source="session",
-                    render=False,
-                )
+        if info and info.get("id") and info.get("name"):
+            self._upsert_device(
+                info["name"],
+                info["id"],
+                status="Connected" if info.get("is_connected") else "Available",
+                source="session",
+                render=False,
+            )
 
         # Always re-render to ensure placeholder visibility stays in sync
         self._render_device_list()
@@ -385,8 +385,6 @@ class PeersPage(BasePage):
         if self.controller:
             self.controller.status_manager.update_status("Scanning…")
 
-        self._set_stage(DeviceStage.SCANNING)
-
         def _worker():
             try:
                 devices = scan_for_devices() or []
@@ -407,7 +405,6 @@ class PeersPage(BasePage):
 
         self._render_device_list()
 
-        self._set_stage(DeviceStage.READY)
         self.is_scanning = False
 
         if self.controller:
@@ -415,39 +412,6 @@ class PeersPage(BasePage):
 
         self._scan_timer_id = None
         self._refresh_from_session()
-
-    def _set_stage(self, stage: DeviceStage, device_name: Optional[str] = None):
-        """Update global device status via UI store (used by top bar)."""
-        label = device_name
-        self.ui_store.set_pairing_stage(stage, label)
-        snapshot = self.ui_store.get_device_status()
-        self._apply_snapshot(snapshot)
-
-    # ------------------------------------------------------------------ #
-    # Lifecycle: subscribe to store so top bar stays in sync
-    # ------------------------------------------------------------------ #
-
-    def on_show(self):
-        self._subscribe_to_store()
-
-    def on_hide(self):
-        self._unsubscribe_from_store()
-
-    def _subscribe_to_store(self):
-        if self._device_subscription is not None:
-            return
-
-        def _callback(snapshot: DeviceStatusSnapshot):
-            self._apply_snapshot(snapshot)
-
-        self._device_subscription = _callback
-        self.ui_store.subscribe_device_status(_callback)
-
-    def _unsubscribe_from_store(self):
-        if self._device_subscription is None:
-            return
-        self.ui_store.unsubscribe_device_status(self._device_subscription)
-        self._device_subscription = None
 
     def _register_chatroom_listener(self):
         if self._chatroom_listener is not None:
@@ -471,16 +435,8 @@ class PeersPage(BasePage):
         self._chatroom_listener = _listener
         register_chatroom_listener(self._chatroom_listener)
 
-    def _apply_snapshot(self, snapshot: DeviceStatusSnapshot | None):
-        """Right now we just keep the top-bar status aligned; no local list."""
-        if not snapshot:
-            return
-        # If you later add a real peer list, you can use snapshot.device_name here.
-        # For now we do not create any mock rows.
-
     def destroy(self):
         self._cancel_scan_timer()
-        self._unsubscribe_from_store()
         if self._chatroom_listener:
             unregister_chatroom_listener(self._chatroom_listener)
         return super().destroy()

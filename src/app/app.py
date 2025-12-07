@@ -8,15 +8,12 @@ from collections import deque
 from typing import Optional
 
 from services import AppController
-from utils.state.status_manager import get_status_manager
-
 from pages.login_window import LoginWindow
-from pages.chatroom_window import ChatroomWindow
 from pages.main_frame import MainFrame
-from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors, Spacing
+from pages.welcome_window import WelcomeWindow
+from utils.design_system import AppConfig, ensure_styles_initialized, ThemeManager, Colors
 from utils.user_settings import get_user_settings
-from utils.window_sizing import calculate_initial_window_size, get_chatroom_modal_size
-from ui.helpers import create_centered_modal, ModalScaffold
+from utils.window_sizing import calculate_initial_window_size, get_login_modal_size
 
 import os
 import sys
@@ -43,7 +40,9 @@ class App(tk.Tk):
 
         self.title(AppConfig.APP_TITLE)
         self.configure(bg=Colors.BG_MAIN)
-        self._init_main_window()  # Initialize in proper position
+        # Use compact sizing that matches the login modal footprint
+        self._init_main_window(width_scale=1.0, height_scale=1.0)
+        self._apply_login_modal_size()
         self.protocol("WM_DELETE_WINDOW", self._handle_app_close)
         self.after(0, self._focus_window)
 
@@ -55,8 +54,6 @@ class App(tk.Tk):
         self._ui_connected = False
         self._ui_pending_messages = deque(maxlen=MAX_UI_PENDING_MESSAGES)
         self.login_modal = None
-        self.chatroom_modal: Optional[ModalScaffold] = None
-        self.chatroom_modal_frame: Optional[ChatroomWindow] = None
 
         # Wire up business logic callbacks to UI handlers
         self.app_controller.register_message_callback(self._handle_business_message)
@@ -70,10 +67,20 @@ class App(tk.Tk):
                 print("Failed to connect to device, entering deviceless mode")
 
 
-        # Initialize UI with login modal
-        self.show_login_modal()
+        # Initialize UI with welcome screen
+        self.show_welcome_screen()
 
     # ------------------------------------------------------------------ #
+    def show_welcome_screen(self):
+        if self.current_frame:
+            self.current_frame.destroy()
+            self.current_frame = None
+        # Match the compact login dimensions for the welcome screen
+        self._init_main_window(width_scale=1.0, height_scale=1.0)
+        self._apply_login_modal_size()
+        self.current_frame = WelcomeWindow(self, on_login=self.show_login_modal, on_signup=self._handle_signup_request)
+        self.current_frame.pack(fill=tk.BOTH, expand=True)
+
     def show_main(
         self,
         device_id: str | None = None,
@@ -129,12 +136,31 @@ class App(tk.Tk):
             self.current_frame.destroy()
             self.current_frame = None
 
+        self._init_main_window()  # Reset frame size for login
+
         # Create login modal if not exists
         if not self.login_modal:
             self.login_modal = LoginWindow(
                 self,
                 on_login=self._handle_login_success,
             )
+
+    def _handle_signup_request(self):
+        self.show_login_modal()
+        if self.login_modal:
+            self.login_modal.open_register(on_close=self._handle_signup_flow_closed)
+
+    def _handle_signup_flow_closed(self, success: bool):
+        if not self.login_modal:
+            return
+        if success:
+            if self.login_modal.password_entry and self.login_modal.password_entry.winfo_exists():
+                self.login_modal.password_entry.focus_set()
+        else:
+            self.login_modal.close_modal()
+            self.login_modal = None
+            self._init_main_window(width_scale=1.0, height_scale=1.155)
+            self.show_welcome_screen()
 
     # ------------------------------------------------------------------ #
     def start_transport_session(
@@ -184,57 +210,6 @@ class App(tk.Tk):
 
         # Show main interface and go to home page
         self.show_main(route_id="home")
-
-    def _open_chatroom_modal(self):
-        """Open the chatroom modal."""
-        self.app_controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
-        self._close_chatroom_modal()
-
-        scaffold = create_centered_modal(
-            self,
-            title="Chatroom",
-            bg=Colors.SURFACE,
-            use_scroll=False,
-            window_size=get_chatroom_modal_size(),
-        )
-
-        self.chatroom_modal = scaffold
-
-        # Create chatroom frame inside the modal body
-        chatroom_frame = ChatroomWindow(
-            scaffold.body,
-            lambda chatroom_code: self._handle_chatroom_success(chatroom_code),
-        )
-        chatroom_frame.pack(fill=tk.BOTH, expand=True, padx=Spacing.MD, pady=Spacing.MD)
-        if hasattr(chatroom_frame, "focus_input"):
-            chatroom_frame.focus_input()
-        self.chatroom_modal_frame = chatroom_frame
-
-        scaffold.toplevel.protocol("WM_DELETE_WINDOW", self._close_chatroom_modal)
-
-    def _close_chatroom_modal(self):
-        """Close the chatroom modal."""
-        self.chatroom_modal_frame = None
-        if hasattr(self, "app_controller") and self.app_controller:
-            try:
-                self.app_controller.status_manager.update_status(AppConfig.STATUS_READY)
-            except Exception:
-                pass
-        if self.chatroom_modal and self.chatroom_modal.toplevel.winfo_exists():
-            try:
-                self.chatroom_modal.toplevel.destroy()
-            except Exception:
-                pass
-        self.chatroom_modal = None
-
-    def show_chatroom_modal(self):
-        """Show the chatroom modal for 20 digit code entry without destroying the main view."""
-        self._open_chatroom_modal()
-
-    def _handle_chatroom_success(self, chatroom_code: str):
-        """Handle successful chatroom code entry."""
-        self._close_chatroom_modal()
-        self.show_main(route_id="pair")
 
     def _handle_logout(self):
         """Handle user logout with proper cleanup."""
@@ -310,7 +285,7 @@ class App(tk.Tk):
         self.show_main(session.device_id or None, session.device_name or None, route_id=prev_route)
 
     # ------------------------------------------------------------------ #
-    def _init_main_window(self):
+    def _init_main_window(self, *, width_scale: float = 1.0, height_scale: float = 1.0):
         """Initialize the main application window for login (compact)."""
         self.update_idletasks()
         target_w, target_h = calculate_initial_window_size(self)
@@ -322,10 +297,13 @@ class App(tk.Tk):
         target_w = compact_w
         target_h = compact_h
 
-        offset_x = (screen_w - target_w) // 2
-        offset_y = (screen_h - target_h) // 2
-        self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
-        self.minsize(target_w, target_h)
+        scaled_w = max(int(target_w * width_scale), 1)
+        scaled_h = max(int(target_h * height_scale), 1)
+        offset_x = max((screen_w - scaled_w) // 2, 0)
+        offset_y = max((screen_h - scaled_h) // 2, 0)
+
+        self.geometry(f"{scaled_w}x{scaled_h}+{offset_x}+{offset_y}")
+        self.minsize(scaled_w, scaled_h)
         self.resizable(True, True)
 
     def _init_fullscreen_window(self):
@@ -339,6 +317,22 @@ class App(tk.Tk):
         self.geometry(f"{target_w}x{target_h}+{offset_x}+{offset_y}")
         self.minsize(target_w, target_h)
         self.resizable(True, True)
+
+    def _apply_login_modal_size(self):
+        """Center the window using the login modal dimensions."""
+        size = get_login_modal_size()
+        self.update_idletasks()
+        screen_w = self.winfo_screenwidth()
+        screen_h = self.winfo_screenheight()
+        width = min(size.width + 20, screen_w)
+        height = min(size.height, screen_h)
+        width = max(width, size.min_width + 20)
+        height = max(height, size.min_height)
+        pos_x = max((screen_w - width) // 2, 0)
+        pos_y = max((screen_h - height) // 2, 0)
+        self.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
+        self.minsize(size.min_width + 20, size.min_height)
+        self.resizable(False, False)
 
 
 if __name__ == "__main__":

@@ -61,10 +61,6 @@ class MainFrame(ttk.Frame):
         self._register_view_factories()
 
         # Layout and device status subscription
-        self._sidebar_default_width = Spacing.SIDEBAR_WIDTH
-        self._sidebar_min_width = max(int(self._sidebar_default_width * 0.5), 174)
-        self._sidebar_max_width = int(self._sidebar_default_width * 2.2)
-        self._sidebar_current_width = self._sidebar_default_width
         self._create_layout()
 
         # Start with home view without pushing history
@@ -119,10 +115,8 @@ class MainFrame(ttk.Frame):
         body = tk.Frame(main_container, bg=Colors.BG_MAIN)
         body.pack(fill=tk.BOTH, expand=True)
         body.grid_rowconfigure(0, weight=1)
-        body.grid_columnconfigure(0, weight=0, minsize=self._sidebar_current_width)
-        body.grid_columnconfigure(1, weight=0)
-        body.grid_columnconfigure(2, weight=1)
-        self._body_container = body
+        body.grid_columnconfigure(0, weight=0, minsize=Spacing.SIDEBAR_WIDTH)
+        body.grid_columnconfigure(1, weight=1)
 
         # Left sidebar
         nav_items = [(route.route_id, route.label) for route in self.routes if route.show_in_sidebar]
@@ -136,20 +130,14 @@ class MainFrame(ttk.Frame):
         )
         self.sidebar.grid(row=0, column=0, sticky="ns")
         self.sidebar.grid_propagate(False)
-        self.sidebar.configure(width=self._sidebar_current_width)
-
-        self.sidebar_handle = tk.Frame(body, width=10, bg=Colors.BG_ELEVATED, cursor="sb_h_double_arrow")
-        self.sidebar_handle.grid(row=0, column=1, sticky="ns")
-        self.sidebar_handle.bind("<ButtonPress-1>", self._start_sidebar_resize)
-        self.sidebar_handle.bind("<B1-Motion>", self._resize_sidebar)
-        self.sidebar_handle.bind("<ButtonRelease-1>", self._stop_sidebar_resize)
+        self.sidebar.configure(width=Spacing.SIDEBAR_WIDTH)
 
         # Right content area
         self.content_frame = tk.Frame(body, bg=Colors.BG_MAIN)
         content_pad = int(Spacing.PAGE_PADDING / 2)
         self.content_frame.grid(
             row=0,
-            column=2,
+            column=1,
             sticky="nsew",
             padx=(content_pad, 0),
             pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING),
@@ -378,31 +366,6 @@ class MainFrame(ttk.Frame):
             register_chatroom_listener(self._chatroom_listener)
         if hasattr(self, "_chat_listener") and self._chat_listener:
             ChatWindow.register_window_listener(self._chat_listener)
-
-    def _start_sidebar_resize(self, event):
-        self._resizing_sidebar = True
-        self._sidebar_drag_start_x = event.x_root
-        self._sidebar_width_before_drag = self._sidebar_current_width
-        self.sidebar_handle.configure(bg=Colors.SURFACE_ALT)
-
-    def _resize_sidebar(self, event):
-        if not getattr(self, "_resizing_sidebar", False):
-            return
-        delta = event.x_root - self._sidebar_drag_start_x
-        new_width = self._sidebar_width_before_drag + delta
-        new_width = max(self._sidebar_min_width, min(self._sidebar_max_width, new_width))
-        self._sidebar_current_width = new_width
-        self.sidebar.configure(width=new_width)
-        self.sidebar.grid_propagate(False)
-        if getattr(self, "_body_container", None):
-            self._body_container.grid_columnconfigure(0, minsize=new_width)
-
-    def _stop_sidebar_resize(self, event):
-        if not getattr(self, "_resizing_sidebar", False):
-            return
-        self._resizing_sidebar = False
-        self.sidebar_handle.configure(bg=Colors.BG_ELEVATED)
-
 
     # ------------------------------------------------------------------ #
     # Other handlers

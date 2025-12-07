@@ -159,3 +159,6 @@ class SettingsPage(BasePage):
             var.set(current)
             if isinstance(btn, tk.Button):
                 btn.configure(text=self._bool_label(current))
+
+    def destroy(self):
+        return super().destroy()

@@ -10,7 +10,6 @@ from .connection_manager import (
     get_connected_device_info,
 )
 from .status_manager import get_status_manager, StatusManager, DeviceInfo
-from .ui_store import UIStore, DeviceStage, DeviceStatusSnapshot, get_ui_store
 from .session import Session
 
 __all__ = [
@@ -18,9 +17,5 @@ __all__ = [
     "get_status_manager",
     "StatusManager",
     "DeviceInfo",
-    "UIStore",
-    "DeviceStage",
-    "DeviceStatusSnapshot",
-    "get_ui_store",
     "Session",
 ]

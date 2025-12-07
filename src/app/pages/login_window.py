@@ -33,15 +33,18 @@ class LoginWindow:
         self.window: Optional[tk.Frame] = None
         self.device_name_var = tk.StringVar()
         self.password_var = tk.StringVar()
-        self._is_password_validated = False
         self.register_window: Optional[tk.Toplevel] = None
         self._register_password_var = tk.StringVar()
         self._register_confirm_var = tk.StringVar()
 
         self.password_entry: Optional[tk.Widget] = None
         self.device_name_entry: Optional[tk.Widget] = None
-        self.validate_btn: Optional[tk.Widget] = None
         self.login_btn: Optional[tk.Widget] = None
+        self._register_close_callback: Optional[Callable[[bool], None]] = None
+        self._register_succeeded = False
+        self._register_password_entry: Optional[tk.Widget] = None
+        self._register_confirm_entry: Optional[tk.Widget] = None
+        self._register_window_size = get_login_modal_size()
 
         self._create_window()
 
@@ -94,18 +97,26 @@ class LoginWindow:
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
         ).pack()
+        tk.Frame(header_frame, height=Spacing.LG, bg=Colors.SURFACE).pack(fill=tk.X)
 
-        tk.Label(
-            header_frame,
-            text="Secure Platform",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-        ).pack(pady=(0, 2))
+
+        spacer = tk.Frame(main_container, height=Spacing.LG, bg=Colors.SURFACE)
+        spacer.pack(fill=tk.X)
 
         form_frame = tk.Frame(main_container, bg=Colors.SURFACE)
         form_frame.pack(fill=tk.X, pady=(0, 8))
 
+        _, self.device_name_entry = create_form_row(
+            form_frame,
+            label="Name",
+            widget_factory=lambda parent: DesignUtils.create_chat_entry(
+                parent,
+                textvariable=self.device_name_var,
+                width=15,
+                font=(Typography.FONT_UI, Typography.SIZE_12),
+            ),
+            help_text=None,
+        )
         _, self.password_entry = create_form_row(
             form_frame,
             label="Password",
@@ -118,29 +129,6 @@ class LoginWindow:
             ),
             help_text=None,
         )
-
-        self.validate_btn = DesignUtils.button(
-            form_frame,
-            text="Validate",
-            command=self._on_validate_click,
-            variant="primary",
-            width=10,
-        )
-        self.validate_btn.pack(fill=tk.X, pady=(0, 6))
-
-        _, self.device_name_entry = create_form_row(
-            form_frame,
-            label="Preferred Name",
-            widget_factory=lambda parent: DesignUtils.create_chat_entry(
-                parent,
-                textvariable=self.device_name_var,
-                width=15,
-                font=(Typography.FONT_UI, Typography.SIZE_12),
-            ),
-            help_text=None,
-        )
-        self.device_name_entry.configure(state="disabled")
-
         self.login_btn = DesignUtils.button(
             form_frame,
             text="Login",
@@ -149,25 +137,6 @@ class LoginWindow:
             width=10,
         )
         self.login_btn.pack(fill=tk.X, pady=(0, 4))
-        self.login_btn.configure(state="disabled")
-
-        self.device_name_var.trace_add("write", self._on_device_name_change)
-
-        links_frame = tk.Frame(main_container, bg=Colors.SURFACE)
-        links_frame.pack(fill=tk.X)
-
-        self.register_label = tk.Label(
-            links_frame,
-            text="Register",
-            bg=Colors.SURFACE,
-            fg=Colors.LINK_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
-            cursor="hand2",
-        )
-        self.register_label.pack(side=tk.LEFT, padx=(0, 4))
-        self.register_label.bind("<Button-1>", lambda e: self._on_register_click())
-        self.register_label.bind("<Enter>", lambda e: self.register_label.configure(fg=Colors.LINK_HOVER))
-        self.register_label.bind("<Leave>", lambda e: self.register_label.configure(fg=Colors.LINK_PRIMARY))
 
         self.error_container = tk.Frame(main_container, bg=Colors.SURFACE)
         self.error_container.pack(fill=tk.X, pady=(Spacing.XXS, 0))
@@ -175,24 +144,26 @@ class LoginWindow:
         self.window.after(100, self._set_initial_focus)
         self.window.bind("<Return>", self._handle_enter_key)
         self.password_entry.bind("<Return>", self._handle_enter_key)
-        self.device_name_entry.bind("<Return>", self._handle_enter_key)
+        self.device_name_entry.bind("<Return>", self._focus_password)
         self.window.bind("<Escape>", lambda e: self._on_close())
 
     def _set_initial_focus(self):
+        if self.device_name_entry and self.device_name_entry.winfo_exists():
+            self.device_name_entry.focus_set()
+            self.device_name_entry.icursor(tk.END)
+
+    def _handle_enter_key(self, event):
+        self._on_login_click()
+        return "break"
+
+    def _focus_password(self, event):
         if self.password_entry and self.password_entry.winfo_exists():
             self.password_entry.focus_set()
             self.password_entry.icursor(tk.END)
-
-    def _handle_enter_key(self, event):
-        if not self._is_password_validated:
-            self._on_validate_click()
-        else:
-            self._on_login_click()
         return "break"
 
-    def _on_validate_click(self):
+    def _on_login_click(self):
         password = self.password_var.get().strip()
-
         if not password:
             self._show_validation_error("Please enter a password")
             return
@@ -200,65 +171,36 @@ class LoginWindow:
             self._show_validation_error("Password must be at least 3 characters")
             return
 
-        self.validate_btn.configure(state="disabled", text="Validating...")
-        if self.login_btn:
-            self.login_btn.configure(state="disabled")
+        if not self.login_btn or not self.login_btn.winfo_exists():
+            return
+        self.login_btn.configure(state="disabled", text="Logging in...")
 
         try:
             okay: bool = enter_password(password)
         except Exception:
-            self._handle_validation_failure("Unable to validate password. Please try again.")
+            self._show_login_failure("Unable to validate password. Please try again.")
             return
 
         if not okay:
-            self._handle_validation_failure("Incorrect password. Please try again.")
-            return
-
-        if self.window:
-            self.window.after(300, self._on_validation_complete)
-
-    def _on_validation_complete(self):
-        self.device_name_entry.configure(state="normal")
-        self.validate_btn.configure(state="normal", text="Validated ✓")
-        self._is_password_validated = True
-        self.login_btn.configure(state="normal")
-
-        if self.window and self.device_name_entry.winfo_exists():
-            self.window.after(50, self.device_name_entry.focus_set)
-            self.window.after(80, lambda: self.device_name_entry.icursor(tk.END))
-
-    def _on_device_name_change(self, *args):
-        if self._is_password_validated:
-            self.login_btn.configure(state="normal")
-        else:
-            self.login_btn.configure(state="disabled")
-
-    def _on_login_click(self):
-        if not self._is_password_validated:
-            self._show_validation_error("Please validate your password first")
+            self._show_login_failure("Incorrect password. Please try again.")
             return
 
         device_name = self.device_name_var.get().strip() or "Orion"
-
-        self.login_btn.configure(state="disabled", text="Logging in...")
-
         if self.on_login:
             self.on_login(device_name, "validated_password")
 
         if self.window and self.login_btn.winfo_exists():
             self.window.after(1000, lambda: self.login_btn.configure(state="normal", text="Login"))
 
-    def _on_register_click(self):
+    def open_register(self, *, on_close: Callable[[bool], None] | None = None):
+        """Expose register helper for external flows."""
+        self._register_close_callback = on_close
+        self._register_succeeded = False
         self._open_register_modal()
 
-    def _handle_validation_failure(self, message: str):
-        self._is_password_validated = False
-        if self.validate_btn and self.validate_btn.winfo_exists():
-            self.validate_btn.configure(state="normal", text="Validate")
-        if self.device_name_entry and self.device_name_entry.winfo_exists():
-            self.device_name_entry.configure(state="disabled")
+    def _show_login_failure(self, message: str):
         if self.login_btn and self.login_btn.winfo_exists():
-            self.login_btn.configure(state="disabled", text="Login")
+            self.login_btn.configure(state="normal", text="Login")
         self.password_var.set("")
         self._show_validation_error(message)
         if self.password_entry and self.password_entry.winfo_exists() and self.window:
@@ -319,7 +261,8 @@ class LoginWindow:
         self.register_window.transient(self.parent)
         self.register_window.grab_set()
         self.register_window.resizable(False, False)
-        self.register_window.protocol("WM_DELETE_WINDOW", self._close_register_modal)
+        self.register_window.protocol("WM_DELETE_WINDOW", lambda: self._close_register_modal(success=False))
+        self._register_succeeded = False
 
         container = tk.Frame(self.register_window, bg=Colors.SURFACE, padx=Spacing.MD, pady=Spacing.MD)
         container.pack(fill=tk.BOTH, expand=True)
@@ -333,20 +276,10 @@ class LoginWindow:
             anchor="w",
             justify="left",
         ).pack(fill=tk.X, pady=(0, Spacing.XXS))
-        tk.Label(
-            container,
-            text="Choose a password and confirm it to finish registration.",
-            bg=Colors.SURFACE,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_REGULAR),
-            anchor="w",
-            justify="left",
-        ).pack(fill=tk.X, pady=(0, Spacing.SM))
-
         form_frame = tk.Frame(container, bg=Colors.SURFACE)
         form_frame.pack(fill=tk.X)
 
-        _, _ = create_form_row(
+        _, self._register_password_entry = create_form_row(
             form_frame,
             label="Password",
             widget_factory=lambda parent: DesignUtils.create_chat_entry(
@@ -359,7 +292,7 @@ class LoginWindow:
             help_text=None,
         )
 
-        _, _ = create_form_row(
+        _, self._register_confirm_entry = create_form_row(
             form_frame,
             label="Confirm Password",
             widget_factory=lambda parent: DesignUtils.create_chat_entry(
@@ -371,6 +304,11 @@ class LoginWindow:
             ),
             help_text=None,
         )
+
+        if self._register_password_entry:
+            self._register_password_entry.bind("<Return>", lambda e: self._register_confirm_entry.focus_set() if self._register_confirm_entry else None)
+        if self._register_confirm_entry:
+            self._register_confirm_entry.bind("<Return>", lambda e: self._submit_registration())
 
         self.register_status = tk.Label(
             container,
@@ -398,19 +336,46 @@ class LoginWindow:
         cancel_btn = DesignUtils.button(
             btn_frame,
             text="Cancel",
-            command=self._close_register_modal,
+            command=lambda: self._close_register_modal(success=False),
             variant="secondary",
             width=12,
         )
         cancel_btn.pack(fill=tk.X)
 
         self.register_window.bind("<Return>", lambda e: self._submit_registration())
+        self.register_window.after(0, self._center_register_window)
 
-    def _close_register_modal(self):
+    def _center_register_window(self):
+        if not self.register_window or not self.register_window.winfo_exists():
+            return
+        size = self._register_window_size
+        parent = getattr(self, "parent", None)
+        if parent:
+            parent.update_idletasks()
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+            pos_x = px + max((pw - size.width) // 2, 0)
+            pos_y = py + max((ph - size.height) // 2, 0)
+        else:
+            screen_w = self.register_window.winfo_screenwidth()
+            screen_h = self.register_window.winfo_screenheight()
+            pos_x = max((screen_w - size.width) // 2, 0)
+            pos_y = max((screen_h - size.height) // 2, 0)
+        self.register_window.geometry(f"{size.width}x{size.height}+{pos_x}+{pos_y}")
+
+    def _close_register_modal(self, *, success: bool = False):
         if self.register_window and self.register_window.winfo_exists():
             self.register_window.grab_release()
             self.register_window.destroy()
         self.register_window = None
+        result = success or self._register_succeeded
+        if self._register_close_callback:
+            callback = self._register_close_callback
+            self._register_close_callback = None
+            callback(result)
+        self._register_succeeded = False
 
     def _submit_registration(self):
         password = self._register_password_var.get().strip()
@@ -444,10 +409,11 @@ class LoginWindow:
             return
 
         self.password_var.set(password)
-        self._is_password_validated = False
-        self._close_register_modal()
-        messagebox.showinfo("Registration Complete", "Password set. Validate to continue.")
-        self._on_validate_click()
+        self._register_succeeded = True
+        self._close_register_modal(success=True)
+        messagebox.showinfo("Registration Complete", "Password set. Please log in.")
+        if self.password_entry and self.password_entry.winfo_exists() and self.window:
+            self.window.after(50, self.password_entry.focus_set)
 
     def _update_register_status(self, message: str):
         if hasattr(self, "register_status") and self.register_status and self.register_status.winfo_exists():

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from dataclasses import dataclass
-from typing import Callable, Optional, List, Any
+from typing import Callable, Optional, List, Any, Dict
 
 from ui.theme_tokens import Colors, Spacing, Typography
 from ui.theme_manager import ensure_styles_initialized
@@ -254,7 +254,7 @@ def create_table_card(parent: tk.Misc, *, padding: int = Spacing.MD):
 
 
 def sidebar_container(parent: tk.Misc, *, padding: tuple[int, int] | None = None):
-    padding = padding or (Spacing.MD, Spacing.MD)
+    padding = padding or (Spacing.SM, Spacing.SM)
     container = tk.Frame(parent, bg=Colors.BG_ELEVATED)
     container.pack(fill=tk.BOTH, expand=True, padx=padding[0], pady=padding[1])
     return container
@@ -365,6 +365,7 @@ def create_page_header(
     show_back: bool = False,
     on_back: Optional[Callable[[], None]] = None,
     actions: Optional[List[dict[str, Any]]] = None,
+    action_refs: Optional[Dict[str, tk.Button]] = None,
 ) -> tk.Frame:
     """
     Standard page header:
@@ -436,6 +437,9 @@ def create_page_header(
             side = action.get("side", "right")
             pad = action.get("padx", (0, Spacing.XS))
             btn.pack(side=tk.LEFT if side == "left" else tk.RIGHT, padx=pad)
+            key = action.get("key")
+            if action_refs and key:
+                action_refs[key] = btn
 
     # Divider at bottom of header
     separator = tk.Frame(parent, bg=Colors.DIVIDER, height=1)

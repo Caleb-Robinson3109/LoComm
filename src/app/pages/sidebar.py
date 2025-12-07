@@ -11,7 +11,7 @@ from ui.helpers import sidebar_container, sidebar_nav_section, sidebar_footer
 from utils.chatroom_registry import get_active_code, register_chatroom_listener, unregister_chatroom_listener
 
 
-class SidebarPage(tk.Frame):
+class Sidebar(tk.Frame):
     """Left sidebar navigation component for main navigation."""
 
     def __init__(
@@ -21,9 +21,12 @@ class SidebarPage(tk.Frame):
         on_nav_select: Optional[Callable[[str], None]] = None,
         on_theme_toggle: Optional[Callable[[bool], None]] = None,
         on_back: Optional[Callable[[], None]] = None,
+        *,
+        width: int | None = None,
     ):
         ThemeManager.ensure()
-        super().__init__(master, width=Spacing.SIDEBAR_WIDTH, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
+        effective_width = width or Spacing.SIDEBAR_WIDTH
+        super().__init__(master, width=effective_width, relief="flat", bd=0, bg=Colors.BG_ELEVATED)
         self.on_nav_select = on_nav_select
         self.on_theme_toggle = on_theme_toggle
         self.on_back = on_back
@@ -34,8 +37,8 @@ class SidebarPage(tk.Frame):
         self._buttons: dict[str, ttk.Button] = {}
         self._chatroom_listener = lambda code: self._update_peer_access(bool(code))
 
-        self.container = sidebar_container(self)
-        tk.Frame(self.container, height=int(Spacing.XL * 1.5), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
+        self.container = sidebar_container(self, padding=(Spacing.SM, Spacing.SM))
+        tk.Frame(self.container, height=int(Spacing.SM), bg=Colors.SURFACE_SIDEBAR).pack(fill=tk.X)
 
         self._build_nav_sections()
         self._build_footer()
@@ -43,10 +46,16 @@ class SidebarPage(tk.Frame):
         register_chatroom_listener(self._chatroom_listener)
 
     def _build_nav_sections(self):
-        # Back button at the very top
+        # Top navigation row with back/next arrows
+        top_nav = tk.Frame(self.container, bg=Colors.BG_ELEVATED)
+        top_nav.pack(fill=tk.X, pady=(0, Spacing.MD))
+
         if self.on_back:
-            back_btn = DesignUtils.create_nav_button(self.container, text="← Back", command=self.on_back)
-            back_btn.pack(fill=tk.X, pady=(0, Spacing.MD))
+            back_btn = DesignUtils.button(top_nav, text="←", variant="ghost", width=2, command=self.on_back)
+            back_btn.pack(side=tk.LEFT, padx=(0, Spacing.XXS))
+        if hasattr(self, "on_next") and callable(getattr(self, "on_next")):
+            next_btn = DesignUtils.button(top_nav, text="→", variant="ghost", width=2, command=self.on_next)
+            next_btn.pack(side=tk.LEFT, padx=(Spacing.XXS, 0))
 
         top_items = []
         bottom_items = []
@@ -69,7 +78,7 @@ class SidebarPage(tk.Frame):
         self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
 
     def _build_footer(self):
-        sidebar_footer(self, "v2.3.0 Desktop")
+        sidebar_footer(self, "2.3.1")
 
     # ------------------------------------------------------------------ #
     def _update_peer_access(self, enabled: bool):

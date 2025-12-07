@@ -268,7 +268,7 @@ class AppConfig:
     STATUS_READY = "Ready"
     STATUS_TRANSPORT_ERROR = "Transport error"
 
-    WINDOW_WIDTH = int(787)  # restored main frame width
+    WINDOW_WIDTH = int(int(787) * 1.1)  # widen main app by ~10%
     WINDOW_HEIGHT = int(650)
     MIN_WINDOW_WIDTH = WINDOW_WIDTH
     MIN_WINDOW_HEIGHT = WINDOW_HEIGHT
