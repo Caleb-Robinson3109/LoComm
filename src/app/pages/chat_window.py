@@ -383,6 +383,10 @@ class ChatWindow(tk.Toplevel):
 
             try:
                 sender, payload, senderID = self._receive_with_timeout()
+                if payload is not None:
+                    print(f"received message with senderID {senderID}")
+                    print(f"current window is configured with id {self.peer_id}")
+                    print(self.peer_id == senderID)
             except Exception as exc:  # noqa: BLE001
                 self._logger.warning("Failed to receive message: %s", exc)
                 self._stop_event.wait(timeout=0.5)
@@ -403,7 +407,7 @@ class ChatWindow(tk.Toplevel):
 
         self._logger.info("Chat loop exited for peer %s", self.peer_name)
 
-    def _receive_with_timeout(self, timeout: float = 1.0):
+    def _receive_with_timeout(self, timeout: float = 1.5):
         """Call receive_message with timeout awareness to avoid blocking shutdown."""
         if receive_message is None:
             self._stop_event.wait(timeout)

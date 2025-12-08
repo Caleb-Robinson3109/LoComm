@@ -3,7 +3,7 @@ import struct
 import binascii
 import time
 
-def locomm_api_receive_message() -> tuple[str, str, int] | tuple[None, None, None] | None:
+def locomm_api_receive_message(timeout = -1) -> tuple[str, str, int] | tuple[None, None, None] | None:
     #check the state of the recive message
     if(LoCommGlobals.context.SEND_return):
         LoCommGlobals.context.SEND_message = None
@@ -12,8 +12,11 @@ def locomm_api_receive_message() -> tuple[str, str, int] | tuple[None, None, Non
         LoCommGlobals.context.SEND_return = False
 
     #get message
+    startTime = time.time()
     try:
         while(not LoCommGlobals.context.SEND_flag and LoCommGlobals.connected):
+            if timeout != -1 and time.time() - startTime > timeout:
+                return (None, None, None)
             time.sleep(0.01)
 
         #if the device disconnected stop trying

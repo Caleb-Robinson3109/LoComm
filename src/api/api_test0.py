@@ -5,7 +5,7 @@ recv = True
 
 def recv_thread():
     while(recv):
-        name, message = receive_message()
+        name, message, id = receive_message()
         print(f"{name}: {message}")
 
 #run_deviceless_mode()
@@ -32,6 +32,6 @@ while True:
         disconnect_from_device()
         break
     else:
-        send_message("Bob", 210, cmd)
+        send_message("Caleb", 107, cmd)
 
 t.join()
