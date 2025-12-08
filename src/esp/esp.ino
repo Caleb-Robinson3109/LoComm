@@ -493,13 +493,13 @@ void loop() {
             const uint32_t currentTime = (millis() / 1000) + epochAtBoot;
             if (currentTime + 5 < timestamp) { //5 is added for a bit of leeway
               LWarn("Received RX Message is from the future! someone likely has invalid time configuration");
-              //break; //TODO TEMP dont break so we can continue running with invalid times
+              break; 
             }
-            if (currentTime > timestamp && currentTime - timestamp > 20) {
+            if (currentTime > timestamp && currentTime - timestamp > 60) {
               LWarn("received RX Message is very old, possible replay attack attempt");
               Debug(Serial1.printf("current time: %ld\ntime indicated by message: %ld\n", (millis() / 1000) + epochAtBoot, timestamp));
               //TODO logic to log replay attack attempt
-              //break; //the message was valid, so lets break out TODO TEMP dont break out so wee can continue running 
+              break; 
             }
             
             //Now that checks have passed, we can attempt to process the message. First, lets see what type of message it is

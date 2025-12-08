@@ -265,7 +265,7 @@ void sec_logout() {
     g_is_logged_in = false;
 }
 
-bool sec_isLoggedIn() { return 0 || g_is_logged_in; } //TODO TEMP - this now always returns 1
+bool sec_isLoggedIn() { g_is_logged_in; }
 
 
 // --- Manual Key Provisioning ---
@@ -322,7 +322,7 @@ bool sec_display_key(char* outputBase85Buffer, size_t bufferSize) {
     return true;
 }
 
-bool sec_isPaired() { return 0 || g_is_paired; } //TODO TEMP bypass the is-paired field
+bool sec_isPaired() { return g_is_paired; }
 
 bool sec_is_key_changed() {
   if (g_d_key_changed) {
@@ -343,7 +343,7 @@ void sec_resetPairing() {
 // --- Encryption/Decryption ---
 
 bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_t* ciphertextBuffer, size_t bufferSize, size_t* ciphertextLen) {
-    //if (!g_is_logged_in || !g_is_paired) return false; TODO TEMP bypass check that disables this function when not logged in and paired
+    if (!g_is_logged_in || !g_is_paired) return false;
     // CHANGED: Overhead reduced from 28 to 20 (12 IV + 8 Tag)
     if (bufferSize < plaintextLen + 20) return false;
 
@@ -371,7 +371,7 @@ bool sec_encryptD2DMessage(const uint8_t* plaintext, size_t plaintextLen, uint8_
 }
 
 bool sec_decryptD2DMessage(const uint8_t* ciphertext, size_t ciphertextLen, uint8_t* plaintextBuffer, size_t bufferSize, size_t* plaintextLen) {
-    //if (!g_is_logged_in || !g_is_paired) return false; TODO TEMP bypass check that disables this function when not logged in and paired
+    if (!g_is_logged_in || !g_is_paired) return false; 
     
     if (ciphertextLen < 20) return false; 
 

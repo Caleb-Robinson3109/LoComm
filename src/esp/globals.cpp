@@ -4,7 +4,7 @@ SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 5> serialReadyToSendArray;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 
-uint32_t epochAtBoot = 0; //TODO TEMP this is set to 1 to bypass checks that make sure this variable has been set by the computer. Set back to 0 when done testing
+uint32_t epochAtBoot = 0; 
 
 Preferences storage;
 
