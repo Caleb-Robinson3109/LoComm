@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import messagebox
 from typing import Callable
 
 from utils.design_system import Colors, Spacing, DesignUtils, Typography
@@ -45,15 +46,46 @@ class SettingsPage(BasePage):
     def _build_device_info_section(self, parent: tk.Misc) -> None:
         session = getattr(self.context, "session", None)
         device_id = getattr(session, "device_id", "") or "Not available"
+        device_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
+
         container = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Spacing.MD, pady=Spacing.MD)
         container.pack(fill=tk.X, padx=Spacing.LG, pady=(0, Spacing.MD))
+
+        # Device name row
+        name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        name_row.pack(fill=tk.X, pady=(0, Spacing.SM))
         tk.Label(
-            container,
+            name_row,
+            text=f"Device Name: {device_name}",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        ).pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            name_row,
+            text="Change",
+            command=self._change_device_name,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
+
+        # Device ID row
+        id_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        id_row.pack(fill=tk.X)
+        tk.Label(
+            id_row,
             text=f"Device ID: {device_id}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
+        ).pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            id_row,
+            text="Change",
+            command=self._change_device_id,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
 
 
     def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:
@@ -172,3 +204,10 @@ class SettingsPage(BasePage):
     def _unregister_status_listener(self):
         # Status listener was removed; keep stub for safe destroy
         self._status_callback = None
+
+    # Placeholder handlers for future device change flows
+    def _change_device_name(self):
+        messagebox.showinfo("Change Name", "Device name change is not implemented yet.")
+
+    def _change_device_id(self):
+        messagebox.showinfo("Change Device ID", "Device ID change is not implemented yet.")
