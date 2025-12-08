@@ -24,7 +24,7 @@ class WelcomeWindow(tk.Frame):
 
         tk.Label(
             hero,
-            text="Locomm",
+            text="Welcome to Locomm",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_24, Typography.WEIGHT_BOLD),
@@ -39,7 +39,7 @@ class WelcomeWindow(tk.Frame):
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_14),
             padding_x=0,
-        ).pack(fill=tk.X, pady=(Spacing.LG, Spacing.LG))
+        ).pack(fill=tk.X, pady=(Spacing.LG, Spacing.XL))
 
         action_row = tk.Frame(hero, bg=Colors.SURFACE)
         action_row.pack(fill=tk.X, pady=(Spacing.MD, 0))
@@ -50,7 +50,7 @@ class WelcomeWindow(tk.Frame):
             command=self.on_signup,
             variant="secondary",
             width=9,
-        ).pack(side=tk.LEFT, padx=(0, Spacing.SM))
+        ).pack(side=tk.LEFT, padx=(0, Spacing.SM), pady=(Spacing.LG, 0))
 
         DesignUtils.button(
             action_row,
@@ -58,4 +58,4 @@ class WelcomeWindow(tk.Frame):
             command=self.on_login,
             variant="primary",
             width=9,
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, pady=(Spacing.LG, 0))

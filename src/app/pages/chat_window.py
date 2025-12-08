@@ -39,6 +39,7 @@ class ChatWindow(tk.Toplevel):
         self,
         master: tk.Misc,
         peer_name: str | None = None,
+        peer_id: str | None = None,
         local_device_name: str | None = None,
         on_close_callback: Callable[[], None] | None = None,
         on_send_callback: Optional[Callable[[str], Optional[bool]]] = None,
@@ -57,6 +58,7 @@ class ChatWindow(tk.Toplevel):
         super().__init__(master)
         ensure_styles_initialized()
         self.peer_name = peer_name or "Peer"
+        self.peer_id = peer_id or ""
         self.local_device_name = local_device_name or ""
         self._on_close_callback = on_close_callback
         self._on_send_callback = on_send_callback
@@ -117,9 +119,19 @@ class ChatWindow(tk.Toplevel):
         header_content.pack(fill=tk.X)
         header_content.grid_columnconfigure(0, weight=1)
         header_content.grid_columnconfigure(1, weight=0)
-        header_content.grid_columnconfigure(2, weight=1)
+        header_content.grid_columnconfigure(2, weight=0)
+        header_content.grid_columnconfigure(3, weight=1)
 
-        # Peer name with modern typography
+        # Device ID + name
+        self.header_id_label = tk.Label(
+            header_content,
+            text=self.peer_id,
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_MONO, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        )
+        self.header_id_label.grid(row=0, column=0, sticky="w", padx=(0, Spacing.XXS))
+
         self.header_name_label = tk.Label(
             header_content,
             text=self.peer_name,
@@ -127,26 +139,26 @@ class ChatWindow(tk.Toplevel):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         )
-        self.header_name_label.grid(row=0, column=0, sticky="w")
+        self.header_name_label.grid(row=0, column=1, sticky="w")
 
-        # Connection status badge
-        self.connection_badge = tk.Label(
+        # Ping button placeholder (functionality to be added later)
+        self.ping_btn = DesignUtils.button(
             header_content,
-            text="● Connected",
-            bg=Colors.SURFACE_HEADER,
-            fg=Colors.STATE_SUCCESS,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+            text="Ping",
+            command=lambda: None,
+            variant="primary",
+            width=4,
         )
-        self.connection_badge.grid(row=0, column=2, sticky="e")
+        self.ping_btn.grid(row=0, column=3, sticky="e")
 
         # Chat area with modern styling
         chat_frame = tk.Frame(
             self.main_container,
             bg=Colors.SURFACE_ALT,
             relief="flat",
-            bd=0
+            bd=0,
         )
-        chat_frame.pack(fill=tk.BOTH, expand=True, pady=(0, Spacing.MD))
+        chat_frame.pack(fill=tk.BOTH, expand=True, pady=(Spacing.SM, Spacing.SM))
 
         # Chat history area
         self.history_container = tk.Frame(chat_frame, bg=Colors.SURFACE_ALT)
@@ -193,12 +205,12 @@ class ChatWindow(tk.Toplevel):
             self.main_container,
             bg=Colors.SURFACE,
             padx=0,
-            pady=Spacing.SM
+            pady=Spacing.SM,
         )
         composer_frame.pack(fill=tk.X)
 
         # Input area
-        input_frame = tk.Frame(composer_frame, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.MD)
+        input_frame = tk.Frame(composer_frame, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.SM)
         input_frame.pack(fill=tk.X)
 
         self.msg_var = tk.StringVar()
@@ -211,7 +223,7 @@ class ChatWindow(tk.Toplevel):
             text="Send",
             command=self._send_message,
             variant="primary",
-            width=10,
+            width=4,
         )
         self.send_btn.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 

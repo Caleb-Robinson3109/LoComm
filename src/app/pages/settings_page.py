@@ -33,33 +33,30 @@ class SettingsPage(BasePage):
             subtitle="Choose how Locomm looks and feels for you.",
         )
 
-        self._build_status_section(body)
         self._build_sections(body)
-        self._register_status_listener()
 
     # ------------------------------------------------------------------ #
     # Layout helpers
     def _build_sections(self, parent: tk.Misc) -> None:
+        self._build_device_info_section(parent)
         self._build_appearance_section(parent)
-        self._build_preferences_section(parent)
 
-    def _build_status_section(self, parent: tk.Misc) -> None:
+    def _build_device_info_section(self, parent: tk.Misc) -> None:
         section = self._create_section(
             parent,
-            "Connection Status",
-            "Live transport status from your device.",
+            "Device Info",
+            "View your current device identifier.",
         )
-        badge = tk.Label(
+        session = getattr(self.context, "session", None)
+        device_id = getattr(session, "device_id", "") or "Not available"
+        tk.Label(
             section,
-            text="Disconnected",
-            bg=Colors.STATE_ERROR,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
-            padx=Spacing.MD,
-            pady=int(Spacing.XXS / 1.2),
-        )
-        badge.pack(anchor="w", pady=(Spacing.XS, 0))
-        self._status_label = badge
+            text=f"Device ID: {device_id}",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        ).pack(anchor="w", pady=(Spacing.XS, 0))
+
 
     def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:
         section = tk.Frame(parent, bg=Colors.SURFACE_ALT, bd=0, relief="flat", padx=Spacing.MD, pady=Spacing.SM)
@@ -97,6 +94,35 @@ class SettingsPage(BasePage):
 
         self._add_toggle(section, "Dark mode", "theme_mode", is_theme=True)
 
+    def _add_toggle(self, parent: tk.Misc, label: str, attr: str, *, is_theme: bool = False) -> None:
+        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
+        row.pack(fill=tk.X, pady=(0, Spacing.XS))
+
+        tk.Label(
+            row,
+            text=label,
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14),
+        ).pack(side=tk.LEFT)
+
+        value = self.user_settings.theme_mode == "dark" if is_theme else getattr(self.user_settings, attr, False)
+        var = tk.BooleanVar(master=self, value=value)
+        btn = DesignUtils.button(
+            row,
+            text=self._bool_label(value),
+            variant="ghost",
+            width=8,
+        )
+
+        def _command(attr=attr, var=var, widget=btn, is_theme=is_theme):
+            self._toggle_setting(attr, var, widget, is_theme=is_theme)
+
+        btn.configure(command=_command)
+        btn.pack(side=tk.RIGHT)
+
+        self._toggle_widgets[attr] = (var, btn)
+
     def _theme_button_label(self) -> str:
         return f"Dark Mode: {'On' if self.user_settings.theme_mode == 'dark' else 'Off'}"
 
@@ -112,48 +138,6 @@ class SettingsPage(BasePage):
         if self._theme_button and self._theme_button.winfo_exists():
             self._theme_button.configure(text=self._theme_button_label())
 
-    # ------------------------------------------------------------------ #
-    # Preference toggles
-    def _build_preferences_section(self, parent: tk.Misc) -> None:
-        section = self._create_section(
-            parent,
-            "Preferences",
-            "",
-        )
-
-        self._add_toggle(section, "Desktop notifications", "notifications_enabled")
-        self._add_toggle(section, "Sound alerts", "sound_alerts_enabled")
-
-    def _add_toggle(self, parent: tk.Misc, label: str, attr: str, *, is_theme: bool = False) -> None:
-        row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
-        row.pack(fill=tk.X, pady=(0, Spacing.XS))
-
-        tk.Label(
-            row,
-            text=label,
-            bg=Colors.SURFACE_ALT,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_14),
-        ).pack(side=tk.LEFT)
-
-        if is_theme:
-            value = self.user_settings.theme_mode == "dark"
-        else:
-            value = getattr(self.user_settings, attr, False)
-        var = tk.BooleanVar(master=self, value=value)
-        btn = DesignUtils.button(
-            row,
-            text=self._bool_label(value),
-            variant="ghost",
-            width=8,
-        )
-        def _command(attr=attr, var=var, widget=btn, is_theme=is_theme):
-            self._toggle_setting(attr, var, widget, is_theme=is_theme)
-        btn.configure(command=_command)
-        btn.pack(side=tk.RIGHT)
-
-        self._toggle_widgets[attr] = (var, btn)
-
     def _toggle_setting(self, attr: str, var: tk.BooleanVar, btn: tk.Widget, *, is_theme: bool = False) -> None:
         new_value = not var.get()
         var.set(new_value)
@@ -167,36 +151,6 @@ class SettingsPage(BasePage):
         save_user_settings(self.user_settings)
         if btn and btn.winfo_exists():
             btn.configure(text=self._bool_label(new_value))
-
-    # ------------------------------------------------------------------ #
-    # Status binding
-    def _register_status_listener(self):
-        """Listen to status updates and reflect in the badge."""
-        try:
-            status_mgr = get_status_manager()
-        except Exception:
-            return
-
-        def _callback(status_text: str, color: str):
-            if self._status_label and self._status_label.winfo_exists():
-                text = status_text or "Disconnected"
-                self._status_label.configure(text=text, bg=color or Colors.STATE_ERROR, fg=Colors.SURFACE)
-
-        self._status_callback = _callback
-        try:
-            status_mgr.register_status_callback(_callback)
-        except Exception:
-            self._status_callback = None
-
-    def _unregister_status_listener(self):
-        if not self._status_callback:
-            return
-        try:
-            status_mgr = get_status_manager()
-            status_mgr.unregister_status_callback(self._status_callback)
-        except Exception:
-            pass
-        self._status_callback = None
 
     def _bool_label(self, value: bool) -> str:
         return "On" if value else "Off"
@@ -212,16 +166,11 @@ class SettingsPage(BasePage):
             var.set(current)
             if isinstance(btn, tk.Button):
                 btn.configure(text=self._bool_label(current))
-        # Refresh current status badge immediately
-        try:
-            status_mgr = get_status_manager()
-            status_text = getattr(status_mgr, "_current_status", "Disconnected")
-            color = status_mgr.get_status_color(status_text)
-            if self._status_label and self._status_label.winfo_exists():
-                self._status_label.configure(text=status_text, bg=color or Colors.STATE_ERROR, fg=Colors.SURFACE)
-        except Exception:
-            pass
 
     def destroy(self):
         self._unregister_status_listener()
         return super().destroy()
+
+    def _unregister_status_listener(self):
+        # Status listener was removed; keep stub for safe destroy
+        self._status_callback = None

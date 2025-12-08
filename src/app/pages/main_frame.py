@@ -102,12 +102,12 @@ class MainFrame(ttk.Frame):
         self.pack(fill=tk.BOTH, expand=True)
 
         # Main container - sidebar + content
-        main_container = tk.Frame(self, bg=Colors.BG_MAIN)
+        main_container = tk.Frame(self, bg=Colors.BG_MAIN, highlightthickness=0, bd=0)
         main_container.pack(
             fill=tk.BOTH,
             expand=True,
-            padx=Spacing.SM,
-            pady=(int(Spacing.SM / 4), 0),
+            padx=0,
+            pady=0,
         )
 
         self.top_bar = self._build_top_bar(main_container)
@@ -134,13 +134,13 @@ class MainFrame(ttk.Frame):
 
         # Right content area
         self.content_frame = tk.Frame(body, bg=Colors.BG_MAIN)
-        content_pad = int(Spacing.PAGE_PADDING / 2)
+        content_pad = 0
         self.content_frame.grid(
             row=0,
             column=1,
             sticky="nsew",
             padx=(content_pad, 0),
-            pady=(Spacing.PAGE_PADDING, Spacing.PAGE_PADDING),
+            pady=(0, 0),
         )
 
         self._setup_view_containers()
@@ -151,8 +151,8 @@ class MainFrame(ttk.Frame):
         pack_opts = {
             "fill": tk.BOTH,
             "expand": True,
-            "padx": Spacing.SM,
-            "pady": Spacing.SM,
+            "padx": 0,
+            "pady": 0,
         }
         for route in self.routes:
             container = tk.Frame(self.content_frame, bg=Colors.BG_MAIN, relief="flat", bd=0)
@@ -217,7 +217,7 @@ class MainFrame(ttk.Frame):
         self.status_badge = tk.Label(
             info_wrap,
             text="Not Connected",
-            bg=Colors.STATE_ERROR,
+            bg=Colors.STATE_WARNING,
             fg=Colors.SURFACE,
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
@@ -358,7 +358,7 @@ class MainFrame(ttk.Frame):
             if any(keyword in lowered for keyword in AppConfig.STATUS_CONNECTED_KEYWORDS):
                 connected = True
         badge_text = "Connected" if connected else "Not Connected"
-        badge_bg = Colors.STATE_SUCCESS if connected else Colors.STATE_ERROR
+        badge_bg = Colors.STATE_SUCCESS if connected else Colors.STATE_WARNING
         if hasattr(self, "status_badge") and self.status_badge.winfo_exists():
             self.status_badge.configure(text=badge_text, bg=badge_bg, fg=Colors.SURFACE)
         if hasattr(self.sidebar, "_update_peer_access") and status_text:

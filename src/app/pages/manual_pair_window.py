@@ -37,7 +37,7 @@ class ManualPairingWindow:
     def _create_window(self):
         self.window_scaffold = create_centered_modal(
             self.parent,
-            title="Manual Pairing",
+            title="Manual Pair",
             window_size=get_manual_pair_modal_size(),
         )
         self.window_scaffold.toplevel.protocol("WM_DELETE_WINDOW", self.close)

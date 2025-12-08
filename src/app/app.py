@@ -38,8 +38,8 @@ class App(tk.Tk):
         self.is_dark_mode: bool = self.user_settings.theme_mode == "dark"
         ThemeManager.toggle_mode(self.is_dark_mode)
 
-        self.title(AppConfig.APP_TITLE)
-        self.configure(bg=Colors.BG_MAIN)
+        self.title("Locomm")
+        self.configure(bg=Colors.BG_MAIN, highlightthickness=0)
         # Use compact sizing that matches the login modal footprint
         self._init_main_window(width_scale=1.0, height_scale=1.0)
         self._apply_login_modal_size()
@@ -76,6 +76,10 @@ class App(tk.Tk):
             self.current_frame.destroy()
             self.current_frame = None
         # Match the compact login dimensions for the welcome screen
+        try:
+            self.title(AppConfig.APP_TITLE)
+        except Exception:
+            pass
         self._init_main_window(width_scale=1.0, height_scale=1.0)
         self._apply_login_modal_size()
         self.current_frame = WelcomeWindow(self, on_login=self.show_login_modal, on_signup=self._handle_signup_request)
@@ -90,6 +94,11 @@ class App(tk.Tk):
         """Show the main interface."""
         if self.current_frame:
             self.current_frame.destroy()
+
+        try:
+            self.title(AppConfig.APP_TITLE)
+        except Exception:
+            pass
 
         # Reset to full screen dimensions for main interface
         self._init_fullscreen_window()
@@ -256,11 +265,12 @@ class App(tk.Tk):
 
     def _handle_app_close(self):
         """Ensure transport cleans up before the window closes."""
-        try:
-            if self.app_controller:
-                self.app_controller.stop_session()
-        finally:
-            self.destroy()
+        if messagebox.askyesno("Confirm Exit", "Are you sure you want to close Locomm?"):
+            try:
+                if self.app_controller:
+                    self.app_controller.stop_session()
+            finally:
+                self.destroy()
 
     def clear_chat_history(self, *, confirm: bool = True):
         """Clear chat history - disabled since chat page removed."""

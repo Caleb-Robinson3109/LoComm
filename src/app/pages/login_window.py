@@ -53,6 +53,11 @@ class LoginWindow:
         for child in self.parent.winfo_children():
             child.destroy()
 
+        try:
+            self.parent.title("Login")
+        except Exception:
+            pass
+
         self.window = tk.Frame(self.parent, bg=Colors.SURFACE)
         self.window.pack(fill=tk.BOTH, expand=True, padx=Spacing.SM, pady=Spacing.SM)
 
@@ -88,7 +93,7 @@ class LoginWindow:
         main_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         header_frame = tk.Frame(main_container, bg=Colors.SURFACE)
-        header_frame.pack(fill=tk.X, pady=(0, 4))
+        header_frame.pack(fill=tk.X, pady=(0, Spacing.SM))
 
         tk.Label(
             header_frame,
@@ -96,15 +101,17 @@ class LoginWindow:
             bg=Colors.SURFACE,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_16, Typography.WEIGHT_BOLD),
-        ).pack()
-        tk.Frame(header_frame, height=Spacing.LG, bg=Colors.SURFACE).pack(fill=tk.X)
-
-
-        spacer = tk.Frame(main_container, height=Spacing.LG, bg=Colors.SURFACE)
-        spacer.pack(fill=tk.X)
+        ).pack(pady=(Spacing.LG, 0))
+        tk.Label(
+            header_frame,
+            text="Securely connect to your device to continue.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12),
+        ).pack(pady=(0, 0))
 
         form_frame = tk.Frame(main_container, bg=Colors.SURFACE)
-        form_frame.pack(fill=tk.X, pady=(0, 8))
+        form_frame.pack(fill=tk.X, pady=(Spacing.MD, 12))
 
         _, self.device_name_entry = create_form_row(
             form_frame,
@@ -136,7 +143,7 @@ class LoginWindow:
             variant="primary",
             width=10,
         )
-        self.login_btn.pack(fill=tk.X, pady=(0, 4))
+        self.login_btn.pack(fill=tk.X, pady=(Spacing.MD, 0))
 
         self.error_container = tk.Frame(main_container, bg=Colors.SURFACE)
         self.error_container.pack(fill=tk.X, pady=(Spacing.XXS, 0))

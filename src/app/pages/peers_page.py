@@ -20,7 +20,7 @@ from .base_page import BasePage, PageContext
 from .chat_window import ChatWindow
 
 
-from .manual_pairing_window import ManualPairingWindow
+from .manual_pair_window import ManualPairingWindow
 from utils.chatroom_registry import get_active_code, register_chatroom_listener, unregister_chatroom_listener
 
 # Ensure API module path is available
@@ -88,14 +88,14 @@ class PeersPage(BasePage):
                 "text": "Scan",
                 "command": self._scan_for_devices,
                 "variant": "primary",
-                "width": 7,
+                "width": 6,
                 "padx": (0, Spacing.XS),
             },
             {
                 "text": "Manual",
                 "command": self._show_manual_pairing_modal,
                 "variant": "primary",
-                "width": 7,
+                "width": 6,
             }
         ]
 
@@ -147,39 +147,36 @@ class PeersPage(BasePage):
         row = tk.Frame(self.device_list_container, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.XS)
         row.pack(fill=tk.X, pady=(0, Spacing.SM))
 
-        # Simple row layout
-        info_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
-        info_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        row.grid_columnconfigure(0, weight=1)
+        row.grid_columnconfigure(1, weight=1)
+        row.grid_columnconfigure(2, weight=0)
 
-        tk.Label(
-            info_frame,
+        name_label = tk.Label(
+            row,
             text=device["name"],
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
-        ).pack(anchor="w")
+        )
+        name_label.grid(row=0, column=0, sticky="w")
 
-        meta_frame = tk.Frame(info_frame, bg=Colors.SURFACE_ALT)
-        meta_frame.pack(fill=tk.X, pady=(Spacing.XXS, 0))
-
-        tk.Label(
-            meta_frame,
-            text=f"ID: {device['display_id']}",
+        id_label = tk.Label(
+            row,
+            text=device['display_id'],
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_REGULAR),
-        ).pack(side=tk.LEFT, anchor="w")
+        )
+        id_label.grid(row=0, column=1, sticky="w", padx=(Spacing.SM, 0))
 
-        button_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
-        button_frame.pack(side=tk.RIGHT, padx=(Spacing.SM, 0), pady=(Spacing.XXS, 0))
-
-        DesignUtils.button(
-            button_frame,
+        chat_btn = DesignUtils.button(
+            row,
             text="Chat",
             command=lambda d=device: self._chat_with_device(d),
             variant="primary",
-            width=10,
-        ).pack(anchor="e", pady=(0, Spacing.XXS))
+            width=6,
+        )
+        chat_btn.grid(row=0, column=2, sticky="e", padx=(Spacing.SM, 0))
 
     # ------------------------------------------------------------------ #
     # Device list management
@@ -318,6 +315,7 @@ class PeersPage(BasePage):
         ChatWindow(
             master,
             peer_name=device["name"],
+            peer_id=device.get("raw_id"),
             local_device_name=local_name,
             on_close_callback=lambda raw=device["raw_id"]: self._handle_chat_closed(raw),
             on_send_callback=lambda text, rid=receiver_id: self._send_chat_message(text, rid),

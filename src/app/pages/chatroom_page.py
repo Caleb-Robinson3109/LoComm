@@ -51,7 +51,7 @@ class ChatroomPage(tk.Frame):
                 {
                     "key": "disconnect",
                     "text": "Disconnect",
-                    "variant": "danger",
+                    "variant": "secondary",
                     "command": self._disconnect_from_chatroom,
                     "width": 10,
                     "padx": (Spacing.XXS, 0),
@@ -209,5 +209,19 @@ class ChatroomPage(tk.Frame):
     def _update_disconnect_button_style(self):
         if not self.disconnect_btn:
             return
-        state = "normal" if self._chatroom_connected else "disabled"
-        self.disconnect_btn.configure(state=state, style="Locomm.Danger.TButton")
+        if self._chatroom_connected:
+            # Active chatroom: show danger styling
+            self.disconnect_btn.configure(
+                state="normal",
+                style="Locomm.Danger.TButton",
+                cursor="hand2",
+                takefocus=False,
+            )
+        else:
+            # No chatroom: neutral styling and disabled
+            self.disconnect_btn.configure(
+                state="disabled",
+                style="TButton",
+                cursor="arrow",
+                takefocus=False,
+            )
