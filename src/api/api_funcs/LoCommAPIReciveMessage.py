@@ -36,8 +36,8 @@ def locomm_api_receive_message() -> tuple[str, str, int] | tuple[None, None, Non
         crc: int
         end_bytes: int
         
-        start_bytes, packet_size, packet_type, tag, sender_id, receiver_id, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIBBHHBH", LoCommGlobals.context.SEND_packet[:20])
-        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[20:])
+        start_bytes, packet_size, packet_type, tag, sender_id, receiver_id, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIBBHHBH", LoCommGlobals.context.SEND_packet[:21])
+        name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[21:])
 
         #check SEND packet
         if(start_bytes != 0x1234):
