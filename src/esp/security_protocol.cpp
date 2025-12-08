@@ -20,6 +20,7 @@ static mbedtls_ctr_drbg_context drbg;
 
 static bool g_is_initialized = false;
 static bool g_is_logged_in = false;
+static bool g_d_key_changed = false;
 static bool g_is_paired = false;
 
 // Persistent storage mirrors
@@ -288,12 +289,23 @@ bool sec_generate_key(char* outputBase85Buffer, size_t bufferSize) {
 bool sec_log_key(const char* inputBase85String) {
     if (!g_is_logged_in || strlen(inputBase85String) != 20) return false;
 
+    //save a copy of the existing decrypted key
+    uint8_t decryptedKeyBackup[16];
+    memcpy(&(decryptedKeyBackup[0]), g_decrypted_d2d_key, 16);
+
     // 1. Decode String
     for (int i = 0; i < 4; i++) {
         if (!_z85_decode_block(inputBase85String + (i*5), g_decrypted_d2d_key + (i*4))) {
             memset(g_decrypted_d2d_key, 0, 16); // Clear on failure
             return false;
         }
+    }
+
+    //check if the key has changed
+    for (int i = 0; i < 16; i++) {
+      if (decryptedKeyBackup[i] != g_decrypted_d2d_key[i]) {
+        g_d_key_changed = true;
+      }
     }
 
     // 2. Encrypt & Save
@@ -311,6 +323,14 @@ bool sec_display_key(char* outputBase85Buffer, size_t bufferSize) {
 }
 
 bool sec_isPaired() { return 0 || g_is_paired; } //TODO TEMP bypass the is-paired field
+
+bool sec_is_key_changed() {
+  if (g_d_key_changed) {
+    g_d_key_changed = false;
+    return true;
+  }
+  return false;
+}
 
 void sec_resetPairing() {
     storage.remove(NVM_KEY_D2D_KEY);

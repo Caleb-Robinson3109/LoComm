@@ -122,6 +122,12 @@ bool sec_display_key(char* outputBase85Buffer, size_t bufferSize);
 bool sec_isPaired();
 
 /**
+ * @brief Checks if the D2D key has been changed since the last time the function was called
+ * @return true if the key has been changed, false otherwise
+ */
+bool sec_is_key_changed();
+
+/**
  * @brief Deletes the D2D key from NVM and RAM.
  * Requires the user to re-pair to communicate again.
  */

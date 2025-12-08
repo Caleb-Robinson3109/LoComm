@@ -265,7 +265,7 @@ void loop() {
 
   static uint32_t deviceIDAcquireStartTime = millis();
   //if we have logged in, then pull the device ID and table from memory. if they arent stored, then just put 255 in for the device ID and a blank table in
-  if (sec_isLoggedIn() && sec_isPaired() && epochAtBoot != 0) {
+  if (sec_isLoggedIn() && sec_isPaired() && epochAtBoot != 0 && !sec_is_key_changed()) {
     //If we have not initialized the device routing yet, then initialize it
     if (!initializedDeviceRouting) {
       LDebug("Logged in and paired! initializing device routing variables");
