@@ -55,8 +55,7 @@ class AppController:
         self.root = ui_root
         self.logger = get_logger()
         self.session = Session()
-        # CRITICAL FIX: Initialize local device name for proper message attribution
-        self.session.local_device_name = "Orion"
+        # Local device name is set by login; start empty
         self.settings = get_runtime_settings()
         self.transport = LoCommTransport(ui_root, profile=self.settings.transport_profile)
         self.connection_manager = get_connection_manager()
@@ -243,7 +242,11 @@ class AppController:
 
     def send_message(self, message: str, receiver_id: Optional[int | str] = None) -> None:
         # CRITICAL FIX: Use local device name instead of peer name for proper attribution
-        sender = getattr(self.session, 'local_device_name', None) or "Orion"
+        sender = (
+            getattr(self.session, "local_device_name", None)
+            or getattr(self.session, "device_name", None)
+            or "local-user"
+        )
         resolved_receiver: Optional[int] = None
 
         target_id = receiver_id if receiver_id is not None else getattr(self.session, "device_id", None)

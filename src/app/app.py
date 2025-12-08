@@ -101,7 +101,7 @@ class App(tk.Tk):
         if device_id and device_name:
             # Preserve local device name while updating peer info
             if not hasattr(session, "local_device_name") or not session.local_device_name:
-                session.local_device_name = "Orion"
+                session.local_device_name = device_name
             session.device_name = device_name
             session.device_id = device_id
             session.paired_at = time.time()
@@ -246,7 +246,7 @@ class App(tk.Tk):
 
         # Notify user if message is from external peer
         session = self.app_controller.session
-        local_device_name = getattr(session, "local_device_name", "Orion") or "Orion"
+        local_device_name = getattr(session, "local_device_name", "") or ""
         if sender and sender != local_device_name:
             self.notify_incoming_message(sender, msg)
 
@@ -271,18 +271,36 @@ class App(tk.Tk):
         # Store canonical state
         self.is_dark_mode = bool(use_dark)
 
-        # Preserve current route (home, settings, about, etc)
-        prev_route = None
-        if isinstance(self.current_frame, MainFrame):
-            prev_route = getattr(self.current_frame.sidebar, "current_view", None)
+        # Snapshot current colors so we can repaint widgets
+        prev_bg = {
+            "BG_MAIN": Colors.BG_MAIN,
+            "SURFACE": Colors.SURFACE,
+            "SURFACE_ALT": Colors.SURFACE_ALT,
+            "BG_ELEVATED": Colors.BG_ELEVATED,
+            "BG_ELEVATED_2": Colors.BG_ELEVATED_2,
+        }
+        prev_fg = {
+            "TEXT_PRIMARY": Colors.TEXT_PRIMARY,
+            "TEXT_SECONDARY": Colors.TEXT_SECONDARY,
+            "TEXT_MUTED": Colors.TEXT_MUTED,
+        }
 
-        # Flip theme in design system
+        # Flip theme in design system without rebuilding the UI
         ThemeManager.toggle_mode(use_dark)
 
-        # Recreate main frame with same route
-        session = self.app_controller.session
-        self.configure(bg=Colors.SURFACE)
-        self.show_main(session.device_id or None, session.device_name or None, route_id=prev_route)
+        # Refresh current UI surfaces instead of recreating frames
+        try:
+            self.configure(bg=Colors.SURFACE)
+        except Exception:
+            pass
+
+        if isinstance(self.current_frame, MainFrame) and hasattr(self.current_frame, "apply_theme"):
+            self.current_frame.apply_theme(prev_bg=prev_bg, prev_fg=prev_fg)
+        elif hasattr(self.current_frame, "configure"):
+            try:
+                self.current_frame.configure(bg=Colors.SURFACE)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------ #
     def _init_main_window(self, *, width_scale: float = 1.0, height_scale: float = 1.0):

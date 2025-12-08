@@ -33,6 +33,7 @@ class Sidebar(tk.Frame):
         self.nav_items = nav_items
         self.current_view = nav_items[0][0] if nav_items else "home"
         self._peers_enabled = bool(get_active_code())
+        self._peer_button_default_text = "Peers"
 
         self._buttons: dict[str, ttk.Button] = {}
         self._chatroom_listener = lambda code: self._update_peer_access(bool(code))
@@ -94,6 +95,11 @@ class Sidebar(tk.Frame):
 
     def _register_nav_button(self, key: str, button: ttk.Button):
         self._buttons[key] = button
+        if key == "pair":
+            try:
+                self._peer_button_default_text = button.cget("text")
+            except Exception:
+                pass
 
     def _handle_nav_click(self, route_id: str):
         if route_id == "pair" and not self._peers_enabled:
@@ -110,6 +116,22 @@ class Sidebar(tk.Frame):
     def set_status(self, status_text: str):
         """Compatibility stub so main_frame can call without popup badge."""
         return
+
+    def refresh_theme(self):
+        """Update sidebar styling when theme toggles without rebuilding."""
+        try:
+            self.configure(bg=Colors.BG_ELEVATED)
+            self.container.configure(bg=Colors.BG_ELEVATED)
+        except Exception:
+            pass
+        for frame in (self.nav_frame, self.bottom_frame, getattr(self, "spacer", None)):
+            if frame:
+                try:
+                    frame.configure(bg=Colors.BG_ELEVATED)
+                except Exception:
+                    pass
+        # Re-apply active state to buttons to update ttk styles
+        self._update_active_button(self.current_view)
 
     # Public helpers ------------------------------------------------------ #
     def show_chat(self):

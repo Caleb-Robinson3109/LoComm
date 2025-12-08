@@ -6,7 +6,7 @@ import sys
 import tkinter as tk
 from typing import Callable, Dict, Optional
 
-from utils.chatroom_registry import get_active_members, set_active_chatroom
+from utils.chatroom_registry import clear_chatroom, get_active_members, set_active_chatroom
 from utils.design_system import AppConfig, Colors, DesignUtils, Spacing, Typography
 from utils.pin_authentication import generate_chatroom_code
 from utils.state.status_manager import get_status_manager
@@ -49,13 +49,18 @@ class ChatroomPage(tk.Frame):
                     "text": "Disconnect",
                     "variant": "danger",
                     "command": self._disconnect_from_chatroom,
-                    "width": 12,
+                    "width": 10,
+                    "padx": (Spacing.XXS, 0),
                 }
             ],
             action_refs=header_action_refs,
+            padx=Spacing.LG,
         )
         self.disconnect_btn = header_action_refs.get("disconnect")
         self._update_disconnect_button_style()
+        if self.disconnect_btn:
+            # Align with header controls
+            self.disconnect_btn.configure(anchor="center")
 
         body = tk.Frame(layout, bg=Colors.SURFACE)
         body.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=(Spacing.SM, Spacing.LG))
@@ -125,13 +130,19 @@ class ChatroomPage(tk.Frame):
             self._show_error("Please enter all 20 alphanumeric characters.")
             return
         self._set_waiting(True)
-        get_status_manager().update_status("Connecting…")
+        status_mgr = get_status_manager()
+        status_mgr.update_status("Connecting…")
         try:
-            enter_pairing_key(code)
+            result = enter_pairing_key(code)
         except Exception:
             self._show_error("Unable to send chatroom code to device. Please try again.")
             return
-        self.after(300, lambda: self._complete_success(code))
+
+        if result is False:
+            self._show_error("Pairing code rejected by device. Please verify and retry.")
+            return
+
+        self._complete_success(code)
 
     def _complete_success(self, code: str):
         self._set_waiting(False)
@@ -160,8 +171,8 @@ class ChatroomPage(tk.Frame):
         self._error_label and self._error_label.configure(text="")
 
     def _disconnect_from_chatroom(self):
-        set_active_chatroom("", get_active_members())
-        get_status_manager().update_status("Chatroom disconnected")
+        clear_chatroom()
+        get_status_manager().update_status(AppConfig.STATUS_DISCONNECTED)
         self._current_chatroom_code = None
         self._entry_var.set("")
         if self.enter_btn:

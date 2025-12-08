@@ -164,11 +164,26 @@ class LoginWindow:
 
     def _on_login_click(self):
         password = self.password_var.get().strip()
+        device_name = self.device_name_var.get().strip()
+        if not device_name:
+            self._show_validation_error("Please enter a device name")
+            if self.device_name_entry and self.device_name_entry.winfo_exists():
+                self.window.after(10, self.device_name_entry.focus_set)
+            return
+        if len(device_name) > 32:
+            self._show_validation_error("Device name must be 32 characters or less")
+            if self.device_name_entry and self.device_name_entry.winfo_exists():
+                self.window.after(10, self.device_name_entry.focus_set)
+            return
         if not password:
             self._show_validation_error("Please enter a password")
+            if self.password_entry and self.password_entry.winfo_exists():
+                self.window.after(10, self.password_entry.focus_set)
             return
         if len(password) < 3:
             self._show_validation_error("Password must be at least 3 characters")
+            if self.password_entry and self.password_entry.winfo_exists():
+                self.window.after(10, self.password_entry.focus_set)
             return
 
         if not self.login_btn or not self.login_btn.winfo_exists():
@@ -185,9 +200,9 @@ class LoginWindow:
             self._show_login_failure("Incorrect password. Please try again.")
             return
 
-        device_name = self.device_name_var.get().strip() or "Orion"
+        device_name = self.device_name_var.get().strip()
         if self.on_login:
-            self.on_login(device_name, "validated_password")
+            self.on_login(device_name, password)
 
         if self.window and self.login_btn.winfo_exists():
             self.window.after(1000, lambda: self.login_btn.configure(state="normal", text="Login"))

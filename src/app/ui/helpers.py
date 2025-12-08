@@ -366,6 +366,7 @@ def create_page_header(
     on_back: Optional[Callable[[], None]] = None,
     actions: Optional[List[dict[str, Any]]] = None,
     action_refs: Optional[Dict[str, tk.Button]] = None,
+    padx: int | tuple[int, int] = Spacing.SM,
 ) -> tk.Frame:
     """
     Standard page header:
@@ -381,7 +382,7 @@ def create_page_header(
         back_row = tk.Frame(
             parent,
             bg=Colors.SURFACE,
-            padx=Spacing.SM,
+            padx=padx,
             pady=Spacing.XXS,
         )
         back_row.pack(fill=tk.X, pady=(0, Spacing.XXS))
@@ -393,7 +394,7 @@ def create_page_header(
     header = tk.Frame(
         parent,
         bg=Colors.SURFACE,
-        padx=Spacing.SM,
+        padx=padx,
     )
     header.pack(fill=tk.X, pady=(0, Spacing.XS))
 

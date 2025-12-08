@@ -26,6 +26,7 @@ from utils.design_system import AppConfig
 from utils.state.status_manager import get_status_manager
 from utils.state.connection_manager import get_connection_manager
 from utils.window_sizing import get_chat_window_size
+from utils.app_logger import get_logger
 
 
 class ChatWindow(tk.Toplevel):
@@ -56,10 +57,12 @@ class ChatWindow(tk.Toplevel):
         super().__init__(master)
         ensure_styles_initialized()
         self.peer_name = peer_name or "Peer"
-        self.local_device_name = local_device_name or "Orion"
+        self.local_device_name = local_device_name or ""
         self._on_close_callback = on_close_callback
         self._on_send_callback = on_send_callback
         self._stop_event = threading.Event()
+        self._logger = get_logger("chat_window")
+        self._receive_supports_timeout: bool | None = None
         self._chat_thread = threading.Thread(target=self._chat_loop, daemon=True)
         self.title("Chat")
         self._apply_default_geometry()
@@ -330,7 +333,7 @@ class ChatWindow(tk.Toplevel):
         get_status_manager().update_status("Chat closed")
         self._stop_event.set()
         if self._chat_thread and self._chat_thread.is_alive():
-            self._chat_thread.join(timeout=0.5)
+            self._chat_thread.join(timeout=2.0)
         if self._on_close_callback:
             try:
                 self._on_close_callback()
@@ -375,26 +378,64 @@ class ChatWindow(tk.Toplevel):
     def _chat_loop(self):
         """Lightweight thread tied to this chat window; polls for inbound messages."""
         while not self._stop_event.is_set():
-            if receive_message is None:
-                self._stop_event.wait(timeout=1.0)
-                continue
+            if self._stop_event.wait(timeout=0.1):
+                break
+
             try:
-                #self._add_message("checking for received data", sender="Debug", is_self=False)
-                print("starting receive_message call")
-                sender, payload = receive_message()
-                print(f"Finished receive_message call with payload={payload} and sender={sender}")
-                if self._stop_event.is_set():
-                    print("stop event is set, exiting chat loop")
-                    break
-                if sender and payload:
-                    print("adding message to chat")
-                    self._add_message(payload, sender=sender, is_self=False)
-            except Exception:
-                self._stop_event.wait(timeout=1.0)
+                sender, payload = self._receive_with_timeout()
+            except Exception as exc:  # noqa: BLE001
+                self._logger.warning("Failed to receive message: %s", exc)
+                self._stop_event.wait(timeout=0.5)
+                continue
+
+            if self._stop_event.is_set():
+                break
+
+            if sender and payload:
+                self._add_message(payload, sender=sender, is_self=False)
             else:
-                # Avoid tight loop when no data
-                
-                self._stop_event.wait(timeout=0.2)
+                self._stop_event.wait(timeout=0.25)
+
+        self._logger.info("Chat loop exited for peer %s", self.peer_name)
+
+    def _receive_with_timeout(self, timeout: float = 1.0):
+        """Call receive_message with timeout awareness to avoid blocking shutdown."""
+        if receive_message is None:
+            self._stop_event.wait(timeout)
+            return None, None
+
+        # First attempt: use native timeout parameter if available
+        if self._receive_supports_timeout is not False:
+            try:
+                result = receive_message(timeout=timeout)
+                self._receive_supports_timeout = True
+                return result
+            except TypeError:
+                self._receive_supports_timeout = False
+            except Exception:
+                raise
+
+        # Fallback: run receive_message in a worker and bound wait time
+        container = {"result": (None, None)}
+
+        def _worker():
+            try:
+                container["result"] = receive_message()
+            except Exception as exc:  # noqa: BLE001
+                container["result"] = (None, None)
+                self._logger.warning("receive_message failed: %s", exc)
+
+        worker = threading.Thread(target=_worker, daemon=True)
+        worker.start()
+        worker.join(timeout)
+        if worker.is_alive():
+            self._logger.warning("receive_message exceeded %.1fs; skipping result", timeout)
+            return None, None
+
+        result = container.get("result", (None, None))
+        if not isinstance(result, tuple) or len(result) != 2:
+            return None, None
+        return result
 
     def _widgets_alive(self) -> bool:
         try:

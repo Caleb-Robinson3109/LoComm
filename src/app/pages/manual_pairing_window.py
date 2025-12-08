@@ -29,6 +29,8 @@ class ManualPairingWindow:
 
         self.window_scaffold = None
         self.pair_btn: Optional[tk.Widget] = None
+        self.device_name_entry: Optional[tk.Entry] = None
+        self.device_id_entry: Optional[tk.Entry] = None
 
         self._create_window()
 
@@ -43,7 +45,7 @@ class ManualPairingWindow:
         content_frame = self.window_scaffold.body
 
         # Device Name Input
-        create_form_row(
+        _, self.device_name_entry = create_form_row(
             content_frame,
             label="Device Name",
             widget_factory=lambda p: DesignUtils.create_chat_entry(
@@ -55,7 +57,7 @@ class ManualPairingWindow:
         )
 
         # Device ID Input
-        create_form_row(
+        _, self.device_id_entry = create_form_row(
             content_frame,
             label="Device ID",
             widget_factory=lambda p: DesignUtils.create_chat_entry(
@@ -90,6 +92,36 @@ class ManualPairingWindow:
         # Bind Enter key
         self.window_scaffold.toplevel.bind("<Return>", lambda e: self._on_pair_click())
         self.window_scaffold.toplevel.bind("<Escape>", lambda e: self.close())
+        # Focus first field immediately
+        self.window_scaffold.toplevel.after(0, self._focus_name)
+        self._bind_entry_navigation()
+
+    def _focus_name(self):
+        try:
+            if self.device_name_entry and self.device_name_entry.winfo_exists():
+                self.device_name_entry.focus_set()
+                self.device_name_entry.icursor(tk.END)
+        except Exception:
+            pass
+
+    def _focus_device_id(self):
+        """Move focus to the device ID entry."""
+        try:
+            if self.device_id_entry and self.device_id_entry.winfo_exists():
+                self.device_id_entry.focus_set()
+                self.device_id_entry.icursor(tk.END)
+        except Exception:
+            pass
+
+    def _bind_entry_navigation(self):
+        """Bind Return to move from name -> id, then id -> pair."""
+        try:
+            if self.device_name_entry and self.device_name_entry.winfo_exists():
+                self.device_name_entry.bind("<Return>", lambda e: (self._focus_device_id(), "break")[1])
+            if self.device_id_entry and self.device_id_entry.winfo_exists():
+                self.device_id_entry.bind("<Return>", lambda e: (self._on_pair_click(), "break")[1])
+        except Exception:
+            pass
 
     def _on_pair_click(self):
         name = self.device_name_var.get().strip()

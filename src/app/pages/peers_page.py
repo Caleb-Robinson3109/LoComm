@@ -26,7 +26,7 @@ from utils.chatroom_registry import get_active_code, register_chatroom_listener,
 # Ensure API module path is available
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../api")))
 try:
-    from LoCommAPI import scan_for_devices
+    from LoCommAPI import locomm_api_scan as scan_for_devices
 except Exception:
     scan_for_devices = None
 
@@ -141,7 +141,7 @@ class PeersPage(BasePage):
             self._create_device_row(device)
 
     def _create_device_row(self, device: dict):
-        row = tk.Frame(self.device_list_container, bg=Colors.SURFACE_ALT)
+        row = tk.Frame(self.device_list_container, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.XS)
         row.pack(fill=tk.X, pady=(0, Spacing.SM))
         
         # Simple row layout
@@ -157,7 +157,7 @@ class PeersPage(BasePage):
         ).pack(anchor="w")
         
         meta_frame = tk.Frame(info_frame, bg=Colors.SURFACE_ALT)
-        meta_frame.pack(fill=tk.X)
+        meta_frame.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 
         tk.Label(
             meta_frame,
@@ -168,7 +168,7 @@ class PeersPage(BasePage):
         ).pack(side=tk.LEFT, anchor="w")
 
         button_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
-        button_frame.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
+        button_frame.pack(side=tk.RIGHT, padx=(Spacing.SM, 0), pady=(Spacing.XXS, 0))
 
         DesignUtils.button(
             button_frame,
@@ -308,7 +308,9 @@ class PeersPage(BasePage):
 
     def _open_chat_window(self, device: dict):
         master = self.winfo_toplevel()
-        local_name = getattr(self.session, "local_device_name", "Orion") if self.session else "Orion"
+        local_name = ""
+        if self.session:
+            local_name = getattr(self.session, "local_device_name", "") or getattr(self.session, "device_name", "") or ""
         receiver_id = device.get("raw_id")
         ChatWindow(
             master,
@@ -377,7 +379,7 @@ class PeersPage(BasePage):
             return
 
         if scan_for_devices is None:
-            messagebox.showerror("Scan Unavailable", "Device scan API is not available.", parent=self.winfo_toplevel())
+            messagebox.showinfo("Scan Unavailable", "Device scan API is not available in this build.", parent=self.winfo_toplevel())
             return
 
         self.is_scanning = True

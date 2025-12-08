@@ -8,6 +8,7 @@ from utils.design_system import Colors, Spacing, DesignUtils, Typography
 from utils.user_settings import get_user_settings, save_user_settings
 from ui.helpers import AutoWrapLabel, create_page_header, create_scroll_container
 from .base_page import BasePage, PageContext
+from utils.state.status_manager import get_status_manager
 
 
 class SettingsPage(BasePage):
@@ -20,6 +21,8 @@ class SettingsPage(BasePage):
         self.user_settings = get_user_settings()
         self._toggle_widgets: dict[str, tuple[tk.BooleanVar, tk.Widget]] = {}
         self._theme_button: tk.Widget | None = None
+        self._status_label: tk.Label | None = None
+        self._status_callback = None
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
@@ -30,13 +33,33 @@ class SettingsPage(BasePage):
             subtitle="Choose how Locomm looks and feels for you.",
         )
 
+        self._build_status_section(body)
         self._build_sections(body)
+        self._register_status_listener()
 
     # ------------------------------------------------------------------ #
     # Layout helpers
     def _build_sections(self, parent: tk.Misc) -> None:
         self._build_appearance_section(parent)
         self._build_preferences_section(parent)
+
+    def _build_status_section(self, parent: tk.Misc) -> None:
+        section = self._create_section(
+            parent,
+            "Connection Status",
+            "Live transport status from your device.",
+        )
+        badge = tk.Label(
+            section,
+            text="Disconnected",
+            bg=Colors.STATE_ERROR,
+            fg=Colors.SURFACE,
+            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_BOLD),
+            padx=Spacing.MD,
+            pady=int(Spacing.XXS / 1.2),
+        )
+        badge.pack(anchor="w", pady=(Spacing.XS, 0))
+        self._status_label = badge
 
     def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:
         section = tk.Frame(parent, bg=Colors.SURFACE_ALT, bd=0, relief="flat", padx=Spacing.MD, pady=Spacing.SM)
@@ -145,6 +168,36 @@ class SettingsPage(BasePage):
         if btn and btn.winfo_exists():
             btn.configure(text=self._bool_label(new_value))
 
+    # ------------------------------------------------------------------ #
+    # Status binding
+    def _register_status_listener(self):
+        """Listen to status updates and reflect in the badge."""
+        try:
+            status_mgr = get_status_manager()
+        except Exception:
+            return
+
+        def _callback(status_text: str, color: str):
+            if self._status_label and self._status_label.winfo_exists():
+                text = status_text or "Disconnected"
+                self._status_label.configure(text=text, bg=color or Colors.STATE_ERROR, fg=Colors.SURFACE)
+
+        self._status_callback = _callback
+        try:
+            status_mgr.register_status_callback(_callback)
+        except Exception:
+            self._status_callback = None
+
+    def _unregister_status_listener(self):
+        if not self._status_callback:
+            return
+        try:
+            status_mgr = get_status_manager()
+            status_mgr.unregister_status_callback(self._status_callback)
+        except Exception:
+            pass
+        self._status_callback = None
+
     def _bool_label(self, value: bool) -> str:
         return "On" if value else "Off"
 
@@ -159,6 +212,16 @@ class SettingsPage(BasePage):
             var.set(current)
             if isinstance(btn, tk.Button):
                 btn.configure(text=self._bool_label(current))
+        # Refresh current status badge immediately
+        try:
+            status_mgr = get_status_manager()
+            status_text = getattr(status_mgr, "_current_status", "Disconnected")
+            color = status_mgr.get_status_color(status_text)
+            if self._status_label and self._status_label.winfo_exists():
+                self._status_label.configure(text=status_text, bg=color or Colors.STATE_ERROR, fg=Colors.SURFACE)
+        except Exception:
+            pass
 
     def destroy(self):
+        self._unregister_status_listener()
         return super().destroy()

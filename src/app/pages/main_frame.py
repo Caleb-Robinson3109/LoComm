@@ -62,6 +62,7 @@ class MainFrame(ttk.Frame):
 
         # Layout and device status subscription
         self._create_layout()
+        self._status_callback_registered = False
 
         # Start with home view without pushing history
         self._show_home_view()
@@ -145,7 +146,6 @@ class MainFrame(ttk.Frame):
 
         self._setup_view_containers()
         self._register_top_listeners()
-        self._register_top_listeners()
 
     def _setup_view_containers(self):
         """Create placeholder containers for each view."""
@@ -197,7 +197,7 @@ class MainFrame(ttk.Frame):
         bar.grid_columnconfigure(1, weight=1)
         bar.grid_columnconfigure(2, weight=0)
 
-        initial_name = getattr(self.session, "local_device_name", "Orion") or "Orion"
+        initial_name = getattr(self.session, "local_device_name", "") or "Set name"
         self._default_local_device_name = initial_name
 
         info_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
@@ -251,7 +251,7 @@ class MainFrame(ttk.Frame):
 
         self.chat_badge = tk.Label(
             status_column,
-            text="Chat: Idle",
+            text="Idle",
             bg=Colors.TEXT_MUTED,
             fg=Colors.SURFACE,
             font=(Typography.FONT_UI, badge_font_size, Typography.WEIGHT_BOLD),
@@ -336,6 +336,11 @@ class MainFrame(ttk.Frame):
             unregister_chatroom_listener(self._chatroom_listener)
         if hasattr(self, "_chat_listener") and self._chat_listener:
             ChatWindow.unregister_window_listener(self._chat_listener)
+        if getattr(self, "_status_callback_registered", False) and hasattr(self.controller, "status_manager"):
+            try:
+                self.controller.status_manager.unregister_status_callback(self._handle_status_update)  # type: ignore[attr-defined]
+            except Exception:
+                pass
         return super().destroy()
 
     def _update_chatroom_label(self, code: str | None):
@@ -356,9 +361,16 @@ class MainFrame(ttk.Frame):
         if not hasattr(self, "chat_badge"):
             return
         if has_chat:
-            self.chat_badge.configure(text="Chat: Active", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
+            self.chat_badge.configure(text="Active", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
-            self.chat_badge.configure(text="Chat: Idle", bg=Colors.TEXT_MUTED, fg=Colors.SURFACE)
+            self.chat_badge.configure(text="Idle", bg=Colors.TEXT_MUTED, fg=Colors.SURFACE)
+
+    def _handle_status_update(self, status_text: str, color: str):
+        """Handle status updates; gate peers when not ready."""
+        if hasattr(self.sidebar, "_update_peer_access") and status_text:
+            is_ready = status_text.lower() in (kw.lower() for kw in AppConfig.STATUS_READY_KEYWORDS)
+            has_chatroom = hasattr(self.sidebar, "_peers_enabled") and self.sidebar._peers_enabled
+            self.sidebar._update_peer_access(is_ready and has_chatroom)
 
     def _register_top_listeners(self):
         """Register chat/chatroom listeners after layout creation."""
@@ -366,6 +378,88 @@ class MainFrame(ttk.Frame):
             register_chatroom_listener(self._chatroom_listener)
         if hasattr(self, "_chat_listener") and self._chat_listener:
             ChatWindow.register_window_listener(self._chat_listener)
+        # Already registered status callback in layout creation
+
+    def apply_theme(self, *, prev_bg: dict | None = None, prev_fg: dict | None = None):
+        """Refresh top-level theme without rebuilding the frame."""
+        try:
+            self.configure(bg=Colors.BG_MAIN)
+            self.app.configure(bg=Colors.BG_MAIN)
+        except Exception:
+            pass
+
+        for container in [self.content_frame, self.sidebar, getattr(self, "top_bar", None)]:
+            if container:
+                try:
+                    container.configure(bg=Colors.BG_ELEVATED if container is self.top_bar else Colors.BG_MAIN)
+                except Exception:
+                    pass
+
+        for container in self._view_containers.values():
+            try:
+                container.configure(bg=Colors.BG_MAIN)
+            except Exception:
+                pass
+
+        if hasattr(self.sidebar, "refresh_theme"):
+            self.sidebar.refresh_theme()
+        try:
+            from utils.chatroom_registry import get_active_code
+            self._update_chatroom_label(get_active_code())
+        except Exception:
+            pass
+
+        # Repaint existing widgets to new palette
+        self._repaint_widget_tree(self, prev_bg or {}, prev_fg or {})
+
+    def _repaint_widget_tree(self, widget, prev_bg: dict, prev_fg: dict):
+        """Walk widget tree and update bg/fg when they match previous theme colors."""
+        bg_map = {
+            k: v
+            for k, v in {
+                prev_bg.get("BG_MAIN"): Colors.BG_MAIN,
+                prev_bg.get("SURFACE"): Colors.SURFACE,
+                prev_bg.get("SURFACE_ALT"): Colors.SURFACE_ALT,
+                prev_bg.get("BG_ELEVATED"): Colors.BG_ELEVATED,
+                prev_bg.get("BG_ELEVATED_2"): Colors.BG_ELEVATED_2,
+            }.items()
+            if k is not None
+        }
+        fg_map = {
+            k: v
+            for k, v in {
+                prev_fg.get("TEXT_PRIMARY"): Colors.TEXT_PRIMARY,
+                prev_fg.get("TEXT_SECONDARY"): Colors.TEXT_SECONDARY,
+                prev_fg.get("TEXT_MUTED"): Colors.TEXT_MUTED,
+            }.items()
+            if k is not None
+        }
+
+        def _update_colors(target):
+            # Skip ttk widgets that often reject direct bg/fg
+            cls_name = target.winfo_class()
+            if cls_name.startswith("T"):
+                return
+            try:
+                current_bg = target.cget("bg")
+                if current_bg in bg_map and bg_map[current_bg]:
+                    target.configure(bg=bg_map[current_bg])
+            except Exception:
+                pass
+            try:
+                current_fg = target.cget("fg")
+                if current_fg in fg_map and fg_map[current_fg]:
+                    target.configure(fg=fg_map[current_fg])
+            except Exception:
+                pass
+
+        _update_colors(widget)
+        for child in widget.winfo_children():
+            _update_colors(child)
+            try:
+                self._repaint_widget_tree(child, prev_bg, prev_fg)
+            except Exception:
+                continue
 
     # ------------------------------------------------------------------ #
     # Other handlers

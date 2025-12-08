@@ -1,7 +1,7 @@
 """Shared state for the currently active chatroom and its members."""
 from __future__ import annotations
 
-from typing import Iterable, Set
+from typing import Callable, Iterable, Set
 
 
 _active_members: Set[str] = set()
