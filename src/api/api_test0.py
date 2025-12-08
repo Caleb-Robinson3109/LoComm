@@ -6,7 +6,8 @@ recv = True
 def recv_thread():
     while(recv):
         name, message, id = receive_message()
-        print(f"{name}: {message}")
+        print(f"{id} {name}: {message}")
+
 
 #run_deviceless_mode()
 
