@@ -2,12 +2,12 @@
 *LoComm Devices are ESP32s with a LoRa module. The devices provides a low power solution for the secure transmission of data over 915 MHz radio. Providing long range but lower bandwidth. With the use of the computer API applications can be built to utilize the device’s functionality*
 
 ## Team Members
-Ethan Kleine - ejkmvp@umsystem.edu
-Abraham Yirga - aayfn7@umsystem.edu
-Caleb Robinson - cmrd2d@umsystem.edu
-Kush Solanki - kysp2d@umsystem.edu
-Shaun Wolfe - swgw8@umsystem.edu
-Arjun Kirubakaran - apkccy@umsystem.edu
+Ethan Kleine - ejkmvp@umsystem.edu \
+Abraham Yirga - aayfn7@umsystem.edu \
+Caleb Robinson - cmrd2d@umsystem.edu \
+Kush Solanki - kysp2d@umsystem.edu \
+Shaun Wolfe - swgw8@umsystem.edu \
+Arjun Kirubakaran - apkccy@umsystem.edu \
 
 ## Problem Statement
 In areas without reliable internet or cellular infrastructure, people, and IoT devices may face serious communication barriers. In these areas secure communication is still required, protecting sensitive or proprietary information. A low cost device that provides secure communication, where wireless infrastructure is not available is a need for these situations.
@@ -17,7 +17,7 @@ This project provides a secure peer to peer communication system that operates w
 
 ![ESP32 with LoRa Module](img/esp.png)
 
-LILYGO LoRa32 915Mhz ESP32 Development Board OLED 0.96 Inch SD Card BLE WiFi
+LILYGO LoRa32 915Mhz ESP32 Development Board OLED 0.96 Inch SD Card BLE WiFi \
 Cost: $30.00
 
 ## Device Security
@@ -30,7 +30,7 @@ The LoComm device is designed to maintain security in any remote environment reg
 
 ## Message Format
 | Feild Name | Field Size |
-| ----------- | ----------- |
+| ----------- | :---------: |
 | Start Byte | 1 Byte |
 | 0 | 1 Byte |
 | Sender ID (Encrypted) | 1 Byte |
