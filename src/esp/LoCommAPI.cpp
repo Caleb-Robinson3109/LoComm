@@ -19,7 +19,7 @@ size_t computer_in_size = 0;
 size_t device_in_size = 0;
 
 extern uint8_t deviceID;
-extern SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4> serialReadyToSendArray;
+extern SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 5> serialReadyToSendArray;
 extern DefraggingBuffer<2048, 8> rxMessageBuffer;
 extern bool addMessageToTxArray(uint8_t* src, uint16_t size, uint8_t destinationID);
 extern portMUX_TYPE loraRxSpinLock;

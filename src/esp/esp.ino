@@ -45,7 +45,7 @@ CyclicArrayList<uint16_t, 128> previouslyProcessedIds;
 //LoRa RX Related Variables
 CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE> rxBuffer; //buffer used to store raw data received from LoRa. This is then processed later
 uint16_t rxBufferLastSize = 0;
-SimpleArraySet<256, 10> rxMessageArray; //used to store information about successfully processed received messages
+SimpleArraySet<256, 11> rxMessageArray; //used to store information about successfully processed received messages
 DefraggingBuffer<2048, 8> rxMessageBuffer; //used to combine received segmented messages into the final full message
 
 //LoRa TX Related Variables
@@ -77,7 +77,7 @@ void setup() {
 
   //initialize variables
   rxBuffer = CyclicArrayList<uint8_t, LORA_RX_BUFFER_SIZE>();
-  rxMessageArray = SimpleArraySet<256, 10>();
+  rxMessageArray = SimpleArraySet<256, 11>();
   rxMessageBuffer = DefraggingBuffer<2048, 8>();
   rxMessageBuffer.init();
   txMessageArray = SimpleArraySet<256, 9>();
@@ -85,7 +85,7 @@ void setup() {
   txMessageBuffer.init();
   readyToSendBuffer = CyclicArrayList<uint8_t, LORA_READY_TO_SEND_BUFFER_SIZE>();
   ackToSendBuffer = CyclicArrayList<uint8_t, LORA_ACK_BUFFER_SIZE>();
-  serialReadyToSendArray = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 4>();
+  serialReadyToSendArray = SimpleArraySet<SERIAL_READY_TO_SEND_BUFFER_SIZE, 5>();
   previouslySeenIds = CyclicArrayList<uint16_t, 128>();
   previouslyProcessedIds = CyclicArrayList<uint16_t, 128>();
 
@@ -596,7 +596,7 @@ void loop() {
                 LDebug("Allocated space in buffer for new message");
 
                 //Now that we successfully got an allocation in the rxMessageBuffer, construct a message in the rxMessageArray
-                uint8_t headerBuf[10];
+                uint8_t headerBuf[11];
                 headerBuf[0] = messageNumber >> 8;
                 headerBuf[1] = messageNumber & 0xFF;
                 headerBuf[2] = bufferLocation >> 8;
@@ -607,6 +607,7 @@ void loop() {
                 headerBuf[7] = 1 << sequenceNumber;
                 headerBuf[8] = sequenceSize;
                 headerBuf[9] = (millis() / 1000) % 255;
+                headerBuf[10] = tempBuf[1];
 
                 //try to add the message to the rxMessageArray
                 if (rxMessageArray.add(headerBuf)) {
@@ -772,11 +773,12 @@ void loop() {
         LDebug("Received message has completed"); 
         //Now that we know the message has been fully received, we will drop it from the rxMessageArray, but keep its allocation in the buffer
         //Then we will pass the index of that allocation off to the serial functionality
-        uint8_t tempBuf[4];
+        uint8_t tempBuf[5];
         tempBuf[0] = rxMessageArray.get(i)[2]; //Buffer Location
         tempBuf[1] = rxMessageArray.get(i)[3];
         tempBuf[2] = rxMessageArray.get(i)[4]; //Size in buffer
         tempBuf[3] = rxMessageArray.get(i)[5];
+        tempBuf[4] = rxMessageArray.get(i)[10]; // sender ID
         
         {
           ScopeLock(serialLoraBridgeSpinLock, serialLoraBridgeLock);
