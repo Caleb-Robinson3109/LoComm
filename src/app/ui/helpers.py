@@ -270,6 +270,10 @@ def sidebar_nav_section(
     section.pack(fill=tk.X)
     for key, label in items:
         btn = DesignUtils.create_nav_button(section, label, lambda k=key: click_handler(k))
+        try:
+            btn.configure(anchor="center", justify="center")
+        except Exception:
+            pass
         btn.pack(fill=tk.X, pady=(0, Spacing.SM))
         if register_button:
             register_button(key, btn)

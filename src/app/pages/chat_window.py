@@ -118,9 +118,7 @@ class ChatWindow(tk.Toplevel):
         header_content = tk.Frame(self.header, bg=Colors.SURFACE_HEADER)
         header_content.pack(fill=tk.X)
         header_content.grid_columnconfigure(0, weight=1)
-        header_content.grid_columnconfigure(1, weight=0)
-        header_content.grid_columnconfigure(2, weight=0)
-        header_content.grid_columnconfigure(3, weight=1)
+        header_content.grid_columnconfigure(1, weight=1)
 
         # Device ID + name
         self.header_id_label = tk.Label(
@@ -140,16 +138,6 @@ class ChatWindow(tk.Toplevel):
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         )
         self.header_name_label.grid(row=0, column=1, sticky="w")
-
-        # Ping button placeholder (functionality to be added later)
-        self.ping_btn = DesignUtils.button(
-            header_content,
-            text="Ping",
-            command=lambda: None,
-            variant="primary",
-            width=4,
-        )
-        self.ping_btn.grid(row=0, column=3, sticky="e")
 
         # Chat area with modern styling
         chat_frame = tk.Frame(

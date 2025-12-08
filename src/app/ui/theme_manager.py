@@ -378,7 +378,7 @@ class ThemeManager:
                                 "Button.padding",
                                 {
                                     "sticky": "nswe",
-                                    "children": [("Button.label", {"sticky": "w"})],
+                                    "children": [("Button.label", {"sticky": "we"})],
                                 },
                             )
                         ],
@@ -395,7 +395,7 @@ class ThemeManager:
             borderwidth=1,
             relief="flat",
             padding=(Spacing.MD, Spacing.SM),
-            anchor="w",
+            anchor="center",
             focusthickness=0,
             highlightthickness=0,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_MEDIUM),
@@ -414,7 +414,7 @@ class ThemeManager:
             borderwidth=1,
             relief="flat",
             padding=(Spacing.MD, Spacing.SM),
-            anchor="w",
+            anchor="center",
             focusthickness=0,
             highlightthickness=0,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),

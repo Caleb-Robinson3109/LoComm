@@ -76,7 +76,8 @@ class Sidebar(tk.Frame):
         self.bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(Spacing.LG, 0))
 
     def _build_footer(self):
-        sidebar_footer(self, "2.3.1")
+        # Footer removed
+        return
 
     # ------------------------------------------------------------------ #
     def _update_peer_access(self, enabled: bool):

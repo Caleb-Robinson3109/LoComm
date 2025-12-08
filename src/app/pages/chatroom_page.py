@@ -86,26 +86,37 @@ class ChatroomPage(tk.Frame):
 
         button_row = tk.Frame(body, bg=Colors.SURFACE)
         button_row.pack(fill=tk.X, pady=(Spacing.SM, Spacing.SM))
-        for idx in range(2):
+        for idx in range(3):
             button_row.columnconfigure(idx, weight=1)
+
+        btn_width = 12
 
         self.generate_btn = DesignUtils.button(
             button_row,
             text="Generate",
             variant="secondary",
-            width=12,
+            width=btn_width,
             command=self._create_chatroom_code,
         )
         self.generate_btn.grid(row=0, column=0, sticky="ew", padx=(0, Spacing.SM))
+
+        self.clear_btn = DesignUtils.button(
+            button_row,
+            text="Clear",
+            variant="secondary",
+            width=btn_width,
+            command=lambda: self._entry_var.set(""),
+        )
+        self.clear_btn.grid(row=0, column=1, sticky="ew", padx=(0, Spacing.SM))
 
         self.enter_btn = DesignUtils.button(
             button_row,
             text="Enter",
             variant="primary",
-            width=12,
+            width=btn_width,
             command=self._on_submit_chatroom_code,
         )
-        self.enter_btn.grid(row=0, column=1, sticky="ew")
+        self.enter_btn.grid(row=0, column=2, sticky="ew")
         self.enter_btn.configure(state="disabled")
 
         self._error_label = tk.Label(

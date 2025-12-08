@@ -31,6 +31,7 @@ class SettingsPage(BasePage):
             body,
             title="Settings",
             subtitle="Choose how Locomm looks and feels for you.",
+            padx=Spacing.LG,
         )
 
         self._build_sections(body)
@@ -42,20 +43,17 @@ class SettingsPage(BasePage):
         self._build_appearance_section(parent)
 
     def _build_device_info_section(self, parent: tk.Misc) -> None:
-        section = self._create_section(
-            parent,
-            "Device Info",
-            "View your current device identifier.",
-        )
         session = getattr(self.context, "session", None)
         device_id = getattr(session, "device_id", "") or "Not available"
+        container = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Spacing.MD, pady=Spacing.MD)
+        container.pack(fill=tk.X, padx=Spacing.LG, pady=(0, Spacing.MD))
         tk.Label(
-            section,
+            container,
             text=f"Device ID: {device_id}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        ).pack(anchor="w", pady=(Spacing.XS, 0))
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        ).pack(anchor="w")
 
 
     def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:

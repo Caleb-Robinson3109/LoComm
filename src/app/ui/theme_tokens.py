@@ -287,4 +287,4 @@ class AppConfig:
     WINDOW_HEIGHT_RATIO = 0.736144
 
 
-Spacing.SIDEBAR_WIDTH = 170
+Spacing.SIDEBAR_WIDTH = 120
