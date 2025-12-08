@@ -18,7 +18,7 @@ def locomm_api_receive_message() -> tuple[str, str, int] | tuple[None, None, Non
 
         #if the device disconnected stop trying
         if(not LoCommGlobals.connected):
-            return (None, None)
+            return (None, None, None)
         
         #unpack send message
         start_bytes: int

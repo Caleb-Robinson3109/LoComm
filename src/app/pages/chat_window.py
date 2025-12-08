@@ -382,7 +382,7 @@ class ChatWindow(tk.Toplevel):
                 break
 
             try:
-                sender, payload = self._receive_with_timeout()
+                sender, payload, senderID = self._receive_with_timeout()
             except Exception as exc:  # noqa: BLE001
                 self._logger.warning("Failed to receive message: %s", exc)
                 self._stop_event.wait(timeout=0.5)
@@ -390,6 +390,11 @@ class ChatWindow(tk.Toplevel):
 
             if self._stop_event.is_set():
                 break
+
+            # Ignore message if senderID doesn't match this chat window's peer_id
+            if senderID and senderID != self.peer_id:
+                self._stop_event.wait(timeout=0.25)
+                continue
 
             if sender and payload:
                 self._add_message(payload, sender=sender, is_self=False)
@@ -402,7 +407,7 @@ class ChatWindow(tk.Toplevel):
         """Call receive_message with timeout awareness to avoid blocking shutdown."""
         if receive_message is None:
             self._stop_event.wait(timeout)
-            return None, None
+            return None, None, None
 
         # First attempt: use native timeout parameter if available
         if self._receive_supports_timeout is not False:
@@ -422,7 +427,7 @@ class ChatWindow(tk.Toplevel):
             try:
                 container["result"] = receive_message()
             except Exception as exc:  # noqa: BLE001
-                container["result"] = (None, None)
+                container["result"] = (None, None, None)
                 self._logger.warning("receive_message failed: %s", exc)
 
         worker = threading.Thread(target=_worker, daemon=True)
@@ -430,11 +435,11 @@ class ChatWindow(tk.Toplevel):
         worker.join(timeout)
         if worker.is_alive():
             self._logger.warning("receive_message exceeded %.1fs; skipping result", timeout)
-            return None, None
+            return None, None, None
 
-        result = container.get("result", (None, None))
-        if not isinstance(result, tuple) or len(result) != 2:
-            return None, None
+        result = container.get("result", (None, None, None))
+        if not isinstance(result, tuple) or len(result) != 3:
+            return None, None, None
         return result
 
     def _widgets_alive(self) -> bool:
