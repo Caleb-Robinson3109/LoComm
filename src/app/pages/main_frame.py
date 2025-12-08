@@ -12,7 +12,7 @@ from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
 from .chatroom_page import ChatroomPage
-from .chat_page import ChatWindow
+from .chat_window import ChatWindow
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -216,7 +216,7 @@ class MainFrame(ttk.Frame):
 
         self.chatroom_status_badge = tk.Label(
             info_wrap,
-            text="None",
+            text="No Chatroom",
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
@@ -231,7 +231,7 @@ class MainFrame(ttk.Frame):
 
         self.chatroom_label = tk.Label(
             center_wrap,
-            text="No Chatrooms Connected",
+            text="No Chatroom",
             bg=Colors.BG_ELEVATED,
             fg=Colors.TEXT_MUTED,
             font=(Typography.FONT_UI, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
@@ -349,10 +349,10 @@ class MainFrame(ttk.Frame):
         if code:
             formatted = format_chatroom_code(code)
             self.chatroom_label.configure(text=formatted, fg=Colors.TEXT_PRIMARY)
-            self.chatroom_status_badge.configure(text="Connected", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
+            self.chatroom_status_badge.configure(text="In Chatroom", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
-            self.chatroom_label.configure(text="----- ----- ----- -----", fg=Colors.TEXT_MUTED)
-            self.chatroom_status_badge.configure(text="None", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
+            self.chatroom_label.configure(text="No Chatroom", fg=Colors.TEXT_MUTED)
+            self.chatroom_status_badge.configure(text="No Chatroom", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
         # Disable peers when no chatroom
         if hasattr(self.sidebar, "_update_peer_access"):
             self.sidebar._update_peer_access(bool(code))

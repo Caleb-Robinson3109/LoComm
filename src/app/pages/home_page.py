@@ -17,8 +17,12 @@ class HomePage(BasePage):
         self.session = context.session if context else None
         self.navigator = context.navigator if context else None
 
-        body = tk.Frame(self, bg=Colors.SURFACE)
-        body.pack(fill=tk.BOTH, expand=True, padx=Spacing.LG, pady=Spacing.LG)
+        scroll = create_scroll_container(
+            self,
+            bg=Colors.SURFACE,
+            padding=(0, Spacing.LG),
+        )
+        body = scroll.frame
 
         # Standard header with AutoWrap subtitle and standard back button
         actions = [
@@ -26,6 +30,8 @@ class HomePage(BasePage):
                 "text": "Chatroom",
                 "command": self._go_to_chatroom,
                 "variant": "primary",
+                "width": 10,
+                "padx": (Spacing.XXS, 0),
             }
         ]
         create_page_header(
@@ -33,6 +39,7 @@ class HomePage(BasePage):
             title="Welcome",
             subtitle="Join a chatroom and start chatting",
             actions=actions,
+            padx=Spacing.LG,
         )
         # No extra content below yet, but body will grow and text will reflow
 

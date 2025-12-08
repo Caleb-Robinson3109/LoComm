@@ -17,7 +17,7 @@ from ui.helpers import (
     AutoWrapLabel,
 )
 from .base_page import BasePage, PageContext
-from .chat_page import ChatWindow
+from .chat_window import ChatWindow
 
 
 from .manual_pairing_window import ManualPairingWindow
@@ -46,7 +46,7 @@ class PeersPage(BasePage):
         self._manual_pairing_window: Optional[ManualPairingWindow] = None
         self._chatroom_listener: Optional[Callable[[str | None], None]] = None
         self._chatroom_code: Optional[str] = get_active_code()
-        
+
         self.devices: dict[str, dict] = {}  # Map of normalized id -> metadata
         self.device_list_container: Optional[tk.Frame] = None
 
@@ -85,15 +85,17 @@ class PeersPage(BasePage):
         # Standardized header with back button and Scan action
         actions = [
             {
-                "text": "Manual Pair",
-                "command": self._show_manual_pairing_modal,
-                "variant": "secondary",
+                "text": "Scan",
+                "command": self._scan_for_devices,
+                "variant": "primary",
+                "width": 7,
                 "padx": (0, Spacing.XS),
             },
             {
-                "text": "Scan",
-                "command": self._scan_for_devices,
-                "variant": "secondary",
+                "text": "Manual",
+                "command": self._show_manual_pairing_modal,
+                "variant": "primary",
+                "width": 7,
             }
         ]
 
@@ -102,6 +104,7 @@ class PeersPage(BasePage):
             title="Peers",
             subtitle="Chat with your peers",
             actions=actions,
+            padx=Spacing.LG,
         )
 
     def _build_devices_section(self, parent: tk.Misc):
@@ -113,7 +116,7 @@ class PeersPage(BasePage):
             inner_bg=Colors.SURFACE,
             with_card=True,
         )
-        
+
         self.device_list_container = content
         self._render_device_list()
 
@@ -143,11 +146,11 @@ class PeersPage(BasePage):
     def _create_device_row(self, device: dict):
         row = tk.Frame(self.device_list_container, bg=Colors.SURFACE_ALT, padx=Spacing.SM, pady=Spacing.XS)
         row.pack(fill=tk.X, pady=(0, Spacing.SM))
-        
+
         # Simple row layout
         info_frame = tk.Frame(row, bg=Colors.SURFACE_ALT)
         info_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
+
         tk.Label(
             info_frame,
             text=device["name"],
@@ -155,7 +158,7 @@ class PeersPage(BasePage):
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
         ).pack(anchor="w")
-        
+
         meta_frame = tk.Frame(info_frame, bg=Colors.SURFACE_ALT)
         meta_frame.pack(fill=tk.X, pady=(Spacing.XXS, 0))
 

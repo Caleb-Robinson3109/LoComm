@@ -77,7 +77,7 @@ class ManualPairingWindow:
             text="Cancel",
             command=self.close,
             variant="secondary",
-            width=10
+            width=9
         ).pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 
         self.pair_btn = DesignUtils.button(
@@ -85,7 +85,7 @@ class ManualPairingWindow:
             text="Pair",
             command=self._on_pair_click,
             variant="primary",
-            width=10
+            width=9
         )
         self.pair_btn.pack(side=tk.RIGHT)
 

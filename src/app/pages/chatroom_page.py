@@ -10,7 +10,7 @@ from utils.chatroom_registry import clear_chatroom, get_active_members, set_acti
 from utils.design_system import AppConfig, Colors, DesignUtils, Spacing, Typography
 from utils.pin_authentication import generate_chatroom_code
 from utils.state.status_manager import get_status_manager
-from ui.helpers import create_page_header
+from ui.helpers import create_page_header, create_scroll_container
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../api")))
 from LoCommAPI import enter_pairing_key  # noqa: E402
@@ -35,8 +35,12 @@ class ChatroomPage(tk.Frame):
         self._create_ui()
 
     def _create_ui(self):
-        layout = tk.Frame(self, bg=Colors.SURFACE)
-        layout.pack(fill=tk.BOTH, expand=True)
+        scroll = create_scroll_container(
+            self,
+            bg=Colors.SURFACE,
+            padding=(0, Spacing.LG),
+        )
+        layout = scroll.frame
 
         header_action_refs: Dict[str, tk.Button] = {}
         create_page_header(
