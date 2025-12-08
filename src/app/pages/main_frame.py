@@ -12,7 +12,6 @@ from .peers_page import PeersPage
 from .about_page import AboutPage
 from .help_page import HelpPage
 from .chatroom_page import ChatroomPage
-from .chat_window import ChatWindow
 from .sidebar import Sidebar
 from .view_manager import ViewManager
 from .base_page import PageContext
@@ -214,16 +213,17 @@ class MainFrame(ttk.Frame):
 
         self._chatroom_listener = None
 
-        self.chatroom_status_badge = tk.Label(
+        # Status badge (Connected / Not Connected) sits next to device name
+        self.status_badge = tk.Label(
             info_wrap,
-            text="No Chatroom",
+            text="Not Connected",
             bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.SM,
             pady=int(Spacing.XS / 2),
         )
-        self.chatroom_status_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, Space.SM))
+        self.status_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, Space.SM))
 
         center_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
         center_wrap.grid(row=0, column=1, sticky="nsew")
@@ -244,24 +244,19 @@ class MainFrame(ttk.Frame):
         status_column.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
         status_column.grid_columnconfigure(0, weight=1)
 
-        badge_scale = 0.9
-        badge_font_size = max(1, int(Typography.SIZE_10 * badge_scale))
-        badge_padx = max(0, int(Spacing.SM * badge_scale))
-        badge_pady = max(0, int((Spacing.XS / 2) * badge_scale))
-
-        self.chat_badge = tk.Label(
+        # Chatroom status now lives on the right side of the header
+        self.chatroom_status_badge = tk.Label(
             status_column,
-            text="Idle",
-            bg=Colors.TEXT_MUTED,
+            text="No Chatroom",
+            bg=Colors.STATE_ERROR,
             fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, badge_font_size, Typography.WEIGHT_BOLD),
-            padx=badge_padx,
-            pady=badge_pady,
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
+            padx=int(Spacing.SM * 0.9),
+            pady=max(0, int((Spacing.XS / 2) * 0.9)),
         )
-        self.chat_badge.grid(row=0, column=0, sticky="e")
+        self.chatroom_status_badge.grid(row=0, column=0, sticky="e")
 
         self._chatroom_listener = lambda code: self._update_chatroom_label(code)
-        self._chat_listener = lambda has_chat: self._update_chat_status(has_chat)
         return bar
 
     # ------------------------------------------------------------------ #
@@ -334,8 +329,6 @@ class MainFrame(ttk.Frame):
     def destroy(self):
         if self._chatroom_listener:
             unregister_chatroom_listener(self._chatroom_listener)
-        if hasattr(self, "_chat_listener") and self._chat_listener:
-            ChatWindow.unregister_window_listener(self._chat_listener)
         if getattr(self, "_status_callback_registered", False) and hasattr(self.controller, "status_manager"):
             try:
                 self.controller.status_manager.unregister_status_callback(self._handle_status_update)  # type: ignore[attr-defined]
@@ -357,16 +350,17 @@ class MainFrame(ttk.Frame):
         if hasattr(self.sidebar, "_update_peer_access"):
             self.sidebar._update_peer_access(bool(code))
 
-    def _update_chat_status(self, has_chat: bool):
-        if not hasattr(self, "chat_badge"):
-            return
-        if has_chat:
-            self.chat_badge.configure(text="Active", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
-        else:
-            self.chat_badge.configure(text="Idle", bg=Colors.TEXT_MUTED, fg=Colors.SURFACE)
-
     def _handle_status_update(self, status_text: str, color: str):
         """Handle status updates; gate peers when not ready."""
+        connected = False
+        if status_text:
+            lowered = status_text.lower()
+            if any(keyword in lowered for keyword in AppConfig.STATUS_CONNECTED_KEYWORDS):
+                connected = True
+        badge_text = "Connected" if connected else "Not Connected"
+        badge_bg = Colors.STATE_SUCCESS if connected else Colors.STATE_ERROR
+        if hasattr(self, "status_badge") and self.status_badge.winfo_exists():
+            self.status_badge.configure(text=badge_text, bg=badge_bg, fg=Colors.SURFACE)
         if hasattr(self.sidebar, "_update_peer_access") and status_text:
             is_ready = status_text.lower() in (kw.lower() for kw in AppConfig.STATUS_READY_KEYWORDS)
             has_chatroom = hasattr(self.sidebar, "_peers_enabled") and self.sidebar._peers_enabled
@@ -376,8 +370,6 @@ class MainFrame(ttk.Frame):
         """Register chat/chatroom listeners after layout creation."""
         if self._chatroom_listener:
             register_chatroom_listener(self._chatroom_listener)
-        if hasattr(self, "_chat_listener") and self._chat_listener:
-            ChatWindow.register_window_listener(self._chat_listener)
         # Already registered status callback in layout creation
 
     def apply_theme(self, *, prev_bg: dict | None = None, prev_fg: dict | None = None):
