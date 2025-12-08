@@ -41,6 +41,8 @@ class HomePage(BasePage):
             actions=actions,
             padx=Spacing.LG,
         )
+        # Bind Enter key to navigate to chatroom
+        self.bind_all("<Return>", lambda e: self._go_to_chatroom())
         # No extra content below yet, but body will grow and text will reflow
 
     def _handle_back(self):
