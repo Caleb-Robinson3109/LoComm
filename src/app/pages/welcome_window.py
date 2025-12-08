@@ -21,6 +21,7 @@ class WelcomeWindow(tk.Frame):
     def _build_content(self):
         hero = tk.Frame(self, bg=Colors.SURFACE, pady=Spacing.LG)
         hero.pack(fill=tk.BOTH, expand=True)
+        hero.bind_all("<Return>", lambda e: self.on_login())
 
         tk.Label(
             hero,

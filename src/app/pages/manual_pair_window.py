@@ -72,14 +72,6 @@ class ManualPairingWindow:
         btn_frame = tk.Frame(content_frame, bg=Colors.SURFACE)
         btn_frame.pack(fill=tk.X, pady=(Spacing.LG, 0))
 
-        DesignUtils.button(
-            btn_frame,
-            text="Cancel",
-            command=self.close,
-            variant="secondary",
-            width=9
-        ).pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
-
         self.pair_btn = DesignUtils.button(
             btn_frame,
             text="Pair",
@@ -88,6 +80,14 @@ class ManualPairingWindow:
             width=9
         )
         self.pair_btn.pack(side=tk.RIGHT)
+
+        DesignUtils.button(
+            btn_frame,
+            text="Cancel",
+            command=self.close,
+            variant="secondary",
+            width=9
+        ).pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 
         # Bind Enter key
         self.window_scaffold.toplevel.bind("<Return>", lambda e: self._on_pair_click())

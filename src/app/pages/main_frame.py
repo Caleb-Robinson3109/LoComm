@@ -110,7 +110,7 @@ class MainFrame(ttk.Frame):
         self.top_bar = self._build_top_bar(self.main_container)
 
         body = tk.Frame(self.main_container, bg=Colors.BG_MAIN)
-        body.pack(fill=tk.BOTH, expand=True)
+        body.pack(fill=tk.BOTH, expand=True, pady=(Spacing.XXS, 0))
         body.grid_rowconfigure(0, weight=1)
         body.grid_columnconfigure(0, weight=0)
         body.grid_columnconfigure(1, weight=1)
@@ -210,18 +210,6 @@ class MainFrame(ttk.Frame):
 
         self._chatroom_listener = None
 
-        # Status badge (Connected / Not Connected) sits next to device name
-        self.status_badge = tk.Label(
-            info_wrap,
-            text="Not Connected",
-            bg=Colors.STATE_WARNING,
-            fg=Colors.SURFACE,
-            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
-            padx=Spacing.SM,
-            pady=int(Spacing.XS / 2),
-        )
-        self.status_badge.grid(row=0, column=1, sticky="w", padx=(Space.XXS, Space.SM))
-
         center_wrap = tk.Frame(bar, bg=Colors.BG_ELEVATED)
         center_wrap.grid(row=0, column=1, sticky="nsew")
         center_wrap.grid_columnconfigure(0, weight=1)
@@ -237,21 +225,21 @@ class MainFrame(ttk.Frame):
         )
         self.chatroom_label.grid(row=0, column=0, sticky="ew", pady=(Space.XXS, 0))
 
+        # Status badge (Connected / Not Connected) now sits on the right edge
         status_column = tk.Frame(bar, bg=Colors.BG_ELEVATED)
         status_column.grid(row=0, column=2, sticky="e", padx=(0, Space.BASE * 5))
         status_column.grid_columnconfigure(0, weight=1)
 
-        # Chatroom status now lives on the right side of the header
-        self.chatroom_status_badge = tk.Label(
+        self.status_badge = tk.Label(
             status_column,
-            text="No Chatroom",
-            bg=Colors.STATE_ERROR,
+            text="Not Connected",
+            bg=Colors.STATE_WARNING,
             fg=Colors.SURFACE,
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
-            padx=int(Spacing.SM * 0.9),
-            pady=max(0, int((Spacing.XS / 2) * 0.9)),
+            padx=Spacing.SM,
+            pady=int(Spacing.XS / 2),
         )
-        self.chatroom_status_badge.grid(row=0, column=0, sticky="e")
+        self.status_badge.grid(row=0, column=0, sticky="e")
 
         self._chatroom_listener = lambda code: self._update_chatroom_label(code)
         return bar
@@ -343,10 +331,8 @@ class MainFrame(ttk.Frame):
         if code:
             formatted = format_chatroom_code(code)
             self.chatroom_label.configure(text=formatted, fg=Colors.TEXT_PRIMARY)
-            self.chatroom_status_badge.configure(text="In Chatroom", bg=Colors.STATE_SUCCESS, fg=Colors.SURFACE)
         else:
             self.chatroom_label.configure(text="No Chatroom", fg=Colors.TEXT_MUTED)
-            self.chatroom_status_badge.configure(text="No Chatroom", bg=Colors.STATE_ERROR, fg=Colors.SURFACE)
         # Disable peers when no chatroom
         if hasattr(self.sidebar, "_update_peer_access"):
             self.sidebar._update_peer_access(bool(code))
@@ -372,6 +358,15 @@ class MainFrame(ttk.Frame):
         if self._chatroom_listener:
             register_chatroom_listener(self._chatroom_listener)
         # Already registered status callback in layout creation
+
+    def refresh_header_info(self):
+        """Refresh header labels from the current session (e.g., after name change)."""
+        try:
+            name = getattr(self.session, "local_device_name", "") or getattr(self.session, "device_name", "") or "Set name"
+            if hasattr(self, "local_device_label") and self.local_device_label.winfo_exists():
+                self.local_device_label.configure(text=name)
+        except Exception:
+            pass
 
     def apply_theme(self, *, prev_bg: dict | None = None, prev_fg: dict | None = None):
         """Refresh top-level theme without rebuilding the frame."""

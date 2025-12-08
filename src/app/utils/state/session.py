@@ -7,6 +7,7 @@ class Session:
 
     device_name: str = ""      # Peer device name
     device_id: str = ""        # Peer device ID
+    local_device_id: str = ""  # Local device identifier (does not change when pairing peers)
     local_device_name: str = ""  # Local device name for proper message attribution
     paired_at: float = 0.0
     transport_profile: str = "auto"
@@ -14,6 +15,7 @@ class Session:
     def clear(self):
         self.device_name = ""
         self.device_id = ""
+        self.local_device_id = ""
         self.local_device_name = ""
         self.paired_at = 0.0
         self.transport_profile = "auto"

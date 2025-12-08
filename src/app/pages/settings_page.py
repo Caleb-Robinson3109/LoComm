@@ -42,23 +42,23 @@ class SettingsPage(BasePage):
     # ------------------------------------------------------------------ #
     # Layout helpers
     def _build_sections(self, parent: tk.Misc) -> None:
+        self._build_account_section(parent)
         self._build_device_info_section(parent)
         self._build_appearance_section(parent)
 
     def _build_device_info_section(self, parent: tk.Misc) -> None:
         session = getattr(self.context, "session", None)
-        device_id = getattr(session, "device_id", "") or "Not available"
-        device_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
+        device_id = getattr(session, "local_device_id", "") or "Not available"
+        device_name = getattr(session, "device_name", "") or "Not available"
 
-        container = tk.Frame(parent, bg=Colors.SURFACE_ALT, padx=Spacing.MD, pady=Spacing.MD)
-        container.pack(fill=tk.X, padx=Spacing.LG, pady=(0, Spacing.MD))
+        container = self._create_section(parent, "My Device", "")
 
         # Device name row
         name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
-        name_row.pack(fill=tk.X, pady=(0, Spacing.SM))
+        name_row.pack(fill=tk.X, pady=(0, Spacing.SM), padx=(Spacing.SM, 0))
         self._device_name_label = tk.Label(
             name_row,
-            text=f"Device Name: {device_name}",
+            text=f"Name: {device_name}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
@@ -74,10 +74,10 @@ class SettingsPage(BasePage):
 
         # Device ID row
         id_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
-        id_row.pack(fill=tk.X)
+        id_row.pack(fill=tk.X, padx=(Spacing.SM, 0))
         self._device_id_label = tk.Label(
             id_row,
-            text=f"Device ID: {device_id}",
+            text=f"ID: {device_id}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
@@ -130,7 +130,7 @@ class SettingsPage(BasePage):
 
     def _add_toggle(self, parent: tk.Misc, label: str, attr: str, *, is_theme: bool = False) -> None:
         row = tk.Frame(parent, bg=Colors.SURFACE_ALT)
-        row.pack(fill=tk.X, pady=(0, Spacing.XS))
+        row.pack(fill=tk.X, pady=(0, Spacing.XS), padx=(Spacing.SM, 0))
 
         tk.Label(
             row,
@@ -145,7 +145,7 @@ class SettingsPage(BasePage):
         btn = DesignUtils.button(
             row,
             text=self._bool_label(value),
-            variant="ghost",
+            variant="secondary",
             width=8,
         )
 
@@ -200,6 +200,7 @@ class SettingsPage(BasePage):
             var.set(current)
             if isinstance(btn, tk.Button):
                 btn.configure(text=self._bool_label(current))
+        self._refresh_device_info()
 
     def destroy(self):
         self._unregister_status_listener()
@@ -228,6 +229,12 @@ class SettingsPage(BasePage):
         if self._device_name_label and self._device_name_label.winfo_exists():
             self._device_name_label.configure(text=f"Device Name: {new_name}")
         messagebox.showinfo("Change Device Name", "Device name updated locally.")
+        navigator = getattr(self.context, "navigator", None)
+        if navigator and hasattr(navigator, "refresh_header_info"):
+            try:
+                navigator.refresh_header_info()
+            except Exception:
+                pass
 
     def _change_device_id(self):
         new_id = simpledialog.askstring("Change Device ID", "Enter a new device ID:", parent=self)
@@ -239,7 +246,104 @@ class SettingsPage(BasePage):
             return
         session = getattr(self.context, "session", None)
         if session:
-            session.device_id = new_id
+            session.local_device_id = new_id
         if self._device_id_label and self._device_id_label.winfo_exists():
-            self._device_id_label.configure(text=f"Device ID: {new_id}")
+            self._device_id_label.configure(text=f"ID: {new_id}")
         messagebox.showinfo("Change Device ID", "Device ID updated locally.")
+        navigator = getattr(self.context, "navigator", None)
+        if navigator and hasattr(navigator, "refresh_header_info"):
+            try:
+                navigator.refresh_header_info()
+            except Exception:
+                pass
+
+    def _refresh_device_info(self):
+        session = getattr(self.context, "session", None)
+        device_id = getattr(session, "local_device_id", "") or "Not available"
+        device_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
+        if self._device_name_label and self._device_name_label.winfo_exists():
+            self._device_name_label.configure(text=f"Name: {device_name}")
+        if self._device_id_label and self._device_id_label.winfo_exists():
+            self._device_id_label.configure(text=f"ID: {device_id}")
+        # Update credentials labels to reflect current name
+        if hasattr(self, "_account_name_label") and self._account_name_label and self._account_name_label.winfo_exists():
+            self._account_name_label.configure(text=f"Name: {device_name}")
+
+    def _build_account_section(self, parent: tk.Misc) -> None:
+        container = self._create_section(parent, "Credentials", "")
+        session = getattr(self.context, "session", None)
+        login_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
+
+        # Name row
+        name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        name_row.pack(fill=tk.X, pady=(0, Spacing.SM), padx=(Spacing.SM, 0))
+        self._account_name_label = tk.Label(
+            name_row,
+            text=f"Name: {login_name}",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        )
+        self._account_name_label.pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            name_row,
+            text="Change",
+            command=self._change_device_name,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
+
+        # Password row
+        pwd_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        pwd_row.pack(fill=tk.X, padx=(Spacing.SM, 0))
+        tk.Label(
+            pwd_row,
+            text="Password:",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        ).pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            pwd_row,
+            text="Change",
+            command=self._change_password_placeholder,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
+
+        # Logout row aligned to the right under Password
+        logout_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        logout_row.pack(fill=tk.X, pady=(Spacing.SM, 0), padx=(Spacing.SM, 0))
+        DesignUtils.button(
+            logout_row,
+            text="Logout",
+            command=self._logout,
+            variant="danger",
+            width=8,
+        ).pack(side=tk.RIGHT)
+
+    def _change_password_placeholder(self):
+        # Open the existing register modal from the login window to handle password changes
+        try:
+            if hasattr(self.context, "app") and getattr(self.context, "app"):
+                app = self.context.app
+                if hasattr(app, "show_login_modal"):
+                    # Open login modal and immediately open register for password change
+                    app.show_login_modal()
+                    if app.login_modal:
+                        app.login_modal.open_register(on_close=None)
+                        return
+        except Exception:
+            pass
+        messagebox.showinfo("Change Password", "Password changes are managed on the login screen.")
+
+    def _logout(self):
+        proceed = messagebox.askokcancel("Logout", "Are you sure you want to logout?", parent=self.winfo_toplevel())
+        if not proceed:
+            return
+        navigator = getattr(self.context, "navigator", None)
+        if navigator and hasattr(navigator, "on_logout") and callable(navigator.on_logout):
+            try:
+                navigator.on_logout()
+            except Exception:
+                pass

@@ -31,6 +31,8 @@ class ChatroomPage(tk.Frame):
         self.generate_btn: Optional[tk.Button] = None
         self.disconnect_btn: Optional[tk.Button] = None
         self._chatroom_connected = False
+        self._enter_binding_id: Optional[str] = None
+        self._status_reset_id: Optional[str] = None
 
         self._create_ui()
 
@@ -128,6 +130,11 @@ class ChatroomPage(tk.Frame):
         )
         self._error_label.pack(fill=tk.X, pady=(Spacing.XS, 0))
 
+        # Allow pressing Enter anywhere on the page to submit/navigate
+        toplevel = self.winfo_toplevel()
+        if toplevel:
+            self._enter_binding_id = toplevel.bind("<Return>", self._on_submit_chatroom_code, add="+")
+
     def _on_code_key(self, event):
         raw = "".join(ch for ch in self._entry_var.get() if ch.isalnum())[:20]
         formatted = "-".join(raw[i : i + 5] for i in range(0, len(raw), 5)).upper()
@@ -167,6 +174,13 @@ class ChatroomPage(tk.Frame):
             self._chatroom_connected = True
             self._update_disconnect_button_style()
             self.on_chatroom_success(code)
+            # Navigate to peers after successful entry
+            try:
+                # If the on_chatroom_success handler already navigates, this is harmless
+                if hasattr(self.master, "navigate_to"):
+                    self.master.navigate_to("pair")
+            except Exception:
+                pass
 
     def focus_input(self):
         self.entry_widget and self.entry_widget.focus_set()
@@ -207,14 +221,15 @@ class ChatroomPage(tk.Frame):
         if self._error_label:
             self._error_label.configure(text=message)
         get_status_manager().update_status(AppConfig.STATUS_CONNECTION_FAILED)
+        self._schedule_status_reset()
         self._set_waiting(False)
 
     def _set_waiting(self, waiting: bool):
         self._waiting = waiting
         state = "disabled" if waiting else "normal"
-        if self.enter_btn:
+        if self.enter_btn and self.enter_btn.winfo_exists():
             self.enter_btn.configure(state=state, text="Entering…" if waiting else "Enter")
-        if self.generate_btn:
+        if self.generate_btn and self.generate_btn.winfo_exists():
             self.generate_btn.configure(state=state)
 
     def _update_disconnect_button_style(self):
@@ -236,3 +251,34 @@ class ChatroomPage(tk.Frame):
                 cursor="arrow",
                 takefocus=False,
             )
+
+    def _schedule_status_reset(self, delay_ms: int = 4000):
+        """Keep the error status visible for a minimum duration before clearing."""
+        if self._status_reset_id:
+            try:
+                self.after_cancel(self._status_reset_id)
+            except Exception:
+                pass
+            self._status_reset_id = None
+        self._status_reset_id = self.after(delay_ms, self._reset_status_ready)
+
+    def _reset_status_ready(self):
+        get_status_manager().update_status(AppConfig.STATUS_READY)
+        self._status_reset_id = None
+
+    def destroy(self):
+        # Unbind Enter shortcut scoped to this page
+        toplevel = self.winfo_toplevel()
+        if self._enter_binding_id and toplevel:
+            try:
+                toplevel.unbind("<Return>", self._enter_binding_id)
+            except Exception:
+                pass
+            self._enter_binding_id = None
+        if self._status_reset_id:
+            try:
+                self.after_cancel(self._status_reset_id)
+            except Exception:
+                pass
+            self._status_reset_id = None
+        return super().destroy()

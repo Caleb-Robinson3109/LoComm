@@ -49,6 +49,7 @@ class PeersPage(BasePage):
 
         self.devices: dict[str, dict] = {}  # Map of normalized id -> metadata
         self.device_list_container: Optional[tk.Frame] = None
+        self._enter_binding_id: Optional[str] = None
 
         # Simple scroll container like chat page
         scroll = create_scroll_container(
@@ -61,6 +62,8 @@ class PeersPage(BasePage):
         self._build_header(body)
         self._build_devices_section(body)
         self._refresh_from_session()
+        # Local binding so Enter works when focus is within this page
+        self.bind("<Return>", self._handle_enter_key, add="+")
 
         self._register_chatroom_listener()
 
@@ -85,16 +88,16 @@ class PeersPage(BasePage):
         # Standardized header with back button and Scan action
         actions = [
             {
-                "text": "Scan",
-                "command": self._scan_for_devices,
+                "text": "Manual",
+                "command": self._show_manual_pairing_modal,
                 "variant": "primary",
                 "width": 6,
                 "padx": (0, Spacing.XS),
             },
             {
-                "text": "Manual",
-                "command": self._show_manual_pairing_modal,
-                "variant": "primary",
+                "text": "Scan",
+                "command": self._scan_for_devices,
+                "variant": "secondary",
                 "width": 6,
             }
         ]
@@ -437,6 +440,30 @@ class PeersPage(BasePage):
 
         self._chatroom_listener = _listener
         register_chatroom_listener(self._chatroom_listener)
+
+    # Lifecycle hooks to manage key bindings
+    def on_show(self):
+        """Bind Enter key to open manual pairing when this page is visible."""
+        toplevel = self.winfo_toplevel()
+        if self._enter_binding_id is None and toplevel:
+            self._enter_binding_id = toplevel.bind("<Return>", self._handle_enter_key, add="+")
+
+    def on_hide(self):
+        """Unbind page-specific shortcuts when hidden."""
+        toplevel = self.winfo_toplevel()
+        if self._enter_binding_id and toplevel:
+            try:
+                toplevel.unbind("<Return>", self._enter_binding_id)
+            except Exception:
+                pass
+            self._enter_binding_id = None
+
+    def _handle_enter_key(self, event=None):
+        """Open manual pairing modal when Enter is pressed on this page."""
+        # Only act if this page is currently visible
+        if not self.winfo_ismapped():
+            return
+        self._show_manual_pairing_modal()
 
     def destroy(self):
         self._cancel_scan_timer()
