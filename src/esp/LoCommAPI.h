@@ -16,7 +16,7 @@ This file contianes the functions that hande the state of the device to computer
 //#include <cstring> // memcpy
 #include "mbedtls/sha256.h" // sha256
 
-#define MAX_PACKET_SIZE 1056
+#define MAX_PACKET_SIZE 1057
 #define MAX_COMPUTER_PACKET_SIZE MAX_PACKET_SIZE
 #define MAX_DEVICE_PACKET_SIZE MAX_PACKET_SIZE
 #define MESSAGE_TYPE_SIZE 4

@@ -19,3 +19,4 @@ class LoCommContext:
         self.SEND_message: str | None = None
         self.SEND_name: str | None = None
         self.SEND_return: bool = False
+        self.SEND_id: int | None = None

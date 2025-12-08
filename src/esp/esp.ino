@@ -9,7 +9,7 @@
 
 extern Preferences storage;
 
-uint8_t deviceID = 255; 
+
 //uint8_t deviceIDList[32]; 
 bool deviceIDDataChanged = false;
 

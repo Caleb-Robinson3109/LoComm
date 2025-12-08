@@ -12,3 +12,4 @@ extern Preferences storage;
 extern uint8_t device_name[32];
 extern const uint8_t default_password[32];
 extern uint8_t deviceIDList[32];
+extern uint8_t deviceID; 

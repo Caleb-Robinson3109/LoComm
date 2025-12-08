@@ -3,11 +3,12 @@ import struct
 import binascii
 import time
 
-def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
+def locomm_api_receive_message() -> tuple[str, str, int] | tuple[None, None, None] | None:
     #check the state of the recive message
     if(LoCommGlobals.context.SEND_return):
         LoCommGlobals.context.SEND_message = None
         LoCommGlobals.context.SEND_name = None
+        LoCommGlobals.context.SEND_id = None
         LoCommGlobals.context.SEND_return = False
 
     #get message
@@ -24,7 +25,8 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         packet_size: int
         packet_type: bytes
         tag: int
-        id: int
+        sender_id: int
+        receiver_id: int
         total_packet: int
         curr_packet: int
         name_len: int
@@ -34,7 +36,7 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         crc: int
         end_bytes: int
         
-        start_bytes, packet_size, packet_type, tag, id, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIBHHBH", LoCommGlobals.context.SEND_packet[:20])
+        start_bytes, packet_size, packet_type, tag, sender_id, receiver_id, total_packet, curr_packet, name_len, message_len = struct.unpack(">HH4sIBBHHBH", LoCommGlobals.context.SEND_packet[:20])
         name_b, message_b, crc, end_bytes = struct.unpack(f">{name_len}s{message_len}sHH",LoCommGlobals.context.SEND_packet[20:])
 
         #check SEND packet
@@ -49,7 +51,7 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         if(message_len != len(message_b)):
             raise ValueError(f"message lenght fail {len(message_b)}, {message_len}")
 
-        payload:bytes = struct.pack(f">H4sIBHHBH{name_len}s{message_len}s", packet_size, packet_type, tag, id, total_packet, curr_packet, name_len, message_len, name_b, message_b)
+        payload:bytes = struct.pack(f">H4sIBBHHBH{name_len}s{message_len}s", packet_size, packet_type, tag, sender_id, receiver_id, total_packet, curr_packet, name_len, message_len, name_b, message_b)
         crc_check: int = binascii.crc_hqx(payload, 0)
 
         if(crc != crc_check):
@@ -58,6 +60,9 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
             raise ValueError(f"end bytes fail 0x5678, {end_bytes}")
 
         #handle the information in the send
+        if(LoCommGlobals.context.SEND_id == None):
+            LoCommGlobals.context.SEND_id = sender_id
+
         if(LoCommGlobals.context.SEND_name == None and name_len != 0):
             LoCommGlobals.context.SEND_name = name_b.decode('ascii')
 
@@ -87,14 +92,14 @@ def locomm_api_receive_message() -> tuple[str, str] | tuple[None, None] | None:
         if hasattr(locals(), "total_packet") and hasattr(locals(), "curr_packet"):
             if total_packet == curr_packet:
                 LoCommGlobals.context.SEND_return = True
-                return LoCommGlobals.context.SEND_name, LoCommGlobals.context.SEND_message
+                return LoCommGlobals.context.SEND_name, LoCommGlobals.context.SEND_message, LoCommGlobals.context.SEND_id
 
     #return if needed
     if(LoCommGlobals.context != None and LoCommGlobals.context.SEND_return):
         LoCommGlobals.context.SEND_flag = False
-        return LoCommGlobals.context.SEND_name, LoCommGlobals.context.SEND_message
+        return LoCommGlobals.context.SEND_name, LoCommGlobals.context.SEND_message, LoCommGlobals.context.SEND_id
     elif(LoCommGlobals.context != None):
         LoCommGlobals.context.SEND_flag = False
-        return None, None
+        return None, None, None
     else:
-        return None, None
+        return None, None, None

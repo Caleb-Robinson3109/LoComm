@@ -65,3 +65,4 @@ sdkconfig.old
 .piolibdeps/
 .pioenvs/
 
+*/.DS_Store

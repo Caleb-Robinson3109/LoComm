@@ -19,3 +19,5 @@ const uint8_t default_password[32] = {'p', 'a', 's', 's', 'w', 'o', 'r', 'd',
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 uint8_t deviceIDList[32];
+
+uint8_t deviceID = 255;

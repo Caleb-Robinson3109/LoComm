@@ -317,14 +317,29 @@ void handle_SEND_packet(){
     //lcd.print("handle SEND packet");
     //delay(1000);
     uint16_t packet_size = ((uint16_t)computer_in_packet[2]  << 8) | computer_in_packet[3];
+    packet_size++;
+
+    //have to add the device id to the packet
+    memcpy(device_out_packet, computer_in_packet, 12);
+    device_out_packet[12] = deviceID;
+
+    memcpy(&device_out_packet[13], &computer_in_packet[12], packet_size - 13);
     
-    memcpy(device_out_packet, computer_in_packet, packet_size);
+    //add in new size and recompute the new crc
+    device_out_packet[2] = (packet_size >> 8) & 0xFF;
+    device_out_packet[3] = packet_size & 0xFF;
+
+    uint16_t crc = crc_16(&device_out_packet[2], packet_size - 6);
+    device_out_packet[packet_size - 4] = (crc >> 8) & 0xFF;
+    device_out_packet[packet_size - 3] = crc & 0xFF; 
 
     //set the message_to_device flag
     message_to_device_flag = true;
 
     //gets the packet size
     device_out_size = packet_size;
+
+
 
     //build SACK
     //build_SACK_packet();
