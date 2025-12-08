@@ -7,7 +7,7 @@ Abraham Yirga - aayfn7@umsystem.edu \
 Caleb Robinson - cmrd2d@umsystem.edu \
 Kush Solanki - kysp2d@umsystem.edu \
 Shaun Wolfe - swgw8@umsystem.edu \
-Arjun Kirubakaran - apkccy@umsystem.edu \
+Arjun Kirubakaran - apkccy@umsystem.edu
 
 ## Problem Statement
 In areas without reliable internet or cellular infrastructure, people, and IoT devices may face serious communication barriers. In these areas secure communication is still required, protecting sensitive or proprietary information. A low cost device that provides secure communication, where wireless infrastructure is not available is a need for these situations.
