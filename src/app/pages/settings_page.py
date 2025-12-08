@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from typing import Callable
 
 from utils.design_system import Colors, Spacing, DesignUtils, Typography
@@ -24,6 +24,8 @@ class SettingsPage(BasePage):
         self._theme_button: tk.Widget | None = None
         self._status_label: tk.Label | None = None
         self._status_callback = None
+        self._device_name_label: tk.Label | None = None
+        self._device_id_label: tk.Label | None = None
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
@@ -54,13 +56,14 @@ class SettingsPage(BasePage):
         # Device name row
         name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
         name_row.pack(fill=tk.X, pady=(0, Spacing.SM))
-        tk.Label(
+        self._device_name_label = tk.Label(
             name_row,
             text=f"Device Name: {device_name}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
-        ).pack(side=tk.LEFT, anchor="w")
+        )
+        self._device_name_label.pack(side=tk.LEFT, anchor="w")
         DesignUtils.button(
             name_row,
             text="Change",
@@ -72,13 +75,14 @@ class SettingsPage(BasePage):
         # Device ID row
         id_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
         id_row.pack(fill=tk.X)
-        tk.Label(
+        self._device_id_label = tk.Label(
             id_row,
             text=f"Device ID: {device_id}",
             bg=Colors.SURFACE_ALT,
             fg=Colors.TEXT_PRIMARY,
             font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
-        ).pack(side=tk.LEFT, anchor="w")
+        )
+        self._device_id_label.pack(side=tk.LEFT, anchor="w")
         DesignUtils.button(
             id_row,
             text="Change",
@@ -207,7 +211,35 @@ class SettingsPage(BasePage):
 
     # Placeholder handlers for future device change flows
     def _change_device_name(self):
-        messagebox.showinfo("Change Name", "Device name change is not implemented yet.")
+        new_name = simpledialog.askstring("Change Device Name", "Enter a new device name (max 32 chars):", parent=self)
+        if new_name is None:
+            return
+        new_name = new_name.strip()
+        if not new_name:
+            messagebox.showinfo("Change Device Name", "Name cannot be empty.")
+            return
+        if len(new_name) > 32:
+            messagebox.showinfo("Change Device Name", "Name must be 32 characters or less.")
+            return
+        session = getattr(self.context, "session", None)
+        if session:
+            session.local_device_name = new_name
+            session.device_name = new_name
+        if self._device_name_label and self._device_name_label.winfo_exists():
+            self._device_name_label.configure(text=f"Device Name: {new_name}")
+        messagebox.showinfo("Change Device Name", "Device name updated locally.")
 
     def _change_device_id(self):
-        messagebox.showinfo("Change Device ID", "Device ID change is not implemented yet.")
+        new_id = simpledialog.askstring("Change Device ID", "Enter a new device ID:", parent=self)
+        if new_id is None:
+            return
+        new_id = new_id.strip()
+        if not new_id:
+            messagebox.showinfo("Change Device ID", "Device ID cannot be empty.")
+            return
+        session = getattr(self.context, "session", None)
+        if session:
+            session.device_id = new_id
+        if self._device_id_label and self._device_id_label.winfo_exists():
+            self._device_id_label.configure(text=f"Device ID: {new_id}")
+        messagebox.showinfo("Change Device ID", "Device ID updated locally.")

@@ -30,7 +30,7 @@ class AboutPage(BasePage):
         create_page_header(
             body,
             title="About",
-            subtitle="",
+            subtitle="Learn more about this app.",
             padx=Spacing.LG,
         )
 

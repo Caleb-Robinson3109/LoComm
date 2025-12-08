@@ -37,6 +37,8 @@ class MainFrame(ttk.Frame):
         self.controller = controller
         self.on_logout = on_logout
         self.on_theme_toggle = on_theme_toggle
+        self._sidebar_min = Spacing.SIDEBAR_WIDTH
+        self._sidebar_max = Spacing.SIDEBAR_WIDTH
 
         # View bookkeeping for lazy loading
         self._view_manager = ViewManager(self)
@@ -101,21 +103,16 @@ class MainFrame(ttk.Frame):
         """Create the main layout with sidebar and content area."""
         self.pack(fill=tk.BOTH, expand=True)
 
-        # Main container - sidebar + content
-        main_container = tk.Frame(self, bg=Colors.BG_MAIN, highlightthickness=0, bd=0)
-        main_container.pack(
-            fill=tk.BOTH,
-            expand=True,
-            padx=0,
-            pady=0,
-        )
+        # Fixed layout: sidebar + content
+        self.main_container = tk.Frame(self, bg=Colors.BG_MAIN, highlightthickness=0, bd=0)
+        self.main_container.pack(fill=tk.BOTH, expand=True)
 
-        self.top_bar = self._build_top_bar(main_container)
+        self.top_bar = self._build_top_bar(self.main_container)
 
-        body = tk.Frame(main_container, bg=Colors.BG_MAIN)
+        body = tk.Frame(self.main_container, bg=Colors.BG_MAIN)
         body.pack(fill=tk.BOTH, expand=True)
         body.grid_rowconfigure(0, weight=1)
-        body.grid_columnconfigure(0, weight=0, minsize=Spacing.SIDEBAR_WIDTH)
+        body.grid_columnconfigure(0, weight=0)
         body.grid_columnconfigure(1, weight=1)
 
         # Left sidebar
@@ -335,6 +332,10 @@ class MainFrame(ttk.Frame):
             except Exception:
                 pass
         return super().destroy()
+
+    def _clamp_sidebar_width(self, *_):
+        """No-op; sidebar is fixed width."""
+        return
 
     def _update_chatroom_label(self, code: str | None):
         if not hasattr(self, "chatroom_label"):

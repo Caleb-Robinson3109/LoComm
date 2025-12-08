@@ -36,7 +36,7 @@ class HomePage(BasePage):
         ]
         create_page_header(
             body,
-            title="Welcome",
+            title="Home",
             subtitle="Join a chatroom and start chatting",
             actions=actions,
             padx=Spacing.LG,

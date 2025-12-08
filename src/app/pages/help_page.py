@@ -30,7 +30,7 @@ class HelpPage(BasePage):
         create_page_header(
             body,
             title="Help",
-            subtitle="",
+            subtitle="Find quick guidance and support.",
             padx=Spacing.LG,
         )
 
