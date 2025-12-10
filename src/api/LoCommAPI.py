@@ -118,7 +118,7 @@ def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
     return locomm_api_send_message(sender_name, reciver_id, message, LoCommGlobals.serial_conn, LoCommGlobals.context)
 
 #this function receives messages from the ESP. Returns the name of the sender and the message and sender id -> sender_name, message.
-def receive_message() -> tuple[str, str, int] | tuple[None, None, None]:
+def receive_message(timeout = -1) -> tuple[str, str, int] | tuple[None, None, None]:
     global deviceless_mode
     if deviceless_mode:
         time.sleep(10)
@@ -129,7 +129,7 @@ def receive_message() -> tuple[str, str, int] | tuple[None, None, None]:
             return "Alice", "Hello this is Alice!"
         
 
-    return locomm_api_receive_message()
+    return locomm_api_receive_message(timeout)
 
 #these functions are not going to be in use rn
 """

@@ -175,6 +175,7 @@ class LoCommTransport:
         return False
 
     def _rx_loop(self) -> None:
+        return
         """Background receive loop for incoming messages."""
         rx_thread_id = threading.get_ident()
         if DEBUG:

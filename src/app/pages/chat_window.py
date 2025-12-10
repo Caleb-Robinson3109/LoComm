@@ -396,7 +396,7 @@ class ChatWindow(tk.Toplevel):
                 break
 
             # Ignore message if senderID doesn't match this chat window's peer_id
-            if senderID and senderID != self.peer_id:
+            if senderID and int(senderID) != int(self.peer_id):
                 self._stop_event.wait(timeout=0.25)
                 continue
 
@@ -416,10 +416,12 @@ class ChatWindow(tk.Toplevel):
         # First attempt: use native timeout parameter if available
         if self._receive_supports_timeout is not False:
             try:
-                result = receive_message(timeout=timeout)
+                result = receive_message(timeout=5)
+                #print(f"Result from receive: {result}")
                 self._receive_supports_timeout = True
                 return result
             except TypeError:
+                print("receive_message not supported with timeout flag")
                 self._receive_supports_timeout = False
             except Exception:
                 raise
@@ -429,6 +431,7 @@ class ChatWindow(tk.Toplevel):
 
         def _worker():
             try:
+                print("running fallback receive_message")
                 container["result"] = receive_message()
             except Exception as exc:  # noqa: BLE001
                 container["result"] = (None, None, None)

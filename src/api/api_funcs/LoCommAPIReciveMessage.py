@@ -15,7 +15,8 @@ def locomm_api_receive_message(timeout = -1) -> tuple[str, str, int] | tuple[Non
     startTime = time.time()
     try:
         while(not LoCommGlobals.context.SEND_flag and LoCommGlobals.connected):
-            if timeout != -1 and time.time() - startTime > timeout:
+            if timeout == -1 or time.time() - startTime > timeout:
+                print(f'returning from receive function after {timeout} second timeout')
                 return (None, None, None)
             time.sleep(0.01)
 

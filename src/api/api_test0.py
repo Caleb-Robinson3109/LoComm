@@ -19,7 +19,7 @@ while(not connect_to_device()):
 
 enter_password("password")
 store_name_on_device("Bob")
-enter_pairing_key('aaaabbbbccccddddeeee')
+enter_pairing_key('AAAAAAAAAAAAAAAAAAAA')
 #print(f"{scan_for_devices()}")
 
 t =threading.Thread(target=recv_thread)
@@ -33,6 +33,6 @@ while True:
         disconnect_from_device()
         break
     else:
-        send_message("Caleb", 107, cmd)
+        send_message("Caleb", 164, cmd)
 
 t.join()

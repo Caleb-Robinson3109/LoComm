@@ -265,7 +265,7 @@ void sec_logout() {
     g_is_logged_in = false;
 }
 
-bool sec_isLoggedIn() { g_is_logged_in; }
+bool sec_isLoggedIn() { return g_is_logged_in; }
 
 
 // --- Manual Key Provisioning ---
