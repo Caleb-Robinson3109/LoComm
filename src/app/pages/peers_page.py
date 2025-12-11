@@ -393,8 +393,12 @@ class PeersPage(BasePage):
 
         def _worker():
             try:
+                print("Calling scan_for_devices")
                 devices = scan_for_devices() or []
-            except Exception:
+                print("Finished scan_for_devices call")
+            except Exception as e:
+                print("exception occured with scan_for_devices call")
+                print(e)
                 devices = []
             self.after(0, lambda: self._finish_scan(devices))
 
@@ -403,10 +407,12 @@ class PeersPage(BasePage):
     def _finish_scan(self, devices: list[tuple[str, int]] | None = None):
         """Complete scan and populate device list."""
         devices = devices or []
+        print(f"Finished Scan, devices = {devices}")
 
         # Replace device list with scan results
         self.devices.clear()
         for name, device_id in devices:
+            print(f"Inserting device with name {name}")
             self._upsert_device(name, str(device_id), status="Available", source="scan", render=False)
 
         self._render_device_list()

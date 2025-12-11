@@ -35,7 +35,7 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s32sIHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI32sHH", packet)
 
     if start_bytes != 0x1234:
         return f"start bytes error 0x1234, {start_bytes}", False
@@ -50,7 +50,7 @@ def check_SCAK_packet(packet: bytes, tag: int) -> bool:
         return f"tag mismatch {tag}, {ret_tag}", False
     
     
-    payload: bytes = struct.pack(">HH4sI32s", start_bytes, packet_size, message_type, tag, message)
+    payload: bytes = struct.pack(">H4sI32s", packet_size, message_type, tag, message)
     crc_check: int = binascii.crc_hqx(payload, 0)
 
     if crc_check != crc:
@@ -66,6 +66,7 @@ def locomm_api_scan() -> list:
         tag: int = random.randint(0, 0xFFFFFFFF)
         packet = build_SCAN_packet(tag)
         print_packet_debug(packet, True)        
+        LoCommGlobals.context.SCAK_flag = False
         LoCommGlobals.serial_conn.write(packet)
         LoCommGlobals.serial_conn.flush()
 
@@ -74,7 +75,8 @@ def locomm_api_scan() -> list:
             pass
 
         print_packet_debug(LoCommGlobals.context.packet, False)
-        check_SCAK_packet(LoCommGlobals.context.packet, tag)
+        print(check_SCAK_packet(LoCommGlobals.context.packet, tag))
+        
 
     except Exception as e:
         print(f"scan error: {e}")
@@ -88,10 +90,12 @@ def locomm_api_scan() -> list:
     message: bytes
     crc: int
     end_bytes: int
-
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s32sIHH", packet)
+    print("finished checking SCAK packet, unpacking...")
+    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4sI32sHH", LoCommGlobals.context.packet)
 
     devices = []
+
+    print(f"message: {message}")
 
     for byte_index, byte in enumerate(message):
         for bit_index in range(8):
@@ -100,6 +104,6 @@ def locomm_api_scan() -> list:
                 index = byte_index * 8 + bit_index
                 devices.append((f"Device{index}", index))
 
-     
+
     LoCommGlobals.context.SCAK_flag = False
     return devices

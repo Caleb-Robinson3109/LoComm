@@ -70,7 +70,7 @@ def serial_read():
                 
                 elif message_type == b"SCAK":
                     LoCommGlobals.context.packet = packet
-                    LoCommGlobals.context.SKAK_flag = True
+                    LoCommGlobals.context.SCAK_flag = True
 
                 elif message_type == b"GPAK":
                     LoCommGlobals.context.packet = packet

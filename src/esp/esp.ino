@@ -208,7 +208,12 @@ void loop() {
     Debug(Serial1.printf("receivedDeviceIDTable: %d\n", receivedDeviceIDTable));
     printTimeCount++;
     if (printTimeCount > 6) {
+      printTimeCount = 0;
       LDebug("Dumping Device ID Table contents:");
+      for(int i = 0; i < 32; i++) {
+        Debug(Serial1.printf("%d ", deviceIDList[i]));
+      }
+      Debug(Serial1.printf("\n"));
 
     }
   } 
