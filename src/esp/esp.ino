@@ -486,12 +486,12 @@ void loop() {
                 //ack packet
                 timestamp = (tempBuf[5] << 24) + (tempBuf[6] << 16) + (tempBuf[7] << 8) + tempBuf[8];
               break;
-              case 2:
-              case 3:
-              case 4:
+              case 2: //device id request packet
+              case 3: //device id response packet
+              case 4: //device id table request packet
                 timestamp = (tempBuf[1] << 24) + (tempBuf[2] << 16) + (tempBuf[3] << 8) + tempBuf[4];
               break;
-              case 5:
+              case 5: //device id table response packet
                 timestamp = (tempBuf[0] << 24) + (tempBuf[1] << 16) + (tempBuf[2] << 8) + tempBuf[3];
               break;
             }
@@ -696,11 +696,12 @@ void loop() {
                 lastDeviceIDTableResponseTime = millis() / 1000;
                 
                 //plaintext buffer
+                uint32_t realTime = (millis() / 1000) + epochAtBoot;;
                 uint8_t pBuf[36];
-                pBuf[0] = lastDeviceIDTableResponseTime >> 24;
-                pBuf[1] = (lastDeviceIDTableResponseTime >> 16) & 0xFF;
-                pBuf[2] = (lastDeviceIDTableResponseTime >> 8) & 0xFF;
-                pBuf[3] = (lastDeviceIDTableResponseTime) & 0xFF;
+                pBuf[0] = realTime >> 24;
+                pBuf[1] = (realTime >> 16) & 0xFF;
+                pBuf[2] = (realTime >> 8) & 0xFF;
+                pBuf[3] = (realTime) & 0xFF;
 
                 memcpy(&(pBuf[4]), &(deviceIDList[0]), 32);
 
@@ -738,6 +739,7 @@ void loop() {
               //we received a full device table, so update our device table 
               for (int byteNum = 0; byteNum < 32; byteNum++) {
                 if (~deviceIDList[byteNum] & tempBuf[4+byteNum]) {
+                  LDebug("received Device ID table has differing IDs from out current table");
                   deviceIDDataChanged = true;
                 }
                 deviceIDList[byteNum] |= tempBuf[4+byteNum];
@@ -1326,7 +1328,7 @@ bool sendDeviceIDTableRequestFunc(uint8_t targetDeviceID) {
   //plaintext data
   uint8_t pBuf[5 + AES_GCM_OVERHEAD];
   pBuf[0] = targetDeviceID;
-  uint32_t timestamp = millis() / 1000;
+  uint32_t timestamp = millis() / 1000 + epochAtBoot;
   pBuf[1] = timestamp >> 24;
   pBuf[2] = (timestamp >> 16) & 0xFF;
   pBuf[3] = (timestamp >> 8) & 0xFF;
@@ -1358,7 +1360,7 @@ bool sendDeviceIDTableRequestFunc(uint8_t targetDeviceID) {
 bool sendDeviceIDResponseFunc() {
   //fill plaintext buffer
   uint8_t pBuf[5]; 
-  uint32_t t = millis() / 1000;
+  uint32_t t = millis() / 1000 + epochAtBoot;
   pBuf[0] = deviceID;
   pBuf[1] = t >> 24;
   pBuf[2] = (t >> 16) & 0xFF;
@@ -1395,7 +1397,7 @@ bool sendDeviceIDRequestFunc() {
   //plaintext data
   uint8_t pBuf[5 + AES_GCM_OVERHEAD];
   pBuf[0] = deviceID;
-  uint32_t timestamp = millis() / 1000;
+  uint32_t timestamp = millis() / 1000 + epochAtBoot;
   pBuf[1] = timestamp >> 24;
   pBuf[2] = (timestamp >> 16) & 0xFF;
   pBuf[3] = (timestamp >> 8) & 0xFF;
@@ -1471,9 +1473,9 @@ void chooseOpenDeviceID() {
   while(1) {
     id = esp_random();
     if (id == 0 || id == 255) break;
-    if (deviceIDList[id / 32] >> (7 - (id % 8)) == 0) {
+    if (deviceIDList[id / 8] >> (7 - (id % 8)) == 0) {
       deviceID = id;
-      deviceIDList[id / 32] |= (1 << (7 - (id % 8)));
+      deviceIDList[id / 8] |= (1 << (7 - (id % 8)));
       return;
     }
   }
@@ -1504,8 +1506,8 @@ void sendDeviceIDQueryMessages() {
 }
 
 void addDeviceIDToTable(uint8_t id) {
-  if (deviceIDList[id / 32] >> (7 - (id % 8)) == 0) {
-    deviceIDList[id / 32] |= 1 << (7 - (id % 8));
+  if (deviceIDList[id / 8] >> (7 - (id % 8)) == 0) {
+    deviceIDList[id / 8] |= 1 << (7 - (id % 8));
     deviceIDDataChanged = true;
     LDebug("Adding device ID to table");
   }
