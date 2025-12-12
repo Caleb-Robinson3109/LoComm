@@ -35,7 +35,7 @@ class WelcomeWindow(tk.Frame):
 
         AutoWrapLabel(
             hero,
-            text="No tracking. No profiling. Just conversations.",
+            text="No tracking. No collected data. Just conversations.",
             bg=Colors.SURFACE,
             fg=Colors.TEXT_SECONDARY,
             font=(Typography.FONT_UI, Typography.SIZE_14),
