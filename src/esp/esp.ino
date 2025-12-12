@@ -322,6 +322,7 @@ void loop() {
       initializedDeviceRouting = false;
     }
   } else {
+    //LDebug("One of the chatting conditions was met, setting the device ID to 255 and uninitializating device routing")
     //we are not logged in anymore, so just clear the local variabes, dont need to worry about deleting the eeprom
     deviceID = 255;
     initializedDeviceRouting = false;
@@ -1487,7 +1488,7 @@ void chooseOpenDeviceID() {
 void sendDeviceIDQueryMessages() {
   static uint32_t lastCallTime = millis()/1000;
   if (millis()/1000 - lastCallTime < 5) {
-    LDebug("Not Sending device ID query messages: last one sent too recently");
+    //LDebug("Not Sending device ID query messages: last one sent too recently");
     return;
   } 
   LDebug("Starting device ID query messages");

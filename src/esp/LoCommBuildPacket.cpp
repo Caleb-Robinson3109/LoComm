@@ -290,6 +290,9 @@ void build_SCAK_packet(){
         computer_out_packet[i + 12] = deviceIDList[i];
     }
 
+    //TODO determine a better way of handling our own device ID. for now, we will just remove it from the table before sending off the message
+    computer_out_packet[12 + (deviceID / 8)] &= ~(1 << (7 - (deviceID % 8))); 
+
     //compute CRC of Message packet size + Type + Tag (10 bytes total)
     //crc >> x bit shifts the tag by a byte 2, 3 to isolate the correct byte. x & 0xFF ensures that it is only one byte
     uint16_t crc = crc_16(&computer_out_packet[2], 42);

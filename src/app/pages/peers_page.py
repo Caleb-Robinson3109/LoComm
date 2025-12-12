@@ -315,6 +315,11 @@ class PeersPage(BasePage):
         if self.session:
             local_name = getattr(self.session, "local_device_name", "") or getattr(self.session, "device_name", "") or ""
         receiver_id = device.get("raw_id")
+        
+        def on_peer_name_changed(new_name: str):
+            device["name"] = new_name
+            self._render_device_list()
+        
         ChatWindow(
             master,
             peer_name=device["name"],
@@ -322,6 +327,7 @@ class PeersPage(BasePage):
             local_device_name=local_name,
             on_close_callback=lambda raw=device["raw_id"]: self._handle_chat_closed(raw),
             on_send_callback=lambda text, rid=receiver_id: self._send_chat_message(text, rid),
+            on_peer_name_changed=on_peer_name_changed,
         )
 
     def _handle_chat_closed(self, raw_id: Optional[str] = None):
@@ -409,9 +415,26 @@ class PeersPage(BasePage):
         devices = devices or []
         print(f"Finished Scan, devices = {devices}")
 
-        # Replace device list with scan results
-        self.devices.clear()
+        # Get normalized device IDs from scan results
+        scanned_ids = [str(device_id) for name, device_id in devices]
+        
+        # Keep only entries that match scanned device IDs
+        print(f"scanned IDs: {scanned_ids}")
+        print(f"already existing IDs: {[v['id'] for k, v, in self.devices.items()]}")
+        #print(scanned_ids[0] == self.devices.items()[0][1]['id'])
+        #print(f"{scanned_ids[0]}, {self.devices.items()[0][1]['id']}")
+        self.devices = {k: v for k, v in self.devices.items() if str(v['id']) in scanned_ids}
+        self._render_device_list()
+        
+        # Add/update scan results
+        alreadyExistingIds = list([str(v['id']) for k, v, in self.devices.items()])
+        print(f"already existing IDS before upsert: {alreadyExistingIds}")
         for name, device_id in devices:
+            if str(device_id) in alreadyExistingIds:
+                print("found duplicate id")
+                continue
+            else:
+                print("found new id")
             print(f"Inserting device with name {name}")
             self._upsert_device(name, str(device_id), status="Available", source="scan", render=False)
 
@@ -423,7 +446,7 @@ class PeersPage(BasePage):
             self.controller.status_manager.update_status(AppConfig.STATUS_READY)
 
         self._scan_timer_id = None
-        self._refresh_from_session()
+        #self._refresh_from_session()
 
     def _register_chatroom_listener(self):
         if self._chatroom_listener is not None:

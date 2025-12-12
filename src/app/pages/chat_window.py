@@ -43,6 +43,7 @@ class ChatWindow(tk.Toplevel):
         local_device_name: str | None = None,
         on_close_callback: Callable[[], None] | None = None,
         on_send_callback: Optional[Callable[[str], Optional[bool]]] = None,
+        on_peer_name_changed: Optional[Callable[[str], None]] = None,
     ):
         # Check if window already open for this peer
         if peer_name and peer_name in self._open_windows:
@@ -62,6 +63,7 @@ class ChatWindow(tk.Toplevel):
         self.local_device_name = local_device_name or ""
         self._on_close_callback = on_close_callback
         self._on_send_callback = on_send_callback
+        self._on_peer_name_changed = on_peer_name_changed
         self._stop_event = threading.Event()
         self._logger = get_logger("chat_window")
         self._receive_supports_timeout: bool | None = None
@@ -349,6 +351,11 @@ class ChatWindow(tk.Toplevel):
         self.peer_name = name or "Peer"
         if hasattr(self, "header_name_label"):
             self.header_name_label.configure(text=self.peer_name)
+        if self._on_peer_name_changed:
+            try:
+                self._on_peer_name_changed(self.peer_name)
+            except Exception:
+                pass
         self.title("Chat")
 
     def set_status(self, text: str, *, color: str = "#1f7a4f"):
@@ -401,6 +408,7 @@ class ChatWindow(tk.Toplevel):
                 continue
 
             if sender and payload:
+                self.set_peer_name(sender)
                 self._add_message(payload, sender=sender, is_self=False)
             else:
                 self._stop_event.wait(timeout=0.25)
