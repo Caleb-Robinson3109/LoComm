@@ -68,6 +68,9 @@ class ChatWindow(tk.Toplevel):
         self._logger = get_logger("chat_window")
         self._receive_supports_timeout: bool | None = None
         self._chat_thread = threading.Thread(target=self._chat_loop, daemon=True)
+        self._status_manager = get_status_manager()
+        self._connection_manager = get_connection_manager()
+        self._connection_callback = None
         self.title("Chat")
         self._apply_default_geometry()
         self.resizable(True, True)
@@ -80,6 +83,7 @@ class ChatWindow(tk.Toplevel):
         # self._bridge.register_peer_callback(self._handle_incoming)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.entry.focus_set()
+        self._register_connection_listener()
 
         ChatWindow._open_windows[self.peer_name] = self
         self._has_history = False
@@ -110,8 +114,8 @@ class ChatWindow(tk.Toplevel):
         self.header = tk.Frame(
             self.main_container,
             bg=Colors.SURFACE_HEADER,
-            padx=Spacing.LG,
-            pady=Spacing.MD,
+            padx=Spacing.MD,
+            pady=Spacing.SM,
             relief="flat"
         )
         self.header.pack(fill=tk.X, pady=(0, Spacing.SM))
@@ -119,38 +123,44 @@ class ChatWindow(tk.Toplevel):
         # Header content
         header_content = tk.Frame(self.header, bg=Colors.SURFACE_HEADER)
         header_content.pack(fill=tk.X)
-        header_content.grid_columnconfigure(0, weight=1)
+        header_content.grid_columnconfigure(0, weight=0)
         header_content.grid_columnconfigure(1, weight=1)
         header_content.grid_columnconfigure(2, weight=0)
 
         # Device ID + name
-        self.header_id_label = tk.Label(
-            header_content,
-            text=self.peer_id,
-            bg=Colors.SURFACE_HEADER,
-            fg=Colors.TEXT_SECONDARY,
-            font=(Typography.FONT_MONO, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
-        )
-        self.header_id_label.grid(row=0, column=0, sticky="w", padx=(0, Spacing.XXS))
-
-        self.header_name_label = tk.Label(
-            header_content,
-            text=self.peer_name,
-            bg=Colors.SURFACE_HEADER,
-            fg=Colors.TEXT_PRIMARY,
-            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
-        )
-        self.header_name_label.grid(row=0, column=1, sticky="w")
-
+        badge_wrap = tk.Frame(header_content, bg=Colors.SURFACE_HEADER)
+        badge_wrap.grid(row=0, column=0, sticky="w", padx=(0, Spacing.SM))
         self.connection_badge = tk.Label(
-            header_content,
+            badge_wrap,
             text="● Connected",
             bg=Colors.SURFACE_HEADER,
             fg=Colors.STATE_SUCCESS,
             font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
             padx=Spacing.XS,
         )
-        self.connection_badge.grid(row=0, column=2, sticky="e")
+        self.connection_badge.pack(side=tk.LEFT)
+
+        name_wrap = tk.Frame(header_content, bg=Colors.SURFACE_HEADER)
+        name_wrap.grid(row=0, column=1, sticky="w")
+        self.header_name_label = tk.Label(
+            name_wrap,
+            text=self.peer_name,
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
+        )
+        self.header_name_label.pack(side=tk.LEFT)
+
+        id_wrap = tk.Frame(header_content, bg=Colors.SURFACE_HEADER)
+        id_wrap.grid(row=0, column=2, sticky="e")
+        self.header_id_label = tk.Label(
+            id_wrap,
+            text=self.peer_id,
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.TEXT_SECONDARY,
+            font=(Typography.FONT_MONO, Typography.SIZE_12, Typography.WEIGHT_MEDIUM),
+        )
+        self.header_id_label.pack(side=tk.RIGHT, padx=(Spacing.SM, 0))
 
         # Chat area with modern styling
         chat_frame = tk.Frame(
@@ -344,6 +354,11 @@ class ChatWindow(tk.Toplevel):
 
         # Closing a chat should not disconnect the device; just update status
         get_status_manager().update_status("Chat closed")
+        # Show disconnected state for this window
+        try:
+            self.set_status("Not connected", color=Colors.STATE_WARNING)
+        except Exception:
+            pass
         self._stop_event.set()
         if self._chat_thread and self._chat_thread.is_alive():
             self._chat_thread.join(timeout=2.0)
@@ -356,6 +371,12 @@ class ChatWindow(tk.Toplevel):
         if self.peer_name in self._open_windows and self._open_windows[self.peer_name] is self:
             del self._open_windows[self.peer_name]
         self._notify_global_listeners()
+        if self._connection_callback:
+            try:
+                self._connection_manager.unregister_connection_callback(self._connection_callback)
+            except Exception:
+                pass
+            self._connection_callback = None
         self.destroy()
 
     def set_peer_name(self, name: str | None):
@@ -372,6 +393,45 @@ class ChatWindow(tk.Toplevel):
     def set_status(self, text: str, *, color: str = "#1f7a4f"):
         if hasattr(self, "connection_badge"):
             self.connection_badge.configure(text=f"● {text}", fg=color)
+
+    def _register_connection_listener(self):
+        """Keep the connection badge focused on connectivity to this peer."""
+        if self._connection_callback:
+            return
+
+        def _cb(is_connected: bool, device_id: str | None, device_name: str | None):
+            try:
+                self._update_connection_badge(device_id if is_connected else None)
+            except Exception:
+                pass
+
+        try:
+            self._connection_manager.register_connection_callback(_cb)
+            self._connection_callback = _cb
+            self._update_connection_badge()
+        except Exception:
+            self._connection_callback = None
+
+    def _update_connection_badge(self, connected_device_id: str | None = None):
+        """Show status for the peer this window is chatting with, not global device state."""
+        if not hasattr(self, "connection_badge"):
+            return
+        target_id = self.peer_id or ""
+        is_connected_peer = False
+        if connected_device_id:
+            is_connected_peer = str(connected_device_id) == str(target_id)
+        else:
+            # Fall back to session device match only if it equals this peer
+            info = self._connection_manager.get_connected_device_info()
+            if info and info.get("is_connected"):
+                is_connected_peer = str(info.get("id") or "") == str(target_id)
+
+        text = "● Connected" if is_connected_peer else "● Disconnected"
+        color = Colors.STATE_SUCCESS if is_connected_peer else Colors.STATE_WARNING
+        try:
+            self.connection_badge.configure(text=text, fg=color)
+        except Exception:
+            pass
 
     # Global tracking helpers ------------------------------------------------
     @classmethod

@@ -280,6 +280,13 @@ class App(tk.Tk):
         """Toggle between light and dark themes for the whole app."""
         # Store canonical state
         self.is_dark_mode = bool(use_dark)
+        # Persist user preference so relaunches respect the toggle
+        try:
+            from utils.user_settings import save_user_settings
+            self.user_settings.theme_mode = "dark" if self.is_dark_mode else "light"
+            save_user_settings(self.user_settings)
+        except Exception:
+            pass
 
         # Snapshot current colors so we can repaint widgets
         prev_bg = {

@@ -121,12 +121,9 @@ def send_message(sender_name: str, reciver_id: int ,message: str) -> bool:
 def receive_message(timeout = -1) -> tuple[str, str, int] | tuple[None, None, None]:
     global deviceless_mode
     if deviceless_mode:
-        time.sleep(10)
-        x: int = random.randint(1,9)
-        if x % 3 == 0:
-            return "Bob", "Hello this is Bob!"
-        else:
-            return "Alice", "Hello this is Alice!"
+        # In deviceless mode we don't fabricate chat messages
+        time.sleep(0.5)
+        return None, None, None
         
 
     return locomm_api_receive_message(timeout)
@@ -219,4 +216,3 @@ def get_pairing_key() -> str | None:
     if deviceless_mode:
         return None
     return locomm_api_get_pairing_key()
-

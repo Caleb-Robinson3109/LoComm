@@ -38,6 +38,10 @@ class ConnectionManager:
         Returns:
             True if connection was successful
         """
+        # Do not mark connected when running in explicit deviceless/sim mode
+        if not self._is_lora_connected():
+            return False
+
         with self._lock:
             # CRITICAL FIX: Use unified status manager to populate DeviceInfo
             success = self._status_manager.connect_device(device_id, device_name)
@@ -69,9 +73,8 @@ class ConnectionManager:
         return success
 
     def is_connected(self) -> bool:
-        """Get current connection status."""
-        with self._lock:
-            return self._status_manager.is_connected()
+        """Get current connection status (LoRa only)."""
+        return self._is_lora_connected()
 
     def get_connected_device(self) -> Optional[Dict[str, Any]]:
         """Get information about currently connected device (alias for get_connected_device_info)."""
@@ -80,6 +83,8 @@ class ConnectionManager:
     def get_connected_device_info(self) -> Optional[Dict[str, Any]]:
         """Get information about currently connected device."""
         with self._lock:
+            if not self._is_lora_connected():
+                return None
             device_info = self._status_manager.get_current_device()
             if device_info.is_connected:
                 return {
@@ -198,6 +203,21 @@ class ConnectionManager:
             return True
 
         return False
+
+    # ========== LOW-LEVEL LO RA CONNECTION CHECK ==========
+    def _is_lora_connected(self) -> bool:
+        """
+        Determine whether the underlying LoRa device is connected.
+        Returns False for deviceless/sim mode.
+        """
+        try:
+            import LoCommAPI  # type: ignore
+            if getattr(LoCommAPI, "deviceless_mode", False):
+                return False
+            globals_mod = getattr(LoCommAPI, "LoCommGlobals", None)
+            return bool(getattr(globals_mod, "connected", False))
+        except Exception:
+            return False
 
     def disconnect_all(self) -> bool:
         """

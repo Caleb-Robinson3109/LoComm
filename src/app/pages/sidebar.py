@@ -82,9 +82,10 @@ class Sidebar(tk.Frame):
     # ------------------------------------------------------------------ #
     def _update_peer_access(self, enabled: bool):
         self._peers_enabled = enabled
+        # Keep peers accessible; only visual cues could be added if needed
         peer_btn = self._buttons.get("pair")
         if peer_btn:
-            peer_btn.configure(state="normal" if enabled else "disabled")
+            peer_btn.configure(state="normal")
 
     def _update_active_button(self, active_view: str):
         for key, button in self._buttons.items():
@@ -103,8 +104,6 @@ class Sidebar(tk.Frame):
                 pass
 
     def _handle_nav_click(self, route_id: str):
-        if route_id == "pair" and not self._peers_enabled:
-            return
         self.set_active_view(route_id)
         if self.on_nav_select:
             self.on_nav_select(route_id)
