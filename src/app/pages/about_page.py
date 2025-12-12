@@ -33,6 +33,9 @@ class AboutPage(BasePage):
             subtitle="Learn more about this app.",
             padx=Spacing.LG,
         )
+        self._build_intro(body)
+        self._build_highlights(body)
+        self._build_privacy(body)
 
     def _handle_back(self):
         nav = getattr(self, "navigator", None)
@@ -45,3 +48,58 @@ class AboutPage(BasePage):
 
     def destroy(self):
         return super().destroy()
+
+    def _build_intro(self, parent: tk.Misc):
+        _, content = create_standard_section(
+            parent,
+            title="What is Locomm?",
+            bg=Colors.SURFACE,
+            inner_bg=Colors.SURFACE,
+            with_card=True,
+        )
+        AutoWrapLabel(
+            content,
+            text="Locomm is a desktop companion for chatting over LoRa hardware. It pairs your device, joins a chatroom, and lets you exchange messages peer-to-peer without servers.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12),
+        ).pack(fill=tk.X, pady=(Spacing.XXS, 0))
+
+    def _build_highlights(self, parent: tk.Misc):
+        _, content = create_standard_section(
+            parent,
+            title="Highlights",
+            bg=Colors.SURFACE,
+            inner_bg=Colors.SURFACE,
+            with_card=True,
+        )
+        bullets = [
+            "Hardware-first: pairs directly with your Locomm device.",
+            "Chatrooms: gated pairing so only members can connect.",
+            "Transport profiles: auto-selects the right backend for your setup.",
+            "Lightweight: no accounts, no cloud dependency.",
+        ]
+        for bullet in bullets:
+            AutoWrapLabel(
+                content,
+                text=f"• {bullet}",
+                bg=Colors.SURFACE,
+                fg=Colors.TEXT_PRIMARY,
+                font=(Typography.FONT_UI, Typography.SIZE_12),
+            ).pack(fill=tk.X, anchor="w", pady=(0, Spacing.XXS))
+
+    def _build_privacy(self, parent: tk.Misc):
+        _, content = create_standard_section(
+            parent,
+            title="Privacy & Data",
+            bg=Colors.SURFACE,
+            inner_bg=Colors.SURFACE,
+            with_card=True,
+        )
+        AutoWrapLabel(
+            content,
+            text="No tracking. No collected data. Diagnostics live locally at ~/.locomm/diagnostics.log to help troubleshoot transport issues. You can delete them anytime.",
+            bg=Colors.SURFACE,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_12),
+        ).pack(fill=tk.X, pady=(Spacing.XXS, 0))
