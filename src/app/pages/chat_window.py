@@ -121,6 +121,7 @@ class ChatWindow(tk.Toplevel):
         header_content.pack(fill=tk.X)
         header_content.grid_columnconfigure(0, weight=1)
         header_content.grid_columnconfigure(1, weight=1)
+        header_content.grid_columnconfigure(2, weight=0)
 
         # Device ID + name
         self.header_id_label = tk.Label(
@@ -140,6 +141,16 @@ class ChatWindow(tk.Toplevel):
             font=(Typography.FONT_UI, Typography.SIZE_18, Typography.WEIGHT_BOLD),
         )
         self.header_name_label.grid(row=0, column=1, sticky="w")
+
+        self.connection_badge = tk.Label(
+            header_content,
+            text="● Connected",
+            bg=Colors.SURFACE_HEADER,
+            fg=Colors.STATE_SUCCESS,
+            font=(Typography.FONT_UI, Typography.SIZE_10, Typography.WEIGHT_BOLD),
+            padx=Spacing.XS,
+        )
+        self.connection_badge.grid(row=0, column=2, sticky="e")
 
         # Chat area with modern styling
         chat_frame = tk.Frame(
@@ -403,9 +414,14 @@ class ChatWindow(tk.Toplevel):
                 break
 
             # Ignore message if senderID doesn't match this chat window's peer_id
-            if senderID and int(senderID) != int(self.peer_id):
-                self._stop_event.wait(timeout=0.25)
-                continue
+            if senderID is not None:
+                try:
+                    if int(senderID) != int(self.peer_id):
+                        self._stop_event.wait(timeout=0.25)
+                        continue
+                except (TypeError, ValueError):
+                    # If senderID is not numeric, fall through and show the message
+                    pass
 
             if sender and payload:
                 self.set_peer_name(sender)
@@ -427,7 +443,7 @@ class ChatWindow(tk.Toplevel):
                 result = receive_message(timeout=5)
                 #print(f"Result from receive: {result}")
                 self._receive_supports_timeout = True
-                return result
+                return self._normalize_received(result)
             except TypeError:
                 print("receive_message not supported with timeout flag")
                 self._receive_supports_timeout = False
@@ -435,7 +451,7 @@ class ChatWindow(tk.Toplevel):
                 raise
 
         # Fallback: run receive_message in a worker and bound wait time
-        container = {"result": (None, None)}
+        container = {"result": (None, None, None)}
 
         def _worker():
             try:
@@ -453,9 +469,17 @@ class ChatWindow(tk.Toplevel):
             return None, None, None
 
         result = container.get("result", (None, None, None))
-        if not isinstance(result, tuple) or len(result) != 3:
-            return None, None, None
-        return result
+        return self._normalize_received(result)
+
+    def _normalize_received(self, result):
+        """Normalize receive_message output to a 3-tuple of (sender, payload, sender_id)."""
+        if isinstance(result, tuple):
+            if len(result) == 3:
+                return result
+            if len(result) == 2:
+                sender, payload = result
+                return sender, payload, None
+        return None, None, None
 
     def _widgets_alive(self) -> bool:
         try:

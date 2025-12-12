@@ -64,6 +64,7 @@ class MainFrame(ttk.Frame):
         # Layout and device status subscription
         self._create_layout()
         self._status_callback_registered = False
+        self._register_status_listener()
 
         # Start with home view without pushing history
         self._show_home_view()
@@ -358,6 +359,20 @@ class MainFrame(ttk.Frame):
         if self._chatroom_listener:
             register_chatroom_listener(self._chatroom_listener)
         # Already registered status callback in layout creation
+
+    def _register_status_listener(self):
+        """Subscribe to status updates so the badge and peers react to transport changes."""
+        if (
+            getattr(self, "_status_callback_registered", False)
+            or not hasattr(self, "controller")
+            or not getattr(self.controller, "status_manager", None)
+        ):
+            return
+        try:
+            self.controller.status_manager.register_status_callback(self._handle_status_update)  # type: ignore[attr-defined]
+            self._status_callback_registered = True
+        except Exception:
+            pass
 
     def refresh_header_info(self):
         """Refresh header labels from the current session (e.g., after name change)."""
