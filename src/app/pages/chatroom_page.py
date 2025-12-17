@@ -137,7 +137,7 @@ class ChatroomPage(tk.Frame):
 
     def _on_code_key(self, event):
         raw = "".join(ch for ch in self._entry_var.get() if ch.isalnum())[:20]
-        formatted = "-".join(raw[i : i + 5] for i in range(0, len(raw), 5)).upper()
+        formatted = "-".join(raw[i : i + 5] for i in range(0, len(raw), 5))
         if formatted != self._entry_var.get():
             self._entry_var.set(formatted)
         self._error_label.configure(text="")
@@ -147,7 +147,7 @@ class ChatroomPage(tk.Frame):
     def _on_submit_chatroom_code(self, event=None):
         if self._waiting:
             return
-        code = "".join(ch for ch in self._entry_var.get() if ch.isalnum()).upper()
+        code = "".join(ch for ch in self._entry_var.get() if ch.isalnum())
         if len(code) != 20:
             self._show_error("Please enter all 20 alphanumeric characters.")
             return
@@ -214,7 +214,7 @@ class ChatroomPage(tk.Frame):
         self._update_disconnect_button_style()
 
     def _format_code(self, code: str) -> str:
-        clean = "".join(ch for ch in code if ch.isalnum()).upper()
+        clean = "".join(ch for ch in code if ch.isalnum())
         return "-".join(clean[i : i + 5] for i in range(0, len(clean), 5))
 
     def _show_error(self, message: str):

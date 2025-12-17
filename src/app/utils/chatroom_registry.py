@@ -38,7 +38,7 @@ def format_chatroom_code(code: str | None) -> str:
     """Return code formatted with dash groups or placeholder text."""
     if not code:
         return "No Chatrooms Connected"
-    clean = ''.join(ch for ch in code if ch.isalnum()).upper()
+    clean = ''.join(ch for ch in code if ch.isalnum())
     if not clean:
         return "No Chatrooms Connected"
     return '-'.join(clean[i:i+5] for i in range(0, len(clean), 5))
