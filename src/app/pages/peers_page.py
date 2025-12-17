@@ -417,6 +417,7 @@ class PeersPage(BasePage):
         alreadyExistingIds = list([str(v['id']) for k, v, in self.devices.items()])
         print(f"already existing IDS before upsert: {alreadyExistingIds}")
         for name, device_id in devices:
+            if str(device_id) == "255": continue
             if str(device_id) in alreadyExistingIds:
                 print("found duplicate id")
                 continue
