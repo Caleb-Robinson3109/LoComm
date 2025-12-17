@@ -312,8 +312,8 @@ void build_GPAK_packet(){
     computer_out_packet[1] = 0x34;
 
     //packet size
-    computer_out_packet[2] = (SCAK_SIZE >> 8) & 0xFF; 
-    computer_out_packet[3] = SCAK_SIZE & 0xFF;
+    computer_out_packet[2] = (GPAK_SIZE >> 8) & 0xFF; 
+    computer_out_packet[3] = GPAK_SIZE & 0xFF;
 
     //SCAK
     computer_out_packet[4] = 'G';
@@ -334,7 +334,7 @@ void build_GPAK_packet(){
         if(okay){ 
             computer_out_packet[12] = 0xFF;
             for(int i = 0; i < 20; i++){
-                computer_out_packet[12 + i] = key_buf[i];
+                computer_out_packet[13 + i] = key_buf[i];
             }
         }
         else{

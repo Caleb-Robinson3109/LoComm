@@ -9,7 +9,7 @@ from api_funcs.LoCommDebugPacket import print_packet_debug
 def build_GPKY_packet(tag: int) -> bytes:
     start_bytes: int = 0x1234
     packet_size: int = 16
-    message_type: bytes = b"SCAN"
+    message_type: bytes = b"GPKY"
 
     #computer the payload for the checksum
     payload: bytes = struct.pack(">H", packet_size) + message_type + struct.pack(">I", tag)
@@ -35,7 +35,7 @@ def check_GPAK_packet(packet: bytes, tag: int) -> bool:
     crc: int
     end_bytes: int
 
-    start_bytes, packet_size, message_type, ret_tag, message, crc, end_bytes = struct.unpack(">HH4s21sIHH", packet)
+    start_bytes, packet_size, message_type, ret_tag, key_exists, pairing_key, crc, end_bytes = struct.unpack(">HH4sIc20sHH", LoCommGlobals.context.packet)
 
     if start_bytes != 0x1234:
         return f"start bytes error 0x1234, {start_bytes}", False
@@ -50,7 +50,7 @@ def check_GPAK_packet(packet: bytes, tag: int) -> bool:
         return f"tag mismatch {tag}, {ret_tag}", False
     
     
-    payload: bytes = struct.pack(">HH4sI21s", start_bytes, packet_size, message_type, tag, message)
+    payload: bytes = struct.pack(">HH4sIc20s", start_bytes, packet_size, message_type, tag, key_exists, pairing_key)
     crc_check: int = binascii.crc_hqx(payload, 0)
 
     if crc_check != crc:
@@ -63,18 +63,24 @@ def check_GPAK_packet(packet: bytes, tag: int) -> bool:
 
 def locomm_api_get_pairing_key() -> list:
     try:
+        print("call to api get pairing key function")
         tag: int = random.randint(0, 0xFFFFFFFF)
+        print("building GPKY packet")
         packet = build_GPKY_packet(tag)
         print_packet_debug(packet, True)        
         LoCommGlobals.serial_conn.write(packet)
         LoCommGlobals.serial_conn.flush()
+        print("wrote GPKY packet\nwaiting for GPAK flag")
 
         #wait for responce from LCC
         while(not LoCommGlobals.context.GPAK_flag):
             pass
 
+        print("GPAK flag set, looking for GPAK packet")
         print_packet_debug(LoCommGlobals.context.packet, False)
-        check_GPAK_packet(LoCommGlobals.context.packet, tag)
+        print("checking GPAK packet")
+        print(check_GPAK_packet(LoCommGlobals.context.packet, tag))
+        
 
     except Exception as e:
         print(f"scan error: {e}")
@@ -89,13 +95,16 @@ def locomm_api_get_pairing_key() -> list:
     pairing_key: bytes
     crc: int
     end_bytes: int
-
-    start_bytes, packet_size, message_type, ret_tag, key_exists, pairing_key, crc, end_bytes = struct.unpack(">HH4s1s20sIHH", packet)
-
-    if(key_exists == 0x00):
+    print("unpacking gpak packet")
+    start_bytes, packet_size, message_type, ret_tag, key_exists, pairing_key, crc, end_bytes = struct.unpack(">HH4sIc20sHH", LoCommGlobals.context.packet)
+    print("finished unpacking packet")
+    print(message_type, key_exists, pairing_key)
+    if(key_exists == (0x00).to_bytes(1, "little")):
+        print("key does not exist, exiting")
         LoCommGlobals.context.GPAK_flag = False
         return None
      
     LoCommGlobals.context.GPAK_flag = False
     key = pairing_key.decode('ascii')
+    print(f"key is {key}")
     return key

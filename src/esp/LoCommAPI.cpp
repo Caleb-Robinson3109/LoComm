@@ -139,6 +139,9 @@ void handle_message_from_computer(){
     else if(message_type_match(message_type, "SCAN", MESSAGE_TYPE_SIZE)){
         handle_SCAN_packet();
     }
+    else if (message_type_match(message_type, "GPKY", MESSAGE_TYPE_SIZE)){
+        handle_GPKY_packet();
+    }
     else{
         Serial.write("FAIL");
     }
@@ -220,7 +223,29 @@ void handle_DCON_packet(){
 }
 
 void handle_STPW_packet(){
+    //extract password from message
+    uint16_t password_size = ((uint16_t)computer_in_packet[2] << 8) | computer_in_packet[3];
+    password_size -= 16;
+    char* input_password = new char[password_size + 1];
+
+    for(int i = 0; i < password_size; i++){
+      input_password[i] = computer_in_packet[i + 12];
+    }
+    input_password[password_size] = '\0';
+
+    set_password_flag = true;
+    //just call the reset function
+    if (sec_setInitialPassword(input_password)) {
+      build_SPAK_packet();
+    } else {
+      build_SPAK_packet();
+    }
+    message_to_computer_flag = true;
+    message_from_computer_flag = false;
+    delete[] input_password;
+
     //uint8_t old_password[32];
+    /*
     uint8_t old_size = computer_in_packet[12];
     char* old_password = new char[old_size + 1];
 
@@ -284,6 +309,7 @@ void handle_STPW_packet(){
 
     delete [] old_password;
     delete [] new_password;
+    */
 }
 
 void handle_CONN_packet(){

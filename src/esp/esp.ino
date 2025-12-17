@@ -156,7 +156,7 @@ void setup() {
 
   //init security
   sec_init();
-  sec_setInitialPassword("password");
+  //sec_setInitialPassword("password");
 
   //initialize api task
   delay(1000);

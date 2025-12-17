@@ -354,7 +354,7 @@ def generate_pairing_pin(device_id: str, device_name: Optional[str] = None) -> s
 
 def generate_chatroom_code(length: int = 20) -> str:
     """Generate a chatroom code of uppercase letters and digits."""
-    alphabet = string.ascii_uppercase + + string.ascii_lowercase + string.digits
+    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 

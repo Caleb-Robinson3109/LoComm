@@ -17,6 +17,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../api')))
 
 from LoCommAPI import *
+from utils.chatroom_registry import set_active_chatroom
 
 
 class LoginWindow:
@@ -210,6 +211,23 @@ class LoginWindow:
         device_name = self.device_name_var.get().strip()
         if self.on_login:
             self.on_login(device_name, password)
+
+        # After a successful login, ask the device for an existing pairing/chatroom key.
+        # If the device already has a pairing key, set it as the active chatroom so
+        # UI listeners can update accordingly.
+        try:
+            pairing_key = None
+            try:
+                pairing_key = get_pairing_key()
+            except Exception:
+                pairing_key = None
+            if pairing_key:
+                try:
+                    set_active_chatroom(str(pairing_key), [])
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         if self.window and self.login_btn.winfo_exists():
             self.window.after(1000, lambda: self.login_btn.configure(state="normal", text="Login"))
