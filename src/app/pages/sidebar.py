@@ -81,17 +81,20 @@ class Sidebar(tk.Frame):
 
     # ------------------------------------------------------------------ #
     def _update_peer_access(self, enabled: bool):
+        print(f"updating peer access to peer button to {enabled}")
         self._peers_enabled = enabled
         peer_btn = self._buttons.get("pair")
         if peer_btn:
             peer_btn.configure(state="normal" if enabled else "disabled")
 
     def _update_active_button(self, active_view: str):
+        print("call to update active button")
         for key, button in self._buttons.items():
             style = "Locomm.NavActive.TButton" if key == active_view else "Locomm.Nav.TButton"
             button.configure(style=style)
         # Keep peers disabled when no active chatroom
         if not self._peers_enabled:
+            print("disabling peer access from update_active_button call")
             self._update_peer_access(False)
 
     def _register_nav_button(self, key: str, button: ttk.Button):

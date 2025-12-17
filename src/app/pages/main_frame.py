@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Callable, List
 
 from utils.design_system import AppConfig, Colors, Spacing, Space, Typography
-from utils.chatroom_registry import format_chatroom_code, register_chatroom_listener, unregister_chatroom_listener
+from utils.chatroom_registry import (
+    format_chatroom_code,
+    register_chatroom_listener,
+    unregister_chatroom_listener,
+    get_active_code,
+)
 
 from .settings_page import SettingsPage
 from .home_page import HomePage
@@ -272,8 +277,12 @@ class MainFrame(ttk.Frame):
         if route_id not in self._view_factories:
             return
 
+        # When navigating to chatroom, only set Awaiting status if there is no
+        # active chatroom code. Previously this unconditionally set awaiting
+        # state and caused peers to be disabled even when a chatroom existed.
         if route_id == "chatroom" and hasattr(self, "controller") and self.controller:
-            self.controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
+            if not get_active_code():
+                self.controller.status_manager.update_status(AppConfig.STATUS_AWAITING_PEER)
 
         self._set_current_route(route_id, track_history=True)
 

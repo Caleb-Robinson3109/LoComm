@@ -12,6 +12,7 @@ _listeners: list[Callable[[str | None], None]] = []
 def set_active_chatroom(code: str, members: Iterable[str]) -> None:
     """Set current chatroom code and member list."""
     global _active_code, _active_members
+    print(f"Call to set_active_chatroom: setting _active_code to {code}")
     _active_code = code
     _active_members = set(members)
     _notify_listeners()
@@ -30,7 +31,10 @@ def get_active_members() -> Set[str]:
 
 
 def get_active_code() -> str | None:
+    
+    global _active_code
     """Return the active chatroom code, if any."""
+    print(f"Call to get_active_code: code is {_active_code}")
     return _active_code
 
 
@@ -45,6 +49,7 @@ def format_chatroom_code(code: str | None) -> str:
 
 
 def register_chatroom_listener(callback: Callable[[str | None], None]):
+    global _active_code
     if callback not in _listeners:
         _listeners.append(callback)
         callback(_active_code)
@@ -56,6 +61,7 @@ def unregister_chatroom_listener(callback: Callable[[str | None], None]):
 
 
 def clear_chatroom():
+    print("Call to clear chatroom")
     global _active_code, _active_members
     _active_code = None
     _active_members.clear()
@@ -63,6 +69,7 @@ def clear_chatroom():
 
 
 def _notify_listeners():
+    global _active_code
     for callback in list(_listeners):
         try:
             callback(_active_code)
