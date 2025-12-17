@@ -64,11 +64,7 @@ class MainFrame(ttk.Frame):
         # Layout and device status subscription
         self._create_layout()
         self._status_callback_registered = False
-        self._connection_callback_registered = False
         self._register_status_listener()
-        self._register_connection_listener()
-        # Ensure header starts in a disconnected state
-        self._update_status_badge(force_connected=False)
 
         # Start with home view without pushing history
         self._show_home_view()
@@ -324,11 +320,6 @@ class MainFrame(ttk.Frame):
                 self.controller.status_manager.unregister_status_callback(self._handle_status_update)  # type: ignore[attr-defined]
             except Exception:
                 pass
-        if getattr(self, "_connection_callback_registered", False) and hasattr(self.controller, "connection_manager"):
-            try:
-                self.controller.connection_manager.unregister_connection_callback(self._handle_connection_update)  # type: ignore[attr-defined]
-            except Exception:
-                pass
         return super().destroy()
 
     def _clamp_sidebar_width(self, *_):
@@ -349,6 +340,15 @@ class MainFrame(ttk.Frame):
 
     def _handle_status_update(self, status_text: str, color: str):
         """Handle status updates; gate peers when not ready."""
+        connected = False
+        if status_text:
+            lowered = status_text.lower()
+            if any(keyword in lowered for keyword in AppConfig.STATUS_CONNECTED_KEYWORDS):
+                connected = True
+        badge_text = "Connected" if connected else "Not Connected"
+        badge_bg = Colors.STATE_SUCCESS if connected else Colors.STATE_WARNING
+        if hasattr(self, "status_badge") and self.status_badge.winfo_exists():
+            self.status_badge.configure(text=badge_text, bg=badge_bg, fg=Colors.SURFACE)
         if hasattr(self.sidebar, "_update_peer_access") and status_text:
             is_ready = status_text.lower() in (kw.lower() for kw in AppConfig.STATUS_READY_KEYWORDS)
             has_chatroom = hasattr(self.sidebar, "_peers_enabled") and self.sidebar._peers_enabled
@@ -373,48 +373,6 @@ class MainFrame(ttk.Frame):
             self._status_callback_registered = True
         except Exception:
             pass
-
-    def _register_connection_listener(self):
-        """Subscribe to connection updates to keep the top badge focused on device connectivity."""
-        if (
-            getattr(self, "_connection_callback_registered", False)
-            or not hasattr(self, "controller")
-            or not getattr(self.controller, "connection_manager", None)
-        ):
-            return
-
-        try:
-            self.controller.connection_manager.register_connection_callback(self._handle_connection_update)  # type: ignore[attr-defined]
-            self._connection_callback_registered = True
-            # Seed current state
-            self._update_status_badge()
-        except Exception:
-            pass
-
-    def _handle_connection_update(self, is_connected: bool, device_id: str | None, device_name: str | None):
-        self._update_status_badge()
-
-    def _update_status_badge(self, force_connected: bool | None = None):
-        """Show device connectivity only when a real device is connected."""
-        is_connected = bool(force_connected) if force_connected is not None else False
-        info = None
-        try:
-            if getattr(self.controller, "connection_manager", None):
-                info = self.controller.connection_manager.get_connected_device_info()
-        except Exception:
-            info = None
-
-        session = getattr(self, "session", None)
-        session_has_device = bool(getattr(session, "device_id", "") or getattr(session, "local_device_id", ""))
-
-        if force_connected is None:
-            if info and info.get("is_connected") and session_has_device:
-                is_connected = True
-
-        badge_text = "LoRa Connected" if is_connected else "LoRa Disconnected"
-        badge_bg = Colors.STATE_SUCCESS if is_connected else Colors.STATE_WARNING
-        if hasattr(self, "status_badge") and self.status_badge.winfo_exists():
-            self.status_badge.configure(text=badge_text, bg=badge_bg, fg=Colors.SURFACE)
 
     def refresh_header_info(self):
         """Refresh header labels from the current session (e.g., after name change)."""

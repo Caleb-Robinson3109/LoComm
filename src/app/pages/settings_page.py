@@ -24,6 +24,8 @@ class SettingsPage(BasePage):
         self._theme_button: tk.Widget | None = None
         self._status_label: tk.Label | None = None
         self._status_callback = None
+        self._device_name_label: tk.Label | None = None
+        self._device_id_label: tk.Label | None = None
 
         scroll = create_scroll_container(self, bg=Colors.SURFACE, padding=(0, Spacing.LG))
         body = scroll.frame
@@ -41,7 +43,53 @@ class SettingsPage(BasePage):
     # Layout helpers
     def _build_sections(self, parent: tk.Misc) -> None:
         self._build_account_section(parent)
+        self._build_device_info_section(parent)
         self._build_appearance_section(parent)
+
+    def _build_device_info_section(self, parent: tk.Misc) -> None:
+        session = getattr(self.context, "session", None)
+        device_id = getattr(session, "local_device_id", "") or "Not available"
+        device_name = getattr(session, "device_name", "") or "Not available"
+
+        container = self._create_section(parent, "My Device", "")
+
+        # Device name row
+        name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        name_row.pack(fill=tk.X, pady=(0, Spacing.SM), padx=(Spacing.SM, 0))
+        self._device_name_label = tk.Label(
+            name_row,
+            text=f"Name: {device_name}",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        )
+        self._device_name_label.pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            name_row,
+            text="Change",
+            command=self._change_device_name,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
+
+        # Device ID row
+        id_row = tk.Frame(container, bg=Colors.SURFACE_ALT)
+        id_row.pack(fill=tk.X, padx=(Spacing.SM, 0))
+        self._device_id_label = tk.Label(
+            id_row,
+            text=f"ID: {device_id}",
+            bg=Colors.SURFACE_ALT,
+            fg=Colors.TEXT_PRIMARY,
+            font=(Typography.FONT_UI, Typography.SIZE_14, Typography.WEIGHT_BOLD),
+        )
+        self._device_id_label.pack(side=tk.LEFT, anchor="w")
+        DesignUtils.button(
+            id_row,
+            text="Change",
+            command=self._change_device_id,
+            variant="secondary",
+            width=8,
+        ).pack(side=tk.RIGHT)
 
 
     def _create_section(self, parent: tk.Misc, title: str, description: str) -> tk.Frame:
@@ -178,6 +226,8 @@ class SettingsPage(BasePage):
         if session:
             session.local_device_name = new_name
             session.device_name = new_name
+        if self._device_name_label and self._device_name_label.winfo_exists():
+            self._device_name_label.configure(text=f"Device Name: {new_name}")
         messagebox.showinfo("Change Device Name", "Device name updated locally.")
         navigator = getattr(self.context, "navigator", None)
         if navigator and hasattr(navigator, "refresh_header_info"):
@@ -197,6 +247,8 @@ class SettingsPage(BasePage):
         session = getattr(self.context, "session", None)
         if session:
             session.local_device_id = new_id
+        if self._device_id_label and self._device_id_label.winfo_exists():
+            self._device_id_label.configure(text=f"ID: {new_id}")
         messagebox.showinfo("Change Device ID", "Device ID updated locally.")
         navigator = getattr(self.context, "navigator", None)
         if navigator and hasattr(navigator, "refresh_header_info"):
@@ -207,7 +259,12 @@ class SettingsPage(BasePage):
 
     def _refresh_device_info(self):
         session = getattr(self.context, "session", None)
-        device_name = getattr(session, "local_device_name", "") or "Not available"
+        device_id = getattr(session, "local_device_id", "") or "Not available"
+        device_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
+        if self._device_name_label and self._device_name_label.winfo_exists():
+            self._device_name_label.configure(text=f"Name: {device_name}")
+        if self._device_id_label and self._device_id_label.winfo_exists():
+            self._device_id_label.configure(text=f"ID: {device_id}")
         # Update credentials labels to reflect current name
         if hasattr(self, "_account_name_label") and self._account_name_label and self._account_name_label.winfo_exists():
             self._account_name_label.configure(text=f"Name: {device_name}")
@@ -215,7 +272,7 @@ class SettingsPage(BasePage):
     def _build_account_section(self, parent: tk.Misc) -> None:
         container = self._create_section(parent, "Credentials", "")
         session = getattr(self.context, "session", None)
-        login_name = getattr(session, "local_device_name", "") or "Not available"
+        login_name = getattr(session, "local_device_name", "") or getattr(session, "device_name", "") or "Not available"
 
         # Name row
         name_row = tk.Frame(container, bg=Colors.SURFACE_ALT)

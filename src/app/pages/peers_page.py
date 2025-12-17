@@ -278,6 +278,10 @@ class PeersPage(BasePage):
             self._open_chat_window(device)
             return
 
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before pairing with peers.")
+            return
+
         self._update_device_status(device["raw_id"], "Connecting")
 
         def _callback(success: bool, error: Optional[str] = None):
@@ -349,6 +353,9 @@ class PeersPage(BasePage):
     # ------------------------------------------------------------------ #
 
     def _show_manual_pairing_modal(self):
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before pairing with peers.")
+            return
         if self._manual_pairing_window:
             scaffold = getattr(self._manual_pairing_window, "window_scaffold", None)
             if scaffold and getattr(scaffold, "toplevel", None) and scaffold.toplevel.winfo_exists():
@@ -366,6 +373,8 @@ class PeersPage(BasePage):
         )
 
     def _handle_manual_pair(self, name: str, device_id: str):
+        if not get_active_code():
+            return
         entry = self._upsert_device(name, device_id, status="Available", source="manual")
         if entry:
             self._connect_and_chat(entry)
@@ -373,6 +382,10 @@ class PeersPage(BasePage):
     def _scan_for_devices(self):
         """Trigger a scan. In production this should call the real transport."""
         if self.is_scanning:
+            return
+
+        if not get_active_code():
+            messagebox.showinfo("Chatroom Required", "Join or create a chatroom before scanning for peers.")
             return
 
         if scan_for_devices is None:
